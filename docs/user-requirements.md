@@ -107,8 +107,8 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 │                              │                                    │
 │                      ┌───────┴───────┐                           │
 │                      │   Web API     │                           │
-│                      │  (C# .NET /   │                           │
-│                      │   Node.js)    │                           │
+│                      │ (Java Spring  │                           │
+│                      │    Boot)      │                           │
 │                      └───────┬───────┘                           │
 │                              │                                    │
 │              ┌───────────────┼───────────────┐                   │
@@ -424,14 +424,14 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 
 | Thành phần | Công nghệ |
 |-----------|-----------|
-| **Backend / Server-side** | C# .NET, Node.js |
+| **Backend / Server-side** | Java (Spring Boot 3.x) |
 | **Database** | SQL Server, Redis |
-| **Web Client** | ReactJS / Next.js |
-| **Mobile App** | React Native |
+| **Web Client** | ReactJS / Next.js (TypeScript) |
+| **Mobile App** | React Native (TypeScript) |
 | **Blockchain Platform** | VeChainThor |
 | **Smart Contract Language** | Solidity |
 | **Blockchain Dev Tools** | VeChain ToolChain, VeChain Sync, VeChain Stats |
-| **Scripting** | JavaScript / TypeScript |
+| **Scripting / Build** | Java (JDK 17/21), TypeScript / JavaScript, Maven / Gradle |
 | **Infrastructure** | AWS / Google Cloud, Docker |
 
 ### 9.2. Quy trình phát triển
