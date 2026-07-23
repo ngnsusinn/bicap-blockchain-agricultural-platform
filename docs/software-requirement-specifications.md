@@ -161,7 +161,7 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 │             ┌───────────────────┼───────────────────┐                   │
 │             │                   │                   │                   │
 │      ┌──────┴──────┐   ┌───────┴───────┐   ┌───────┴───────┐          │
-│      │ SQL Server  │   │    Redis      │   │ VeChainThor   │          │
+│      │ MySQL 5.7.41│   │   Redis 8.6   │   │ VeChainThor   │          │
 │      │  Database   │   │    Cache      │   │  Blockchain   │          │
 │      └─────────────┘   └───────────────┘   └───────────────┘          │
 │                                                                         │
@@ -294,8 +294,8 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 | **Cổng thanh toán** | REST API (HTTPS) | Xử lý thanh toán mua gói dịch vụ, đặt cọc đơn hàng |
 | **Dịch vụ Email** | SMTP / Spring Mail API | Gửi email xác nhận, thông báo |
 | **Firebase Cloud Messaging** | FCM REST API / Firebase Admin SDK | Push notification cho ứng dụng mobile |
-| **Redis** | Redis Protocol (Spring Data Redis) | Caching dữ liệu, session management |
-| **SQL Server** | JDBC / Spring Data JPA (Hibernate) | Lưu trữ dữ liệu quan hệ |
+| **Redis 8.6** | Redis Protocol (Spring Data Redis) | Caching dữ liệu, session management |
+| **MySQL 5.7.41** | JDBC / Spring Data JPA (Hibernate) | Lưu trữ dữ liệu quan hệ |
 
 ### 3.4. Giao diện truyền thông (Communication Interface)
 
@@ -763,7 +763,7 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 2. Nhập thông tin mùa vụ: tên, loại sản phẩm, giống, diện tích, ngày bắt đầu
 3. Nhập các bước quy trình dự kiến (bón lót, gieo trồng, bón thúc, phun thuốc, thu hoạch...)
 4. Hệ thống validate dữ liệu
-5. Hệ thống lưu vào SQL Server database
+5. Hệ thống lưu vào MySQL database
 6. **Hệ thống gọi Smart Contract trên VeChainThor để ghi thông tin mùa vụ**
 7. Smart Contract trả về transaction hash
 8. Hệ thống lưu transaction hash vào database, liên kết với mùa vụ
@@ -1871,7 +1871,7 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 |------------|----------|
 | **Mã yêu cầu** | SRS-API-008 |
 | **Tham chiếu UR** | BICAP-79 |
-| **Tên** | Thiết kế schema SQL Server và cấu hình Redis |
+| **Tên** | Thiết kế schema MySQL 5.7.41 và cấu hình Redis 8.6 |
 | **Độ ưu tiên** | High |
 
 ---
@@ -1884,7 +1884,7 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 
 | Mã | Yêu cầu | Đặc tả chi tiết | Tiêu chí đo lường |
 |----|---------|------------------|--------------------|
-| **NFR-001** | Mở rộng linh hoạt (Horizontal Scaling) | Hệ thống phải mở rộng linh hoạt xử lý số lượng lớn người dùng. Sử dụng Docker container orchestration, Redis cluster, load balancer. | Hệ thống tự động scale khi CPU > 70% hoặc RAM > 80% |
+| **NFR-001** | Mở rộng linh hoạt (Horizontal Scaling) | Hệ thống phải mở rộng linh hoạt xử lý số lượng lớn người dùng. Sử dụng Docker container orchestration, Redis 8.6 cluster, load balancer. | Hệ thống tự động scale khi CPU > 70% hoặc RAM > 80% |
 | **NFR-002** | Xử lý giao dịch Blockchain đồng thời | VeChainThor phải hỗ trợ xử lý nhiều giao dịch đồng thời khi dữ liệu IoT tăng hoặc khi có nhiều request truy xuất sản phẩm. | Xử lý tối thiểu 100 giao dịch/phút |
 
 ### 5.2. Bảo mật (Security)
@@ -1901,7 +1901,7 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 | Mã | Yêu cầu | Đặc tả chi tiết | Tiêu chí đo lường |
 |----|---------|------------------|--------------------|
 | **NFR-005** | Thời gian phản hồi | Các thao tác thông thường (xem danh sách, tìm kiếm, xem chi tiết) phải phản hồi nhanh trong tải bình thường. | Response time < 2 giây cho 95th percentile |
-| **NFR-006** | Cache hiệu quả | Sử dụng Redis cache giảm tải database, tăng tốc truy xuất dữ liệu thường xuyên. | Cache hit rate ≥ 80% |
+| **NFR-006** | Cache hiệu quả | Sử dụng Redis 8.6 cache giảm tải database, tăng tốc truy xuất dữ liệu thường xuyên. | Cache hit rate ≥ 80% |
 | **NFR-013** | Người dùng đồng thời | Hệ thống phải xử lý ít nhất 500 người dùng đồng thời mà không giảm hiệu năng đáng kể. | Response time < 3 giây khi 500 concurrent users |
 | **NFR-014** | Uptime | Hệ thống phải đạt uptime tối thiểu 99.5%. | Downtime ≤ 43.8 giờ/năm |
 
@@ -1930,7 +1930,7 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 
 ## 6. Yêu cầu cơ sở dữ liệu
 
-### 6.1. SQL Server — Các bảng chính (Core Tables)
+### 6.1. MySQL — Các bảng chính (Core Tables)
 
 | STT | Bảng | Mô tả | Quan hệ chính |
 |-----|------|-------|---------------|
@@ -1959,7 +1959,7 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 | 23 | `Articles` | Bài viết giáo dục | — |
 | 24 | `Media` | Hình ảnh, video đính kèm | Media → nhiều bảng (polymorphic) |
 
-### 6.2. Redis — Cấu trúc Cache
+### 6.2. Redis 8.6 — Cấu trúc Cache
 
 | Key Pattern | Mô tả | TTL |
 |-------------|-------|-----|
@@ -1988,16 +1988,16 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 
 | Thành phần | Công nghệ | Phiên bản tối thiểu |
 |-----------|-----------|---------------------|
-| Backend Server | Java (Spring Boot 3.x) | JDK 17 / 21 |
+| Backend Server | Java (Spring Boot 3.x) | JDK 21 |
 | Persistence / ORM | Spring Data JPA (Hibernate) | Spring Data 3.x |
-| Database | SQL Server | 2019+ |
-| Cache | Redis | 6+ |
+| Database | MySQL | 5.7.41 |
+| Cache | Redis | 8.6 |
 | Web Client | ReactJS / Next.js (TypeScript) | React 18+ / Next.js 13+ |
 | Mobile App | React Native (TypeScript) | React Native 0.72+ |
 | Blockchain Platform | VeChainThor | — |
 | Smart Contract | Solidity | 0.8+ |
 | Blockchain SDK / Tools | web3j / VeChain Java SDK, Connex.js / Thor REST API | — |
-| Build Tool & Language | Java (JDK 17/21), TypeScript / JavaScript, Maven / Gradle | — |
+| Build Tool & Language | Java (JDK 21), TypeScript / JavaScript, Maven / Gradle | — |
 | Infrastructure | AWS / Google Cloud | — |
 | Containerization | Docker | 20+ |
 | Container Orchestration | Docker Compose / Kubernetes | — |

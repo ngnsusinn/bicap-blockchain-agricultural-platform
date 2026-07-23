@@ -114,7 +114,7 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 │              ┌───────────────┼───────────────┐                   │
 │              │               │               │                   │
 │       ┌──────┴──────┐ ┌─────┴─────┐ ┌───────┴───────┐          │
-│       │  SQL Server │ │   Redis   │ │  VeChainThor  │          │
+│       │ MySQL 5.7.41│ │ Redis 8.6 │ │  VeChainThor  │          │
 │       │  Database   │ │   Cache   │ │  Blockchain   │          │
 │       └─────────────┘ └───────────┘ └───────────────┘          │
 │                                                                  │
@@ -332,7 +332,7 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 | **BICAP-76** | API quản lý vận chuyển (tạo shipment, cập nhật tiến trình, tracking) | Xây dựng API quản lý vận chuyển: tạo lô hàng, phân công tài xế, cập nhật tiến trình, theo dõi vị trí giao hàng. | Backend/API | High | api |
 | **BICAP-77** | API thông báo (notification) real-time: báo cáo, IoT (nhiệt độ/độ ẩm/pH), trạng thái đơn hàng | Xây dựng API thông báo real-time hỗ trợ push notification cho báo cáo, dữ liệu IoT (nhiệt độ, độ ẩm, pH) và cập nhật trạng thái đơn hàng. | Backend/API | Medium | api, notification |
 | **BICAP-78** | API thanh toán (mua gói dịch vụ, đặt cọc) | Xây dựng API tích hợp cổng thanh toán để xử lý thanh toán mua gói dịch vụ và đặt cọc đơn hàng. | Backend/API | High | api |
-| **BICAP-79** | Thiết kế & triển khai cơ sở dữ liệu (SQL Server, Redis) | Thiết kế schema cơ sở dữ liệu trên SQL Server và cấu hình Redis cache cho hệ thống, đảm bảo hiệu năng và tính nhất quán dữ liệu. | Backend/API | High | api, database |
+| **BICAP-79** | Thiết kế & triển khai cơ sở dữ liệu (MySQL 5.7.41, Redis 8.6) | Thiết kế schema cơ sở dữ liệu trên MySQL 5.7.41 và cấu hình Redis 8.6 cache cho hệ thống, đảm bảo hiệu năng và tính nhất quán dữ liệu. | Backend/API | High | api, database |
 | **BICAP-80** | Đảm bảo blockchain xử lý nhiều giao dịch đồng thời khi dữ liệu IoT/yêu cầu tăng cao (yêu cầu phi chức năng) | Đảm bảo hệ thống blockchain VeChainThor có khả năng xử lý nhiều giao dịch đồng thời khi khối lượng dữ liệu IoT tăng hoặc khi có nhiều yêu cầu truy xuất thông tin sản phẩm cùng lúc. | Backend/API | High | api, blockchain, nfr |
 | **BICAP-81** | Bảo mật dữ liệu & phân quyền truy cập theo chuẩn mã hóa VeChainThor (yêu cầu phi chức năng) | Triển khai bảo mật dữ liệu và phân quyền truy cập theo chuẩn mã hóa của VeChainThor, đảm bảo tính minh bạch và bất biến của dữ liệu truy xuất nguồn gốc. | Backend/API | High | api, security, nfr |
 
@@ -346,7 +346,7 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 
 | Mã YC | Tên yêu cầu (Jira Summary) | Mô tả chi tiết | Component | Độ ưu tiên | Labels |
 |-------|---------------------------|-----------------|-----------|------------|--------|
-| **BICAP-82** | Cấu hình hạ tầng mở rộng linh hoạt: AWS/Google Cloud, Docker, Redis (yêu cầu phi chức năng) | Cấu hình hạ tầng cloud (AWS/Google Cloud), container hóa bằng Docker, cài đặt Redis cache để hệ thống có khả năng mở rộng linh hoạt (horizontal scaling). | DevOps/QA | High | devops, nfr |
+| **BICAP-82** | Cấu hình hạ tầng mở rộng linh hoạt: AWS/Google Cloud, Docker, Redis 8.6 (yêu cầu phi chức năng) | Cấu hình hạ tầng cloud (AWS/Google Cloud), container hóa bằng Docker, cài đặt Redis 8.6 cache để hệ thống có khả năng mở rộng linh hoạt (horizontal scaling). | DevOps/QA | High | devops, nfr |
 | **BICAP-83** | Thiết lập CI/CD pipeline | Thiết lập pipeline CI/CD (Continuous Integration / Continuous Deployment) cho toàn bộ hệ thống để tự động hóa quá trình build, test và deploy. | DevOps/QA | Medium | devops |
 | **BICAP-84** | Triển khai Web App: Admin, Farm Management, Retailer, Shipping Management | Triển khai (deploy) tất cả các ứng dụng Web (Admin, Farm Management, Retailer, Shipping Management) lên môi trường production/staging. | DevOps/QA | High | devops |
 | **BICAP-85** | Triển khai Mobile App: Shipping Driver, Guest | Triển khai (deploy) các ứng dụng Mobile (Shipping Driver, Guest) lên các store hoặc môi trường phân phối. | DevOps/QA | High | devops |
@@ -385,7 +385,7 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 
 | Mã YC | Yêu cầu | Mô tả chi tiết | Jira Cross-ref |
 |-------|---------|-----------------|----------------|
-| **NFR-001** | Mở rộng linh hoạt | Hệ thống phải có khả năng mở rộng linh hoạt để xử lý số lượng lớn người dùng và truy vấn dữ liệu từ nhiều nguồn khác nhau. Các thành phần như AWS/Google Cloud, Docker và Redis phải được cấu hình để hỗ trợ scaling liền mạch (horizontal scaling). | BDT-UR-001 |
+| **NFR-001** | Mở rộng linh hoạt | Hệ thống phải có khả năng mở rộng linh hoạt để xử lý số lượng lớn người dùng và truy vấn dữ liệu từ nhiều nguồn khác nhau. Các thành phần như AWS/Google Cloud, Docker và Redis 8.6 phải được cấu hình để hỗ trợ scaling liền mạch (horizontal scaling). | BDT-UR-001 |
 | **NFR-002** | Xử lý giao dịch đồng thời trên Blockchain | Blockchain VeChainThor phải hỗ trợ xử lý nhiều giao dịch đồng thời khi khối lượng dữ liệu IoT tăng hoặc khi có nhiều yêu cầu truy xuất thông tin sản phẩm cùng lúc. | API-UR-009 |
 
 ### 8.2. Bảo mật (Security)
@@ -400,7 +400,7 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 | Mã YC | Yêu cầu | Mô tả chi tiết | Jira Cross-ref |
 |-------|---------|-----------------|----------------|
 | **NFR-005** | Thời gian phản hồi | Các thao tác thông thường (xem danh sách, tìm kiếm, xem chi tiết) phải có thời gian phản hồi dưới 2 giây trong điều kiện tải bình thường. | BDT-UR-007 |
-| **NFR-006** | Cache hiệu quả | Sử dụng Redis cache để giảm tải database và tăng tốc truy xuất dữ liệu thường xuyên được truy cập. | API-UR-008 |
+| **NFR-006** | Cache hiệu quả | Sử dụng Redis 8.6 cache để giảm tải database và tăng tốc truy xuất dữ liệu thường xuyên được truy cập. | API-UR-008 |
 
 ### 8.4. Khả năng sử dụng (Usability)
 
@@ -425,13 +425,13 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 | Thành phần | Công nghệ |
 |-----------|-----------|
 | **Backend / Server-side** | Java (Spring Boot 3.x) |
-| **Database** | SQL Server, Redis |
+| **Database** | MySQL 5.7.41, Redis 8.6 |
 | **Web Client** | ReactJS / Next.js (TypeScript) |
 | **Mobile App** | React Native (TypeScript) |
 | **Blockchain Platform** | VeChainThor |
 | **Smart Contract Language** | Solidity |
 | **Blockchain Dev Tools** | VeChain ToolChain, VeChain Sync, VeChain Stats |
-| **Scripting / Build** | Java (JDK 17/21), TypeScript / JavaScript, Maven / Gradle |
+| **Scripting / Build** | Java (JDK 21), TypeScript / JavaScript, Maven / Gradle |
 | **Infrastructure** | AWS / Google Cloud, Docker |
 
 ### 9.2. Quy trình phát triển
