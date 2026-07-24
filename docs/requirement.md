@@ -91,7 +91,7 @@ o Shipping Manager (Web App)
 ● Guest can access articles, videos, and other educational content related to agriculture, sustainable farming practices, and food safety.
 
 ● Non-functional requirement:
-○ The system should be able to scale flexibly to handle a large number of users and data queries from multiple sources. Components like AWS/Google Cloud, Docker, and Redis should be configured for seamless scaling.
+○ The system should be able to scale flexibly to handle a large number of users and data queries from multiple sources. Components like AWS/Google Cloud, Docker, and Redis 8.6 should be configured for seamless scaling.
 ○ The blockchain (VeChainThor) should support multiple concurrent transactions as IoT data volume increases or when product information requests surge.
 ○ The blockchain must ensure transparency and immutability of product origin data. VeChainThor encryption standards should be used to secure information, with access restricted based on roles (admin, retailer, transporter).
 (*) 3.2. Main proposal content (including result and product)
@@ -100,7 +100,7 @@ a. Theory and practice (document):
 ● The documents include User Requirements, Software Requirement Specifications, Architecture Design, Detail Design, System Implementation, Testing Document, Installation Guide, source code, and deployable software packages.
 ● Server-side technologies:
 ○ Server: C# .NET, NodeJS
-○ Database Design: SQL Server, Redis
+○ Database Design: MySQL 5.7.41, Redis 8.6
 ● Client-side technologies:
 ○ Web Client: ReactJS/NextJs
 ○ Mobile App: React native.

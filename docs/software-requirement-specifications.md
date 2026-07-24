@@ -1893,8 +1893,8 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 |----|---------|------------------|--------------------|
 | **NFR-003** | Tính minh bạch & bất biến dữ liệu | Dữ liệu truy xuất nguồn gốc ghi trên Blockchain phải bất biến (immutable). Sử dụng chuẩn mã hóa VeChainThor. | 100% dữ liệu trên Blockchain không thể chỉnh sửa sau khi ghi |
 | **NFR-004** | Phân quyền RBAC | Hệ thống phân quyền dựa trên vai trò: Admin, Farm Manager, Retailer, Shipping Manager, Shipping Driver, Guest. Mỗi vai trò chỉ truy cập chức năng và dữ liệu phù hợp. | 0 lỗi unauthorized access trong security testing |
-| **NFR-011** | Mã hóa dữ liệu | Tất cả dữ liệu nhạy cảm (mật khẩu, thông tin thanh toán) phải được mã hóa. Mật khẩu sử dụng bcrypt. Dữ liệu truyền tải sử dụng TLS 1.2+. | 100% API endpoints sử dụng HTTPS |
-| **NFR-012** | Bảo vệ chống tấn công | Hệ thống phải chống được các tấn công phổ biến: SQL Injection, XSS, CSRF, Brute Force. | Vượt qua OWASP Top 10 security checklist |
+| **NFR-011** | Mã hóa dữ liệu & Lưu trữ Token | Mật khẩu dùng bcrypt (cost 12). Dữ liệu nhạy cảm mã hóa at-rest (AES-256 GCM). Traffic mạng mã hóa HTTPS/TLS 1.2+ và MQTTS 1.3. **JWT Access token bắt buộc lưu trong `httpOnly`, `SameSite=Strict`, `Secure` cookie (nghiêm cấm lưu trong `localStorage` để chống XSS).** | 100% API endpoints dùng HTTPS; Token chỉ nằm trong httpOnly cookie |
+| **NFR-012** | Bảo vệ chống tấn công & Audit | Hệ thống phải chống được SQL Injection (JPA), XSS (Output Encoding + CSP), CSRF (SameSite + Anti-CSRF Token), Brute Force (Lockout 30 min sau 5 lần sai). Ghi vết Audit Log cho hành vi Admin/Sensitive operations. Redis phải bật AUTH + TLS. | Vượt qua OWASP Top 10 security checklist & Audit logging 100% admin actions |
 
 ### 5.3. Hiệu năng (Performance)
 
