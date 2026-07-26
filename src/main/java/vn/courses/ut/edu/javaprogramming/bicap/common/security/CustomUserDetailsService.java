@@ -1,7 +1,7 @@
-package com.bicap.api.common.security;
+package vn.courses.ut.edu.javaprogramming.bicap.common.security;
 
-import com.bicap.api.auth.entity.User;
-import com.bicap.api.auth.repository.UserRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -16,8 +16,9 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+        // In our database setup, email acts as the unique username/login identity
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + username));
 
         return user;
     }

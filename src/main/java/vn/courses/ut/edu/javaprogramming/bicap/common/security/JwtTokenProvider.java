@@ -1,4 +1,4 @@
-package com.bicap.api.common.security;
+package vn.courses.ut.edu.javaprogramming.bicap.common.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;

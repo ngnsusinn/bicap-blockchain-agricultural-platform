@@ -1,7 +1,7 @@
-package com.bicap.api.config;
+package vn.courses.ut.edu.javaprogramming.bicap.config;
 
-import com.bicap.api.common.security.CustomUserDetailsService;
-import com.bicap.api.common.security.JwtAuthenticationFilter;
+import vn.courses.ut.edu.javaprogramming.bicap.common.security.CustomUserDetailsService;
+import vn.courses.ut.edu.javaprogramming.bicap.common.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -56,7 +56,7 @@ public class SecurityConfig {
                                 "/api/auth/refresh-token",
                                 "/api/auth/forgot-password",
                                 "/api/auth/reset-password",
-                                "/api/auth/logout"      // SRS-API-001
+                                "/api/auth/logout"
                         ).permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .anyRequest().authenticated()

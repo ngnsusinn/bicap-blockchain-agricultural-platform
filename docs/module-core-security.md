@@ -13,23 +13,26 @@
 - **Database:** MySQL (lưu trữ thực thể `User`).
 
 ## 3. Cấu trúc thư mục (Domain-Driven Design)
-Toàn bộ mã nguồn liên quan được đặt tại base package `com.bicap.api`:
+Toàn bộ mã nguồn liên quan được đặt tại base package `vn.courses.ut.edu.javaprogramming.bicap`:
 
 ```text
-com.bicap.api/
-├── auth/                            
-│   ├── entity/User.java                 # Ánh xạ bảng Users dưới Database
-│   ├── repository/UserRepository.java   # JPA Repository thao tác với Users
+vn.courses.ut.edu.javaprogramming.bicap/
+├── entity/
+│   ├── User.java                       # Ánh xạ bảng Users dưới Database (implements UserDetails)
+│   ├── Role.java                       # Thực thể Vai trò (SUPER_ADMIN, FARM_MANAGER...)
+│   └── Permission.java                 # Thực thể Quyền hạn (MANAGE_USERS, READ_LOGS...)
 │
-├── common/                          
-│   ├── constant/Role.java               # Định nghĩa các vai trò (ADMIN, FARM_MANAGER...)
-│   ├── security/                        # Tiện ích JWT & Filters
-│       ├── CustomUserDetailsService.java# Nạp dữ liệu User từ DB vào Spring Security
+├── repository/
+│   └── UserRepository.java             # JPA Repository thao tác với Users
+│
+├── common/
+│   └── security/                       # Tiện ích JWT & Filters
+│       ├── CustomUserDetailsService.java # Nạp dữ liệu User từ DB vào Spring Security
 │       ├── JwtAuthenticationFilter.java # Filter chặn HTTP Request xác thực JWT qua Header
 │       └── JwtTokenProvider.java        # Class tiện ích sinh và giải mã Token
 │
-└── config/                          
-    └── SecurityConfig.java              # Cấu hình Spring Security chính
+└── config/
+    └── SecurityConfig.java             # Cấu hình Spring Security chính
 ```
 
 ## 4. Chi tiết các thành phần (Components)
@@ -71,7 +74,7 @@ Chạy tự động (OncePerRequest) trước mọi request.
 
 ## 5. Hướng dẫn tích hợp cho Team
 Các thành viên đảm nhận task **Đăng nhập / Đăng ký (BICAP-7, BICAP-36)** cần thực hiện:
-1. Tạo các DTO (ví dụ `LoginRequest`, `RegisterRequest`) và Controller tương ứng tại thư mục `com.bicap.api.auth.controller`.
+1. Tạo các DTO (ví dụ `LoginRequest`, `RegisterRequest`) và Controller tương ứng tại thư mục `vn.courses.ut.edu.javaprogramming.bicap.controller`.
 2. Khi User đăng nhập thành công, sử dụng logic sau để trả Token:
    ```java
    Authentication authentication = authenticationManager.authenticate(...);
