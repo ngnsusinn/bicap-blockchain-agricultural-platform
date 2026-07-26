@@ -1,4 +1,4 @@
-package com.github.cicd;
+package vn.courses.ut.edu.javaprogramming.bicap;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

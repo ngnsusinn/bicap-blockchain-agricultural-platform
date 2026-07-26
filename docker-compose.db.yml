@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # ------------------------------------------------------------------------
+  # BICAP Backend Spring Boot API
+  # ------------------------------------------------------------------------
+  api:
+    build: .
+    container_name: bicap-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_REDIS_HOST=${SPRING_REDIS_HOST}
+      - SPRING_REDIS_PORT=${SPRING_REDIS_PORT}
+      - SPRING_REDIS_PASSWORD=${SPRING_REDIS_PASSWORD}
+      - SPRING_REDIS_SSL=${SPRING_REDIS_SSL}
+    networks:
+      - bicap-network
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------------
+  # BICAP Admin Web App React Frontend
+  # ------------------------------------------------------------------------
+  admin-web:
+    build:
+      context: ./admin-web
+    container_name: bicap-admin-web
+    ports:
+      - "3001:80"
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+    networks:
+      - bicap-network
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------------
+  # LOCAL FALLBACK DATABASE SERVICES (Commented out - Uncomment to use local)
+  # ------------------------------------------------------------------------
+  # mysql:
+  #   image: mysql:5.7.41
+  #   container_name: bicap-mysql
+  #   ports:
+  #     - "3306:3306"
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: root_secure_password
+  #     MYSQL_DATABASE: bicap_db
+  #     MYSQL_USER: bicap_user
+  #     MYSQL_PASSWORD: bicap_password
+  #   volumes:
+  #     - bicap-mysql-data:/var/lib/mysql
+  #   networks:
+  #     - bicap-network
+  #   restart: unless-stopped
+  #   command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  # redis:
+  #   image: redis:8.0-alpine
+  #   container_name: bicap-redis
+  #   ports:
+  #     - "6379:6379"
+  #   command: redis-server --requirepass redis_secure_password --maxmemory 512mb --maxmemory-policy allkeys-lru --tls-port 0
+  #   volumes:
+  #     - bicap-redis-data:/data
+  #   networks:
+  #     - bicap-network
+  #   restart: unless-stopped
+
+networks:
+  bicap-network:
+    name: bicap-network
+    driver: bridge
+
+# volumes:
+#   bicap-mysql-data:
+#     driver: local
+#   bicap-redis-data:
+#     driver: local
