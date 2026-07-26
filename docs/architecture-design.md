@@ -431,7 +431,7 @@ Hệ thống BICAP được thiết kế theo mô hình **kiến trúc phân l�
 ### 4.3. Cấu trúc Package Backend (Package-by-Feature)
 
 ```
-com.bicap.api/
+vn.courses.ut.edu.javaprogramming.bicap/
 ├── config/                          # Cấu hình chung
 │   ├── SecurityConfig.java          # Spring Security + JWT
 │   ├── RedisConfig.java             # Redis cache configuration
