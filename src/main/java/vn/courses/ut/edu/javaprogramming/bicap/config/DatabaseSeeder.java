@@ -37,6 +37,13 @@ public class DatabaseSeeder implements CommandLineRunner {
                 Set.of(adminCreate, adminRead, adminUpdate));
         Role moderatorRole = seedRole("MODERATOR", "Moderator with read-only access",
                 Set.of(adminRead));
+        
+        // Seed Functional Roles
+        seedRole("FARM_MANAGER", "Farm Manager for managing farms, seasons, and exports", Set.of());
+        seedRole("RETAILER", "Retailer for purchasing products and tracking orders", Set.of());
+        seedRole("SHIPPING_MGR", "Shipping Manager for coordinating deliveries", Set.of());
+        seedRole("SHIP_DRIVER", "Shipping Driver for executing shipments", Set.of());
+        seedRole("GUEST", "Guest user for browsing products and educational content", Set.of());
 
         // 3. Seed Users
         seedUser("superadmin@bicap.com", "Superadmin@2026", "Super Admin", "0987654321", superAdminRole);
