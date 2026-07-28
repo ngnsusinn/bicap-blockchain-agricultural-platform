@@ -13,7 +13,10 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
+    Optional<User> findByEmailIgnoreCaseOrPhone(String email, String phone);
     boolean existsByEmail(String email);
+    boolean existsByEmailIgnoreCase(String email);
+    boolean existsByPhone(String phone);
 
     @Query("SELECT DISTINCT u FROM User u LEFT JOIN u.roles r WHERE " +
            "(:status IS NULL OR u.status = :status) AND " +
