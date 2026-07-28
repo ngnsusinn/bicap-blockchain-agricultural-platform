@@ -2,7 +2,6 @@ package vn.courses.ut.edu.javaprogramming.bicap.config;
 
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.CustomUserDetailsService;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.JwtAuthenticationFilter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,11 +20,15 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    public SecurityConfig(CustomUserDetailsService customUserDetailsService, JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.customUserDetailsService = customUserDetailsService;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
