@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export interface UserSession {
   email: string;
@@ -7,69 +7,245 @@ export interface UserSession {
   permissions: string[];
 }
 
-const mockSessions: UserSession[] = [
-  {
-    email: 'superadmin@bicap.com',
-    fullName: 'Trần Nguyễn Gia Bảo (Super Admin)',
-    role: 'SUPER_ADMIN',
-    permissions: ['ADMIN_CREATE', 'ADMIN_READ', 'ADMIN_UPDATE', 'ADMIN_DELETE'],
-  },
-  {
-    email: 'admin@bicap.com',
-    fullName: 'Lê Minh Tuấn (Admin)',
-    role: 'ADMIN',
-    permissions: ['ADMIN_READ', 'ADMIN_UPDATE'],
-  },
-  {
-    email: 'moderator@bicap.com',
-    fullName: 'Nguyễn Thị Hoa (Moderator)',
-    role: 'MODERATOR',
-    permissions: ['ADMIN_READ'],
-  },
-  {
-    email: 'unauthorized@bicap.com',
-    fullName: 'Kẻ Xâm Nhập (Unauthorized)',
-    role: 'GUEST',
-    permissions: [],
-  }
-];
-
 interface LoginSimulatorProps {
   currentSession: UserSession;
   onSessionChange: (session: UserSession) => void;
+  token: string | null;
+  onTokenChange: (token: string | null) => void;
 }
 
-export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, onSessionChange }) => {
+// Backend base (matches App.tsx usage)
+const API_ROOT = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api').replace(/\/g, '');
+const AUTH_URL = API_ROOT.replace(/\/g, '') + '/auth';
+const ADMIN_URL = API_ROOT.replace(/\/g, '') + '/admins';
+
+export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, onSessionChange, token, onTokenChange }) => {
+  const [mode, setMode] = useState<'simulate' | 'login' | 'register'>('simulate');
+
+  // Login form state
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+
+  // Register form state
+  const [regFullName, setRegFullName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+
+  // Keep a small set of mock sessions for quick switching (falls back if backend not used)
+  const mockSessions: UserSession[] = [
+    {
+      email: 'superadmin@bicap.com',
+      fullName: 'Trần Nguyễn Gia Bảo (Super Admin)',
+      role: 'SUPER_ADMIN',
+      permissions: ['ADMIN_CREATE', 'ADMIN_READ', 'ADMIN_UPDATE', 'ADMIN_DELETE'],
+    },
+    {
+      email: 'admin@bicap.com',
+      fullName: 'Lê Minh Tuấn (Admin)',
+      role: 'ADMIN',
+      permissions: ['ADMIN_READ', 'ADMIN_UPDATE'],
+    },
+    {
+      email: 'moderator@bicap.com',
+      fullName: 'Nguyễn Thị Hoa (Moderator)',
+      role: 'MODERATOR',
+      permissions: ['ADMIN_READ'],
+    },
+    {
+      email: 'unauthorized@bicap.com',
+      fullName: 'Kẻ Xâm Nhập (Unauthorized)',
+      role: 'GUEST',
+      permissions: [],
+    }
+  ];
+
+  const applyAdminResponseToSession = async (email: string, authToken: string | null) => {
+    // Try to fetch admin details to extract roles/permissions
+    try {
+      const headers: Record<string, string> = {};
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+      const resp = await fetch(`${ADMIN_URL}?search=${encodeURIComponent(email)}`, { headers });
+      if (!resp.ok) return null;
+      const body = await resp.json();
+      const items = body.content || [];
+      const me = items.find((a: any) => a.email === email);
+      if (!me) return null;
+
+      const roles = me.roles || [];
+      const roleName = roles.length > 0 ? roles[0].name : 'ADMIN';
+      const perms: string[] = [];
+      roles.forEach((r: any) => {
+        if (r.permissions) {
+          r.permissions.forEach((p: any) => perms.push(p.code));
+        }
+      });
+
+      return {
+        email: me.email,
+        fullName: me.fullName || me.email,
+        role: roleName as UserSession['role'],
+        permissions: perms,
+      } as UserSession;
+    } catch (err) {
+      return null;
+    }
+  };
+
+  const handleSimulate = (s: UserSession) => {
+    onSessionChange(s);
+    // clear real token when simulating
+    onTokenChange(null);
+    localStorage.removeItem('ACCESS_TOKEN');
+  };
+
+  const handleLogout = () => {
+    onTokenChange(null);
+    onSessionChange({
+      email: 'unauthorized@bicap.com',
+      fullName: 'Guest (Not logged in)',
+      role: 'GUEST',
+      permissions: [],
+    });
+  };
+
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    try {
+      const resp = await fetch(`${AUTH_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        alert(err.message || 'Login failed');
+        return;
+      }
+      const auth = await resp.json();
+      const t = auth.accessToken;
+      onTokenChange(t);
+      localStorage.setItem('ACCESS_TOKEN', t);
+
+      // Try to enrich session with roles/permissions
+      const resolved = await applyAdminResponseToSession(auth.email, t);
+      if (resolved) {
+        onSessionChange(resolved);
+      } else {
+        onSessionChange({
+          email: auth.email,
+          fullName: auth.fullName || auth.email,
+          role: 'ADMIN',
+          permissions: [],
+        });
+      }
+      setMode('simulate');
+    } catch (err) {
+      alert('Login error: ' + String(err));
+    }
+  };
+
+  const handleRegister = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    try {
+      const resp = await fetch(`${AUTH_URL}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName: regFullName, email: regEmail, password: regPassword, phone: regPhone }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        alert(err.message || 'Registration failed');
+        return;
+      }
+      const auth = await resp.json();
+      const t = auth.accessToken;
+      onTokenChange(t);
+      localStorage.setItem('ACCESS_TOKEN', t);
+
+      const resolved = await applyAdminResponseToSession(auth.email, t);
+      if (resolved) {
+        onSessionChange(resolved);
+      } else {
+        onSessionChange({
+          email: auth.email,
+          fullName: auth.fullName || auth.email,
+          role: 'ADMIN',
+          permissions: [],
+        });
+      }
+      setMode('simulate');
+    } catch (err) {
+      alert('Registration error: ' + String(err));
+    }
+  };
+
   return (
     <div className="glass-panel" style={cardStyle}>
       <div style={headerStyle}>
         <div style={dotStyle}></div>
-        <h3 style={titleStyle}>Simulated Session (RBAC Quick Selector)</h3>
+        <h3 style={titleStyle}>Authentication</h3>
       </div>
-      <p style={descStyle}>
-        Toggle below to simulate different logged-in administrators and watch the backend and UI permissions automatically adapt.
-      </p>
-      <div style={selectorContainerStyle}>
-        {mockSessions.map((session) => {
-          const isSelected = session.email === currentSession.email;
-          return (
-            <button
-              key={session.email}
-              onClick={() => onSessionChange(session)}
-              style={{
-                ...btnStyle,
-                border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-color)',
-                background: isSelected ? 'var(--primary-light)' : 'rgba(0, 0, 0, 0.2)',
-                color: isSelected ? 'var(--primary-hover)' : 'var(--text-secondary)',
-                boxShadow: isSelected ? '0 0 10px rgba(139, 92, 246, 0.2)' : 'none',
-              }}
-            >
-              <div style={{ fontWeight: 600, fontSize: '13px' }}>{session.role}</div>
-              <div style={{ fontSize: '11px', opacity: 0.8, marginTop: '2px' }}>{session.email}</div>
-            </button>
-          );
-        })}
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <button className="btn btn-secondary" onClick={() => setMode('simulate')} style={{ opacity: mode === 'simulate' ? 1 : 0.7 }}>Quick simulate</button>
+        <button className="btn btn-secondary" onClick={() => setMode('login')} style={{ opacity: mode === 'login' ? 1 : 0.7 }}>Login</button>
+        <button className="btn btn-secondary" onClick={() => setMode('register')} style={{ opacity: mode === 'register' ? 1 : 0.7 }}>Register</button>
+        {token ? (
+          <button className="btn btn-danger" onClick={handleLogout} style={{ marginLeft: 'auto' }}>Logout</button>
+        ) : null}
       </div>
+
+      {mode === 'simulate' && (
+        <>
+          <p style={descStyle}>Use quick mock sessions for UI permission preview, or login/register to use the real backend.</p>
+          <div style={selectorContainerStyle}>
+            {mockSessions.map((session) => {
+              const isSelected = session.email === currentSession.email;
+              return (
+                <button
+                  key={session.email}
+                  onClick={() => handleSimulate(session)}
+                  style={{
+                    ...btnStyle,
+                    border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-color)',
+                    background: isSelected ? 'var(--primary-light)' : 'rgba(0, 0, 0, 0.2)',
+                    color: isSelected ? 'var(--primary-hover)' : 'var(--text-secondary)',
+                  }}
+                >
+                  <div style={{ fontWeight: 600, fontSize: '13px' }}>{session.role}</div>
+                  <div style={{ fontSize: '11px', opacity: 0.8, marginTop: '2px' }}>{session.email}</div>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {mode === 'login' && (
+        <form onSubmit={handleLogin} style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+          <input className="input-control" placeholder="Email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
+          <input className="input-control" placeholder="Password" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="submit" className="btn btn-primary">Login</button>
+            <button type="button" className="btn btn-secondary" onClick={() => setMode('simulate')}>Back</button>
+          </div>
+        </form>
+      )}
+
+      {mode === 'register' && (
+        <form onSubmit={handleRegister} style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+          <input className="input-control" placeholder="Full name" value={regFullName} onChange={(e) => setRegFullName(e.target.value)} />
+          <input className="input-control" placeholder="Email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} />
+          <input className="input-control" placeholder="Password" type="password" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} />
+          <input className="input-control" placeholder="Phone (optional)" value={regPhone} onChange={(e) => setRegPhone(e.target.value)} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="submit" className="btn btn-primary">Register</button>
+            <button type="button" className="btn btn-secondary" onClick={() => setMode('simulate')}>Back</button>
+          </div>
+        </form>
+      )}
+
       <div style={infoBannerStyle}>
         <span style={{ color: 'var(--primary)' }}>★ Current Actor:</span>
         <strong style={{ color: '#fff', marginLeft: '6px' }}>{currentSession.fullName}</strong>

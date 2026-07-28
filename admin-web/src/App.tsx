@@ -20,6 +20,10 @@ export default function App() {
     permissions: ['ADMIN_CREATE', 'ADMIN_READ', 'ADMIN_UPDATE', 'ADMIN_DELETE'],
   });
 
+  // JWT stored after login/register
+  const [token, setToken] = useState<string | null>(localStorage.getItem('ACCESS_TOKEN'));
+
+
   // Table Data & Filter State
   const [admins, setAdmins] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,10 +58,15 @@ export default function App() {
         size: '5',
       });
 
+      const headers: Record<string, string> = {
+        'X-Actor-Email': currentSession.email,
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_BASE_URL}?${params}`, {
-        headers: {
-          'X-Actor-Email': currentSession.email,
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -76,7 +85,7 @@ export default function App() {
       setTotalPages(1);
       showToast(err.message, 'error');
     }
-  }, [searchTerm, statusFilter, roleFilter, currentPage, currentSession.email, showToast]);
+  }, [searchTerm, statusFilter, roleFilter, currentPage, currentSession.email, token, showToast]);
 
   // Sync Data on Filter or Session Switch
   useEffect(() => {
@@ -96,11 +105,14 @@ export default function App() {
     if (!window.confirm('Are you sure you want to soft-delete this administrator account?')) return;
 
     try {
+      const headers: Record<string, string> = {
+        'X-Actor-Email': currentSession.email,
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(`${API_BASE_URL}/${id}`, {
         method: 'DELETE',
-        headers: {
-          'X-Actor-Email': currentSession.email,
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -122,12 +134,15 @@ export default function App() {
       const url = isEdit ? `${API_BASE_URL}/${selectedAdmin.id}` : API_BASE_URL;
       const method = isEdit ? 'PUT' : 'POST';
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'X-Actor-Email': currentSession.email,
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Actor-Email': currentSession.email,
-        },
+        headers,
         body: JSON.stringify(adminData),
       });
 
@@ -203,7 +218,19 @@ export default function App() {
             </div>
 
             {/* Login Simulation panel */}
-            <LoginSimulator currentSession={currentSession} onSessionChange={setCurrentSession} />
+            <LoginSimulator
+              currentSession={currentSession}
+              onSessionChange={setCurrentSession}
+              token={token}
+              onTokenChange={(t: string | null) => {
+                if (t) {
+                  localStorage.setItem('ACCESS_TOKEN', t);
+                } else {
+                  localStorage.removeItem('ACCESS_TOKEN');
+                }
+                setToken(t);
+              }}
+            />
 
             {/* General metrics cards */}
             <StatsCards admins={admins} />
