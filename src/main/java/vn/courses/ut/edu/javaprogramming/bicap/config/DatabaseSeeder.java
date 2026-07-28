@@ -7,7 +7,6 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.PermissionRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.RoleRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -15,12 +14,17 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Component
-@RequiredArgsConstructor
 public class DatabaseSeeder implements CommandLineRunner {
 
     private final PermissionRepository permissionRepository;
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
+
+    public DatabaseSeeder(PermissionRepository permissionRepository, RoleRepository roleRepository, UserRepository userRepository) {
+        this.permissionRepository = permissionRepository;
+        this.roleRepository = roleRepository;
+        this.userRepository = userRepository;
+    }
 
     @Override
     public void run(String... args) throws Exception {

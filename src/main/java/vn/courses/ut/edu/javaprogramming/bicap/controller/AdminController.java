@@ -6,7 +6,6 @@ import vn.courses.ut.edu.javaprogramming.bicap.dto.AdminUpdateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.service.AdminService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -16,10 +15,13 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/admins")
-@RequiredArgsConstructor
 public class AdminController {
 
     private final AdminService adminService;
+
+    public AdminController(AdminService adminService) {
+        this.adminService = adminService;
+    }
 
     @GetMapping
     public ResponseEntity<Page<AdminResponse>> getAdmins(
