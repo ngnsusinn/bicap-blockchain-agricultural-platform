@@ -1,61 +1,87 @@
 package vn.courses.ut.edu.javaprogramming.bicap.dto;
 
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 public class RegisterRequest {
 
     @NotBlank(message = "Full name is required")
+    @Size(min = 2, max = 255, message = "Full name must be between 2 and 255 characters")
     private String fullName;
 
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
+    @Size(max = 255, message = "Email must not exceed 255 characters")
     private String email;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 8, message = "Password must be at least 8 characters long")
-    private String password;
-
-    @Pattern(regexp = "^(0\\d{9})?$", message = "Phone number must be a valid 10-digit Vietnamese number starting with 0")
+    @NotBlank(message = "Phone number is required")
+    @Pattern(
+            regexp = "^0[35789]\\d{8}$",
+            message = "Phone number must be a valid 10-digit Vietnamese mobile number"
+    )
     private String phone;
 
-    public RegisterRequest() {}
+    @NotBlank(message = "Password is required")
+    @Size(min = 8, max = 128, message = "Password must be between 8 and 128 characters")
+    @Pattern(
+            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&_#^()+=.-])[A-Za-z\\d@$!%*?&_#^()+=.-]{8,128}$",
+            message = "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
+    )
+    private String password;
 
-    public RegisterRequest(String fullName, String email, String password, String phone) {
+    @NotBlank(message = "Password confirmation is required")
+    private String confirmPassword;
+
+    public RegisterRequest() {
+    }
+
+    public RegisterRequest(String fullName, String email, String phone, String password, String confirmPassword) {
         this.fullName = fullName;
         this.email = email;
+        this.phone = phone;
         this.password = password;
+        this.confirmPassword = confirmPassword;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
         this.phone = phone;
     }
 
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
-
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
-
-    public String getPhone() { return phone; }
-    public void setPhone(String phone) { this.phone = phone; }
-
-    public static RegisterRequestBuilder builder() {
-        return new RegisterRequestBuilder();
+    public String getPassword() {
+        return password;
     }
 
-    public static class RegisterRequestBuilder {
-        private String fullName;
-        private String email;
-        private String password;
-        private String phone;
+    public void setPassword(String password) {
+        this.password = password;
+    }
 
-        public RegisterRequestBuilder fullName(String fullName) { this.fullName = fullName; return this; }
-        public RegisterRequestBuilder email(String email) { this.email = email; return this; }
-        public RegisterRequestBuilder password(String password) { this.password = password; return this; }
-        public RegisterRequestBuilder phone(String phone) { this.phone = phone; return this; }
+    public String getConfirmPassword() {
+        return confirmPassword;
+    }
 
-        public RegisterRequest build() {
-            return new RegisterRequest(fullName, email, password, phone);
-        }
+    public void setConfirmPassword(String confirmPassword) {
+        this.confirmPassword = confirmPassword;
     }
 }

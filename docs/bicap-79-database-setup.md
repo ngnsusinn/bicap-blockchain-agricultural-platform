@@ -430,6 +430,44 @@ CREATE TABLE IF NOT EXISTS `iot_data` (
   CONSTRAINT `fk_iot_farm` FOREIGN KEY (`farm_id`) REFERENCES `farms` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- -----------------------------------------------------
+-- Seed default permissions
+-- -----------------------------------------------------
+INSERT INTO `permissions` (`id`, `code`, `description`) VALUES
+(1, 'ADMIN_CREATE', 'Permission to create admin accounts'),
+(2, 'ADMIN_READ', 'Permission to view admin accounts'),
+(3, 'ADMIN_UPDATE', 'Permission to update admin accounts'),
+(4, 'ADMIN_DELETE', 'Permission to delete admin accounts')
+ON DUPLICATE KEY UPDATE `description` = VALUES(`description`);
+
+-- -----------------------------------------------------
+-- Seed default roles
+-- -----------------------------------------------------
+INSERT INTO `roles` (`id`, `name`, `description`) VALUES
+(1, 'SUPER_ADMIN', 'Super Administrator with full access'),
+(2, 'ADMIN', 'Administrator with read/write access'),
+(3, 'MODERATOR', 'Moderator with read-only access'),
+(4, 'FARM_MANAGER', 'Farm Manager for managing farms, seasons, and exports'),
+(5, 'RETAILER', 'Retailer for purchasing products and tracking orders'),
+(6, 'SHIPPING_MGR', 'Shipping Manager for coordinating deliveries'),
+(7, 'SHIP_DRIVER', 'Shipping Driver for executing shipments'),
+(8, 'GUEST', 'Guest user for browsing products and educational content')
+ON DUPLICATE KEY UPDATE `description` = VALUES(`description`);
+
+-- -----------------------------------------------------
+-- Seed default role-permission mappings
+-- -----------------------------------------------------
+INSERT INTO `role_permissions` (`role_id`, `permission_id`) VALUES
+(1, 1), -- SUPER_ADMIN can create admins
+(1, 2), -- SUPER_ADMIN can read admins
+(1, 3), -- SUPER_ADMIN can update admins
+(1, 4), -- SUPER_ADMIN can delete admins
+(2, 1), -- ADMIN can create admins
+(2, 2), -- ADMIN can read admins
+(2, 3), -- ADMIN can update admins
+(3, 2)  -- MODERATOR can read admins
+ON DUPLICATE KEY UPDATE `role_id` = VALUES(`role_id`);
+
 -- Re-enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 1;
 ```

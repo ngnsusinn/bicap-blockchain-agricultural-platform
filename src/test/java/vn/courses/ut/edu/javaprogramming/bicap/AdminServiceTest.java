@@ -119,10 +119,10 @@ public class AdminServiceTest {
         when(userRepository.findByEmail("admin@bicap.com")).thenReturn(Optional.of(normalAdmin));
 
         // Act & Assert
-        ForbiddenException ex = assertThrows(ForbiddenException.class, () -> 
+        Exception exception = assertThrows(ForbiddenException.class, () -> 
                 adminService.createAdmin(request, "admin@bicap.com")
         );
-        assertNotNull(ex);
+        assertNotNull(exception);
         verify(userRepository, never()).save(any(User.class));
     }
 
@@ -140,10 +140,10 @@ public class AdminServiceTest {
         when(userRepository.existsByEmail("admin@bicap.com")).thenReturn(true);
 
         // Act & Assert
-        ConflictException ex = assertThrows(ConflictException.class, () -> 
+        Exception exception = assertThrows(ConflictException.class, () -> 
                 adminService.createAdmin(request, "super@bicap.com")
         );
-        assertNotNull(ex);
+        assertNotNull(exception);
         verify(userRepository, never()).save(any(User.class));
     }
 
@@ -168,10 +168,10 @@ public class AdminServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(superAdmin));
 
         // Act & Assert
-        BadRequestException ex = assertThrows(BadRequestException.class, () -> 
+        Exception exception = assertThrows(BadRequestException.class, () -> 
                 adminService.deleteAdmin(1L, "super@bicap.com")
         );
-        assertNotNull(ex);
+        assertNotNull(exception);
         verify(userRepository, never()).save(any(User.class));
     }
 }

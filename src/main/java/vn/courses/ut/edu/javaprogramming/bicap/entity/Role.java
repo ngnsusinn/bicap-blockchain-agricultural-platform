@@ -32,17 +32,37 @@ public class Role {
         this.permissions = permissions;
     }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+    public String getName() {
+        return name;
+    }
 
-    public Set<Permission> getPermissions() { return permissions; }
-    public void setPermissions(Set<Permission> permissions) { this.permissions = permissions; }
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Set<Permission> getPermissions() {
+        return permissions;
+    }
+
+    public void setPermissions(Set<Permission> permissions) {
+        this.permissions = permissions;
+    }
 
     public static RoleBuilder builder() {
         return new RoleBuilder();
@@ -54,10 +74,27 @@ public class Role {
         private String description;
         private Set<Permission> permissions;
 
-        public RoleBuilder id(Long id) { this.id = id; return this; }
-        public RoleBuilder name(String name) { this.name = name; return this; }
-        public RoleBuilder description(String description) { this.description = description; return this; }
-        public RoleBuilder permissions(Set<Permission> permissions) { this.permissions = permissions; return this; }
+        RoleBuilder() {}
+
+        public RoleBuilder id(Long id) {
+            this.id = id;
+            return this;
+        }
+
+        public RoleBuilder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public RoleBuilder description(String description) {
+            this.description = description;
+            return this;
+        }
+
+        public RoleBuilder permissions(Set<Permission> permissions) {
+            this.permissions = permissions;
+            return this;
+        }
 
         public Role build() {
             return new Role(id, name, description, permissions);

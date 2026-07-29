@@ -3,6 +3,7 @@ package vn.courses.ut.edu.javaprogramming.bicap.service;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,78 +14,90 @@ import vn.courses.ut.edu.javaprogramming.bicap.dto.RegisterRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Role;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
+import vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ConflictException;
+import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundException;
+import vn.courses.ut.edu.javaprogramming.bicap.exception.UnauthorizedException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.RoleRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
 
-import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 @Service
 @Transactional
-@SuppressWarnings("null")
 public class AuthService {
+
+    private static final String RETAILER_ROLE = "RETAILER";
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final JwtTokenProvider tokenProvider;
+    private final JwtTokenProvider jwtTokenProvider;
 
-    public AuthService(UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder,
-                      AuthenticationManager authenticationManager, JwtTokenProvider tokenProvider) {
+    public AuthService(
+            UserRepository userRepository,
+            RoleRepository roleRepository,
+            PasswordEncoder passwordEncoder,
+            AuthenticationManager authenticationManager,
+            JwtTokenProvider jwtTokenProvider) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
-        this.tokenProvider = tokenProvider;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
-    private static final String FARM_ROLE = "FARM_USER";
+    public AuthResponse registerRetailer(RegisterRequest request) {
+        String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        String phone = request.getPhone().trim();
 
-    public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new ConflictException("Email is already in use: " + request.getEmail());
+        if (!request.getPassword().equals(request.getConfirmPassword())) {
+            throw new BadRequestException("Password confirmation does not match");
+        }
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new ConflictException("Email is already registered");
+        }
+        if (userRepository.existsByPhone(phone)) {
+            throw new ConflictException("Phone number is already registered");
         }
 
-        // Ensure FARM_USER role exists or create a simple role entry
-        Role farmRole = roleRepository.findByName(FARM_ROLE)
-                .orElseGet(() -> roleRepository.save(Role.builder()
-                        .name(FARM_ROLE)
-                        .description("Farm user role")
-                        .permissions(null)
-                        .build()));
+        Role retailerRole = roleRepository.findByName(RETAILER_ROLE)
+                .orElseThrow(() -> new ResourceNotFoundException("RETAILER role is not configured"));
 
-        Set<Role> roles = new HashSet<>();
-        roles.add(farmRole);
-
-        User user = User.builder()
-                .email(request.getEmail())
+        User retailer = User.builder()
+                .email(email)
+                .phone(phone)
+                .fullName(request.getFullName().trim())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .fullName(request.getFullName())
-                .phone(request.getPhone())
                 .status(UserStatus.ACTIVE)
-                .roles(roles)
+                .roles(Set.of(retailerRole))
                 .build();
 
-        User saved = userRepository.save(user);
-        // Optionally auto-login and return token
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+        User savedRetailer = userRepository.save(retailer);
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                savedRetailer,
+                null,
+                savedRetailer.getAuthorities()
         );
-        String jwt = tokenProvider.generateToken(authentication);
-        return AuthResponse.fromUser(saved, jwt);
+        String accessToken = jwtTokenProvider.generateToken(authentication);
+
+        return AuthResponse.fromUser(accessToken, savedRetailer);
     }
 
+    @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
-
-        String jwt = tokenProvider.generateToken(authentication);
-
-        // load user to include details in response
-        User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
-        return AuthResponse.fromUser(user, jwt);
+        String identifier = request.getIdentifier().trim();
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(identifier, request.getPassword())
+            );
+            User user = (User) authentication.getPrincipal();
+            String accessToken = jwtTokenProvider.generateToken(authentication);
+            return AuthResponse.fromUser(accessToken, user);
+        } catch (AuthenticationException exception) {
+            throw new UnauthorizedException("Email, phone number, or password is incorrect");
+        }
     }
 }

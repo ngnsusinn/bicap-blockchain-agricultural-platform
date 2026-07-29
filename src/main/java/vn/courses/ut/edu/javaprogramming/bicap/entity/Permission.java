@@ -22,14 +22,29 @@ public class Permission {
         this.description = description;
     }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
     public static PermissionBuilder builder() {
         return new PermissionBuilder();
@@ -40,9 +55,22 @@ public class Permission {
         private String code;
         private String description;
 
-        public PermissionBuilder id(Long id) { this.id = id; return this; }
-        public PermissionBuilder code(String code) { this.code = code; return this; }
-        public PermissionBuilder description(String description) { this.description = description; return this; }
+        PermissionBuilder() {}
+
+        public PermissionBuilder id(Long id) {
+            this.id = id;
+            return this;
+        }
+
+        public PermissionBuilder code(String code) {
+            this.code = code;
+            return this;
+        }
+
+        public PermissionBuilder description(String description) {
+            this.description = description;
+            return this;
+        }
 
         public Permission build() {
             return new Permission(id, code, description);

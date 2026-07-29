@@ -41,26 +41,61 @@ public class AdminCreateRequest {
         this.status = status;
     }
 
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
+    public String getFullName() {
+        return fullName;
+    }
 
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
 
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
+    public String getEmail() {
+        return email;
+    }
 
-    public String getPhone() { return phone; }
-    public void setPhone(String phone) { this.phone = phone; }
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
+    public String getPassword() {
+        return password;
+    }
 
-    public List<String> getPermissions() { return permissions; }
-    public void setPermissions(List<String> permissions) { this.permissions = permissions; }
+    public void setPassword(String password) {
+        this.password = password;
+    }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public List<String> getPermissions() {
+        return permissions;
+    }
+
+    public void setPermissions(List<String> permissions) {
+        this.permissions = permissions;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
 
     public static AdminCreateRequestBuilder builder() {
         return new AdminCreateRequestBuilder();
@@ -75,13 +110,42 @@ public class AdminCreateRequest {
         private List<String> permissions;
         private String status;
 
-        public AdminCreateRequestBuilder fullName(String fullName) { this.fullName = fullName; return this; }
-        public AdminCreateRequestBuilder email(String email) { this.email = email; return this; }
-        public AdminCreateRequestBuilder password(String password) { this.password = password; return this; }
-        public AdminCreateRequestBuilder phone(String phone) { this.phone = phone; return this; }
-        public AdminCreateRequestBuilder role(String role) { this.role = role; return this; }
-        public AdminCreateRequestBuilder permissions(List<String> permissions) { this.permissions = permissions; return this; }
-        public AdminCreateRequestBuilder status(String status) { this.status = status; return this; }
+        AdminCreateRequestBuilder() {}
+
+        public AdminCreateRequestBuilder fullName(String fullName) {
+            this.fullName = fullName;
+            return this;
+        }
+
+        public AdminCreateRequestBuilder email(String email) {
+            this.email = email;
+            return this;
+        }
+
+        public AdminCreateRequestBuilder password(String password) {
+            this.password = password;
+            return this;
+        }
+
+        public AdminCreateRequestBuilder phone(String phone) {
+            this.phone = phone;
+            return this;
+        }
+
+        public AdminCreateRequestBuilder role(String role) {
+            this.role = role;
+            return this;
+        }
+
+        public AdminCreateRequestBuilder permissions(List<String> permissions) {
+            this.permissions = permissions;
+            return this;
+        }
+
+        public AdminCreateRequestBuilder status(String status) {
+            this.status = status;
+            return this;
+        }
 
         public AdminCreateRequest build() {
             return new AdminCreateRequest(fullName, email, password, phone, role, permissions, status);

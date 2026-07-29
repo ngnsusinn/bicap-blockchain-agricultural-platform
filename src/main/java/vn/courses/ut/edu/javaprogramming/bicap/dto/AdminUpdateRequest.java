@@ -27,20 +27,45 @@ public class AdminUpdateRequest {
         this.status = status;
     }
 
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
+    public String getFullName() {
+        return fullName;
+    }
 
-    public String getPhone() { return phone; }
-    public void setPhone(String phone) { this.phone = phone; }
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
 
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
+    public String getPhone() {
+        return phone;
+    }
 
-    public List<String> getPermissions() { return permissions; }
-    public void setPermissions(List<String> permissions) { this.permissions = permissions; }
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public List<String> getPermissions() {
+        return permissions;
+    }
+
+    public void setPermissions(List<String> permissions) {
+        this.permissions = permissions;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
 
     public static AdminUpdateRequestBuilder builder() {
         return new AdminUpdateRequestBuilder();
@@ -53,11 +78,32 @@ public class AdminUpdateRequest {
         private List<String> permissions;
         private String status;
 
-        public AdminUpdateRequestBuilder fullName(String fullName) { this.fullName = fullName; return this; }
-        public AdminUpdateRequestBuilder phone(String phone) { this.phone = phone; return this; }
-        public AdminUpdateRequestBuilder role(String role) { this.role = role; return this; }
-        public AdminUpdateRequestBuilder permissions(List<String> permissions) { this.permissions = permissions; return this; }
-        public AdminUpdateRequestBuilder status(String status) { this.status = status; return this; }
+        AdminUpdateRequestBuilder() {}
+
+        public AdminUpdateRequestBuilder fullName(String fullName) {
+            this.fullName = fullName;
+            return this;
+        }
+
+        public AdminUpdateRequestBuilder phone(String phone) {
+            this.phone = phone;
+            return this;
+        }
+
+        public AdminUpdateRequestBuilder role(String role) {
+            this.role = role;
+            return this;
+        }
+
+        public AdminUpdateRequestBuilder permissions(List<String> permissions) {
+            this.permissions = permissions;
+            return this;
+        }
+
+        public AdminUpdateRequestBuilder status(String status) {
+            this.status = status;
+            return this;
+        }
 
         public AdminUpdateRequest build() {
             return new AdminUpdateRequest(fullName, phone, role, permissions, status);
