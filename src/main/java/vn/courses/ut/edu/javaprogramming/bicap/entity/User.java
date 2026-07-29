@@ -1,7 +1,6 @@
 package vn.courses.ut.edu.javaprogramming.bicap.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -12,11 +11,6 @@ import java.util.Set;
 
 @Entity
 @Table(name = "users")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -47,6 +41,44 @@ public class User implements UserDetails {
         inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<Role> roles;
+
+    public User() {}
+
+    public User(Long id, String email, String password, String fullName, String phone, UserStatus status, String avatarUrl, Set<Role> roles) {
+        this.id = id;
+        this.email = email;
+        this.password = password;
+        this.fullName = fullName;
+        this.phone = phone;
+        this.status = status;
+        this.avatarUrl = avatarUrl;
+        this.roles = roles;
+    }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    @Override
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+
+    public String getFullName() { return fullName; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
+
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+
+    public UserStatus getStatus() { return status; }
+    public void setStatus(UserStatus status) { this.status = status; }
+
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+
+    public Set<Role> getRoles() { return roles; }
+    public void setRoles(Set<Role> roles) { this.roles = roles; }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -87,5 +119,33 @@ public class User implements UserDetails {
     @Override
     public boolean isEnabled() {
         return this.status == UserStatus.ACTIVE;
+    }
+
+    public static UserBuilder builder() {
+        return new UserBuilder();
+    }
+
+    public static class UserBuilder {
+        private Long id;
+        private String email;
+        private String password;
+        private String fullName;
+        private String phone;
+        private UserStatus status;
+        private String avatarUrl;
+        private Set<Role> roles;
+
+        public UserBuilder id(Long id) { this.id = id; return this; }
+        public UserBuilder email(String email) { this.email = email; return this; }
+        public UserBuilder password(String password) { this.password = password; return this; }
+        public UserBuilder fullName(String fullName) { this.fullName = fullName; return this; }
+        public UserBuilder phone(String phone) { this.phone = phone; return this; }
+        public UserBuilder status(UserStatus status) { this.status = status; return this; }
+        public UserBuilder avatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; return this; }
+        public UserBuilder roles(Set<Role> roles) { this.roles = roles; return this; }
+
+        public User build() {
+            return new User(id, email, password, fullName, phone, status, avatarUrl, roles);
+        }
     }
 }

@@ -1,7 +1,6 @@
 package vn.courses.ut.edu.javaprogramming.bicap.controller;
 
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.AuthResponse;
@@ -11,10 +10,13 @@ import vn.courses.ut.edu.javaprogramming.bicap.service.AuthService;
 
 @RestController
 @RequestMapping("/api/auth")
-@RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {

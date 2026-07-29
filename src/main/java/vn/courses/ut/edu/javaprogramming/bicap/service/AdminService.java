@@ -14,7 +14,6 @@ import vn.courses.ut.edu.javaprogramming.bicap.exception.UnauthorizedException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.PermissionRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.RoleRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,13 +23,19 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Service
-@RequiredArgsConstructor
 @Transactional
+@SuppressWarnings("null")
 public class AdminService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
+
+    public AdminService(UserRepository userRepository, RoleRepository roleRepository, PermissionRepository permissionRepository) {
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
+        this.permissionRepository = permissionRepository;
+    }
 
     private static final String PASSWORD_PATTERN = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&_#^()+=.-])[A-Za-z\\d@$!%*?&_#^()+=.-]{8,}$";
 

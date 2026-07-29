@@ -2,8 +2,6 @@ package vn.courses.ut.edu.javaprogramming.bicap;
 
 import vn.courses.ut.edu.javaprogramming.bicap.dto.AdminCreateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.AdminResponse;
-import vn.courses.ut.edu.javaprogramming.bicap.dto.AdminUpdateRequest;
-import vn.courses.ut.edu.javaprogramming.bicap.entity.Permission;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Role;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
@@ -20,10 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 import java.util.*;
 
@@ -32,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings({"unused", "null"})
 public class AdminServiceTest {
 
     @Mock
@@ -124,9 +119,10 @@ public class AdminServiceTest {
         when(userRepository.findByEmail("admin@bicap.com")).thenReturn(Optional.of(normalAdmin));
 
         // Act & Assert
-        assertThrows(ForbiddenException.class, () -> 
+        ForbiddenException ex = assertThrows(ForbiddenException.class, () -> 
                 adminService.createAdmin(request, "admin@bicap.com")
         );
+        assertNotNull(ex);
         verify(userRepository, never()).save(any(User.class));
     }
 
@@ -144,9 +140,10 @@ public class AdminServiceTest {
         when(userRepository.existsByEmail("admin@bicap.com")).thenReturn(true);
 
         // Act & Assert
-        assertThrows(ConflictException.class, () -> 
+        ConflictException ex = assertThrows(ConflictException.class, () -> 
                 adminService.createAdmin(request, "super@bicap.com")
         );
+        assertNotNull(ex);
         verify(userRepository, never()).save(any(User.class));
     }
 
@@ -171,9 +168,10 @@ public class AdminServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(superAdmin));
 
         // Act & Assert
-        assertThrows(BadRequestException.class, () -> 
+        BadRequestException ex = assertThrows(BadRequestException.class, () -> 
                 adminService.deleteAdmin(1L, "super@bicap.com")
         );
+        assertNotNull(ex);
         verify(userRepository, never()).save(any(User.class));
     }
 }
