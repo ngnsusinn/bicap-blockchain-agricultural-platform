@@ -24,6 +24,7 @@ import java.util.Set;
 
 @Service
 @Transactional
+@SuppressWarnings("null")
 public class AdminService {
 
     private final UserRepository userRepository;

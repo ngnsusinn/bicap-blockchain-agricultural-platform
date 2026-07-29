@@ -25,61 +25,27 @@ public class AdminResponse {
         this.roles = roles;
     }
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
-    public String getEmail() {
-        return email;
-    }
+    public String getFullName() { return fullName; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
 
-    public String getFullName() {
-        return fullName;
-    }
+    public UserStatus getStatus() { return status; }
+    public void setStatus(UserStatus status) { this.status = status; }
 
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
 
-    public String getPhone() {
-        return phone;
-    }
+    public Set<RoleResponse> getRoles() { return roles; }
+    public void setRoles(Set<RoleResponse> roles) { this.roles = roles; }
 
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
-    public UserStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(UserStatus status) {
-        this.status = status;
-    }
-
-    public String getAvatarUrl() {
-        return avatarUrl;
-    }
-
-    public void setAvatarUrl(String avatarUrl) {
-        this.avatarUrl = avatarUrl;
-    }
-
-    public Set<RoleResponse> getRoles() {
-        return roles;
-    }
-
-    public void setRoles(Set<RoleResponse> roles) {
-        this.roles = roles;
-    }
 
     public static class RoleResponse {
         private Long id;
