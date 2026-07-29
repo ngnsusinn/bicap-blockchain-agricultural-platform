@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
-import { LoginSimulator } from './components/LoginSimulator';
-import type { UserSession } from './components/LoginSimulator';
+import type { UserSession } from './types';
+import { LoginPage } from './components/LoginPage';
 import { StatsCards } from './components/StatsCards';
 import { AdminTable } from './components/AdminTable';
 import { AdminModal } from './components/AdminModal';
@@ -11,13 +11,24 @@ import type { ToastMessage } from './components/Toast';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/admins';
 
 export default function App() {
-  // Navigation & Session State
+  // Navigation State
   const [currentTab, setCurrentTab] = useState('admins');
-  const [currentSession, setCurrentSession] = useState<UserSession>({
-    email: 'superadmin@bicap.com',
-    fullName: 'Trần Nguyễn Gia Bảo (Super Admin)',
-    role: 'SUPER_ADMIN',
-    permissions: ['ADMIN_CREATE', 'ADMIN_READ', 'ADMIN_UPDATE', 'ADMIN_DELETE'],
+
+  // Authentication & Session State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return !!localStorage.getItem('bicap_session');
+  });
+
+  const [currentSession, setCurrentSession] = useState<UserSession | null>(() => {
+    const saved = localStorage.getItem('bicap_session');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return null;
+      }
+    }
+    return null;
   });
 
   // Table Data & Filter State
@@ -43,8 +54,31 @@ export default function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  // Login Handler
+  const handleLoginSuccess = (session: UserSession, token?: string) => {
+    setCurrentSession(session);
+    setIsAuthenticated(true);
+    localStorage.setItem('bicap_session', JSON.stringify(session));
+    if (token) {
+      localStorage.setItem('bicap_token', token);
+    } else {
+      localStorage.removeItem('bicap_token');
+    }
+    showToast(`Welcome back, ${session.fullName}!`, 'success');
+  };
+
+  // Logout Handler
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentSession(null);
+    localStorage.removeItem('bicap_session');
+    localStorage.removeItem('bicap_token');
+    showToast('Logged out of admin session.', 'info');
+  };
+
   // Fetch Admins from API
   const fetchAdmins = useCallback(async () => {
+    if (!currentSession) return;
     try {
       const params = new URLSearchParams({
         search: searchTerm,
@@ -54,11 +88,15 @@ export default function App() {
         size: '5',
       });
 
-      const response = await fetch(`${API_BASE_URL}?${params}`, {
-        headers: {
-          'X-Actor-Email': currentSession.email,
-        },
-      });
+      const token = localStorage.getItem('bicap_token');
+      const headers: Record<string, string> = {
+        'X-Actor-Email': currentSession.email,
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE_URL}?${params}`, { headers });
 
       if (!response.ok) {
         if (response.status === 403) {
@@ -76,14 +114,14 @@ export default function App() {
       setTotalPages(1);
       showToast(err.message, 'error');
     }
-  }, [searchTerm, statusFilter, roleFilter, currentPage, currentSession.email, showToast]);
+  }, [searchTerm, statusFilter, roleFilter, currentPage, currentSession, showToast]);
 
   // Sync Data on Filter or Session Switch
   useEffect(() => {
-    if (currentTab === 'admins') {
+    if (isAuthenticated && currentTab === 'admins') {
       fetchAdmins();
     }
-  }, [fetchAdmins, currentTab]);
+  }, [fetchAdmins, currentTab, isAuthenticated]);
 
   // Handle Edit Click
   const handleEditClick = (admin: any) => {
@@ -93,14 +131,21 @@ export default function App() {
 
   // Handle Delete Click (Soft-delete)
   const handleDeleteClick = async (id: number) => {
+    if (!currentSession) return;
     if (!window.confirm('Are you sure you want to soft-delete this administrator account?')) return;
 
     try {
+      const token = localStorage.getItem('bicap_token');
+      const headers: Record<string, string> = {
+        'X-Actor-Email': currentSession.email,
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_BASE_URL}/${id}`, {
         method: 'DELETE',
-        headers: {
-          'X-Actor-Email': currentSession.email,
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -117,17 +162,24 @@ export default function App() {
 
   // Handle Create or Update Save
   const handleSaveAdmin = async (adminData: any) => {
+    if (!currentSession) return;
     try {
       const isEdit = !!selectedAdmin;
       const url = isEdit ? `${API_BASE_URL}/${selectedAdmin.id}` : API_BASE_URL;
       const method = isEdit ? 'PUT' : 'POST';
 
+      const token = localStorage.getItem('bicap_token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'X-Actor-Email': currentSession.email,
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Actor-Email': currentSession.email,
-        },
+        headers,
         body: JSON.stringify(adminData),
       });
 
@@ -150,9 +202,19 @@ export default function App() {
     }
   };
 
+  // Render Login Page if Unauthenticated
+  if (!isAuthenticated || !currentSession) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="app-container">
-      <Sidebar currentTab={currentTab} onTabChange={setCurrentTab} />
+      <Sidebar
+        currentTab={currentTab}
+        onTabChange={setCurrentTab}
+        currentSession={currentSession}
+        onLogout={handleLogout}
+      />
 
       <main className="main-content animate-fade-in">
         {currentTab === 'overview' && (
@@ -201,9 +263,6 @@ export default function App() {
                 ➕ Create Admin Account
               </button>
             </div>
-
-            {/* Login Simulation panel */}
-            <LoginSimulator currentSession={currentSession} onSessionChange={setCurrentSession} />
 
             {/* General metrics cards */}
             <StatsCards admins={admins} />

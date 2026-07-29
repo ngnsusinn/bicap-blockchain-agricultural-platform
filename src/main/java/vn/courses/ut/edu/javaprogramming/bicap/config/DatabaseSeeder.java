@@ -7,6 +7,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.PermissionRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.RoleRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -14,16 +15,19 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Component
+@SuppressWarnings("null")
 public class DatabaseSeeder implements CommandLineRunner {
 
     private final PermissionRepository permissionRepository;
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public DatabaseSeeder(PermissionRepository permissionRepository, RoleRepository roleRepository, UserRepository userRepository) {
+    public DatabaseSeeder(PermissionRepository permissionRepository, RoleRepository roleRepository, UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.permissionRepository = permissionRepository;
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -88,7 +92,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
             userRepository.save(User.builder()
                     .email(email)
-                    .password(password) // Storing plain text password for simplified setup/testing as per requirements
+                    .password(passwordEncoder.encode(password))
                     .fullName(fullName)
                     .phone(phone)
                     .status(UserStatus.ACTIVE)
