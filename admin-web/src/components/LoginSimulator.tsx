@@ -105,7 +105,7 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
         role: roleName as UserSession['role'],
         permissions: perms,
       } as UserSession;
-    } catch (err) {
+    } catch {
       return null;
     }
   };
@@ -127,7 +127,7 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
     });
   };
 
-  const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&_#^()+=.\-])[A-Za-z\d@$!%*?&_#^()+=.\-]{8,}$/;
+  const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&_#^()+=.-])[A-Za-z\\d@$!%*?&_#^()+=.-]{8,}$/;
   const gmailPattern = /^[^\s@]+@gmail\.com$/i;
 
   const handleLogin = async (e?: React.FormEvent) => {
