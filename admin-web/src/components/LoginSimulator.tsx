@@ -23,6 +23,7 @@ const ADMIN_URL = ADMIN_API_BASE_URL;
 
 export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, onSessionChange, token, onTokenChange }) => {
   const [mode, setMode] = useState<'simulate' | 'login' | 'register'>('simulate');
+  const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
@@ -61,6 +62,19 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
       permissions: [],
     }
   ];
+
+  const parseApiError = async (response: Response) => {
+    try {
+      const json = await response.json();
+      let detailMessage = json?.message || response.statusText || 'Unknown error';
+      if (json?.details && Array.isArray(json.details)) {
+        detailMessage += ': ' + json.details.join('; ');
+      }
+      return `${response.status} ${response.statusText}: ${detailMessage}`;
+    } catch {
+      return `${response.status} ${response.statusText}: Unable to parse error response`;
+    }
+  };
 
   const applyAdminResponseToSession = async (email: string, authToken: string | null) => {
     // Try to fetch admin details to extract roles/permissions
@@ -118,8 +132,9 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
 
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    setFeedbackMessage(null);
     if (!loginEmail.trim() || !loginPassword) {
-      alert('Please enter both email and password.');
+      setFeedbackMessage({ type: 'error', text: 'Please enter both email and password.' });
       return;
     }
 
@@ -130,8 +145,8 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
         body: JSON.stringify({ email: loginEmail.trim(), password: loginPassword }),
       });
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        alert(err.message || 'Login failed');
+        const errorText = await parseApiError(resp);
+        setFeedbackMessage({ type: 'error', text: `Login failed: ${errorText}` });
         return;
       }
       const auth = await resp.json();
@@ -150,29 +165,31 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
           permissions: [],
         });
       }
+      setFeedbackMessage({ type: 'success', text: 'Login successful.' });
       setMode('simulate');
     } catch (err) {
-      alert('Login error: ' + String(err));
+      setFeedbackMessage({ type: 'error', text: `Login error: ${String(err)}` });
     }
   };
 
   const handleRegister = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    setFeedbackMessage(null);
 
     const email = regEmail.trim();
     const password = regPassword;
     const fullName = regFullName.trim();
 
     if (!fullName || !email || !password) {
-      alert('Please complete full name, email, and password.');
+      setFeedbackMessage({ type: 'error', text: 'Please complete full name, email, and password.' });
       return;
     }
     if (!gmailPattern.test(email)) {
-      alert('Email must be a valid Gmail address ending with @gmail.com.');
+      setFeedbackMessage({ type: 'error', text: 'Email must be a valid Gmail address ending with @gmail.com.' });
       return;
     }
     if (!passwordPattern.test(password)) {
-      alert('Password must be at least 8 characters and include uppercase, lowercase, number, and special character.');
+      setFeedbackMessage({ type: 'error', text: 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.' });
       return;
     }
 
@@ -183,8 +200,8 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
         body: JSON.stringify({ fullName, email, password, phone: regPhone.trim() }),
       });
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        alert(err.message || 'Registration failed');
+        const errorText = await parseApiError(resp);
+        setFeedbackMessage({ type: 'error', text: `Registration failed: ${errorText}` });
         return;
       }
       const auth = await resp.json();
@@ -203,9 +220,10 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
           permissions: [],
         });
       }
+      setFeedbackMessage({ type: 'success', text: 'Registration successful.' });
       setMode('simulate');
     } catch (err) {
-      alert('Registration error: ' + String(err));
+      setFeedbackMessage({ type: 'error', text: `Registration error: ${String(err)}` });
     }
   };
 
@@ -217,9 +235,9 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <button className="btn btn-secondary" onClick={() => setMode('simulate')} style={{ opacity: mode === 'simulate' ? 1 : 0.7 }}>Quick simulate</button>
-        <button className="btn btn-secondary" onClick={() => setMode('login')} style={{ opacity: mode === 'login' ? 1 : 0.7 }}>Login</button>
-        <button className="btn btn-secondary" onClick={() => setMode('register')} style={{ opacity: mode === 'register' ? 1 : 0.7 }}>Register</button>
+        <button className="btn btn-secondary" onClick={() => { setMode('simulate'); setFeedbackMessage(null); }} style={{ opacity: mode === 'simulate' ? 1 : 0.7 }}>Quick simulate</button>
+        <button className="btn btn-secondary" onClick={() => { setMode('login'); setFeedbackMessage(null); }} style={{ opacity: mode === 'login' ? 1 : 0.7 }}>Login</button>
+        <button className="btn btn-secondary" onClick={() => { setMode('register'); setFeedbackMessage(null); }} style={{ opacity: mode === 'register' ? 1 : 0.7 }}>Register</button>
         {token ? (
           <button className="btn btn-danger" onClick={handleLogout} style={{ marginLeft: 'auto' }}>Logout</button>
         ) : null}
@@ -255,9 +273,14 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
         <form onSubmit={handleLogin} style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
           <input className="input-control" placeholder="Email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
           <input className="input-control" placeholder="Password" type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+          {feedbackMessage && (
+            <div style={{ color: feedbackMessage.type === 'error' ? '#f87171' : '#86efac', fontSize: '13px', padding: '8px 10px', borderRadius: '8px', background: feedbackMessage.type === 'error' ? 'rgba(244, 63, 94, 0.08)' : 'rgba(16, 185, 129, 0.08)', marginTop: '4px' }}>
+              {feedbackMessage.text}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="submit" className="btn btn-primary">Login</button>
-            <button type="button" className="btn btn-secondary" onClick={() => setMode('simulate')}>Back</button>
+            <button type="button" className="btn btn-secondary" onClick={() => { setMode('simulate'); setFeedbackMessage(null); }}>Back</button>
           </div>
         </form>
       )}
@@ -268,9 +291,14 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
           <input className="input-control" placeholder="Email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} />
           <input className="input-control" placeholder="Password" type="password" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} />
           <input className="input-control" placeholder="Phone (optional)" value={regPhone} onChange={(e) => setRegPhone(e.target.value)} />
+          {feedbackMessage && (
+            <div style={{ color: feedbackMessage.type === 'error' ? '#f87171' : '#86efac', fontSize: '13px', padding: '8px 10px', borderRadius: '8px', background: feedbackMessage.type === 'error' ? 'rgba(244, 63, 94, 0.08)' : 'rgba(16, 185, 129, 0.08)', marginTop: '4px' }}>
+              {feedbackMessage.text}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="submit" className="btn btn-primary">Register</button>
-            <button type="button" className="btn btn-secondary" onClick={() => setMode('simulate')}>Back</button>
+            <button type="button" className="btn btn-secondary" onClick={() => { setMode('simulate'); setFeedbackMessage(null); }}>Back</button>
           </div>
         </form>
       )}
