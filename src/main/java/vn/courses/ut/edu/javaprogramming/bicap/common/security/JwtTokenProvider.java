@@ -9,6 +9,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
@@ -21,7 +22,11 @@ public class JwtTokenProvider {
     private int jwtExpirationMs;
 
     private SecretKey key() {
-        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
+        try {
+            return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
+        } catch (IllegalArgumentException ex) {
+            return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        }
     }
 
     public String generateToken(Authentication authentication) {

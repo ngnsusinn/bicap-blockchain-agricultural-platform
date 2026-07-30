@@ -14,6 +14,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.dto.RegisterRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Role;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
+import vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ConflictException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.RoleRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
@@ -33,8 +34,16 @@ public class AuthService {
     private final JwtTokenProvider tokenProvider;
 
     private static final String FARM_ROLE = "FARM_USER";
+    private static final String GMAIL_PATTERN = "^[^\\s@]+@gmail\\.com$";
+    private static final String PASSWORD_PATTERN = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&_#^()+=.\\-])[A-Za-z\\d@$!%*?&_#^()+=.\\-]{8,}$";
 
     public AuthResponse register(RegisterRequest request) {
+        if (!request.getEmail().toLowerCase().matches(GMAIL_PATTERN)) {
+            throw new BadRequestException("Email must be a Gmail address ending with @gmail.com");
+        }
+        if (!request.getPassword().matches(PASSWORD_PATTERN)) {
+            throw new BadRequestException("Password must be at least 8 characters long and include uppercase, lowercase, number, and special character.");
+        }
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException("Email is already in use: " + request.getEmail());
         }

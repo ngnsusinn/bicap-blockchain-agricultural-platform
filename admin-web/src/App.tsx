@@ -8,7 +8,7 @@ import { AdminModal } from './components/AdminModal';
 import { Toast } from './components/Toast';
 import type { ToastMessage } from './components/Toast';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/admins';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/admins').replace(/\/$/, '');
 
 export default function App() {
   // Navigation & Session State
@@ -50,19 +50,18 @@ export default function App() {
   // Fetch Admins from API
   const fetchAdmins = useCallback(async () => {
     try {
-      const params = new URLSearchParams({
-        search: searchTerm,
-        status: statusFilter,
-        role: roleFilter,
-        page: currentPage.toString(),
-        size: '5',
-      });
+      const params = new URLSearchParams();
+      if (searchTerm) params.append('search', searchTerm);
+      if (statusFilter) params.append('status', statusFilter);
+      if (roleFilter) params.append('role', roleFilter);
+      params.append('page', currentPage.toString());
+      params.append('size', '5');
 
       const headers: Record<string, string> = {
         'X-Actor-Email': currentSession.email,
       };
       if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+        headers['Authorization'] = 'Bearer ' + token;
       }
 
       const response = await fetch(`${API_BASE_URL}?${params}`, {
@@ -108,7 +107,9 @@ export default function App() {
       const headers: Record<string, string> = {
         'X-Actor-Email': currentSession.email,
       };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (token) {
+        headers['Authorization'] = 'Bearer ' + token;
+      }
 
       const response = await fetch(`${API_BASE_URL}/${id}`, {
         method: 'DELETE',
@@ -138,7 +139,9 @@ export default function App() {
         'Content-Type': 'application/json',
         'X-Actor-Email': currentSession.email,
       };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (token) {
+        headers['Authorization'] = 'Bearer ' + token;
+      }
 
       const response = await fetch(url, {
         method,

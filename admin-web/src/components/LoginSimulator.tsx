@@ -15,9 +15,11 @@ interface LoginSimulatorProps {
 }
 
 // Backend base (matches App.tsx usage)
-const API_ROOT = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api').replace(/\/g, '');
-const AUTH_URL = API_ROOT.replace(/\/g, '') + '/auth';
-const ADMIN_URL = API_ROOT.replace(/\/g, '') + '/admins';
+const envAdminApiUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/admins').replace(/\/$/, '');
+const ADMIN_API_BASE_URL = envAdminApiUrl;
+const AUTH_API_BASE_URL = (import.meta.env.VITE_AUTH_BASE_URL || envAdminApiUrl.replace(/\/admins$/, '')).replace(/\/$/, '');
+const AUTH_URL = AUTH_API_BASE_URL + '/auth';
+const ADMIN_URL = ADMIN_API_BASE_URL;
 
 export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, onSessionChange, token, onTokenChange }) => {
   const [mode, setMode] = useState<'simulate' | 'login' | 'register'>('simulate');
@@ -64,7 +66,9 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
     // Try to fetch admin details to extract roles/permissions
     try {
       const headers: Record<string, string> = {};
-      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+      if (authToken) {
+        headers['Authorization'] = 'Bearer ' + authToken;
+      }
       const resp = await fetch(`${ADMIN_URL}?search=${encodeURIComponent(email)}`, { headers });
       if (!resp.ok) return null;
       const body = await resp.json();
@@ -109,13 +113,21 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
     });
   };
 
+  const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&_#^()+=.\-])[A-Za-z\d@$!%*?&_#^()+=.\-]{8,}$/;
+  const gmailPattern = /^[^\s@]+@gmail\.com$/i;
+
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (!loginEmail.trim() || !loginPassword) {
+      alert('Please enter both email and password.');
+      return;
+    }
+
     try {
       const resp = await fetch(`${AUTH_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+        body: JSON.stringify({ email: loginEmail.trim(), password: loginPassword }),
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
@@ -127,7 +139,6 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
       onTokenChange(t);
       localStorage.setItem('ACCESS_TOKEN', t);
 
-      // Try to enrich session with roles/permissions
       const resolved = await applyAdminResponseToSession(auth.email, t);
       if (resolved) {
         onSessionChange(resolved);
@@ -135,7 +146,7 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
         onSessionChange({
           email: auth.email,
           fullName: auth.fullName || auth.email,
-          role: 'ADMIN',
+          role: 'GUEST',
           permissions: [],
         });
       }
@@ -147,11 +158,29 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
 
   const handleRegister = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+
+    const email = regEmail.trim();
+    const password = regPassword;
+    const fullName = regFullName.trim();
+
+    if (!fullName || !email || !password) {
+      alert('Please complete full name, email, and password.');
+      return;
+    }
+    if (!gmailPattern.test(email)) {
+      alert('Email must be a valid Gmail address ending with @gmail.com.');
+      return;
+    }
+    if (!passwordPattern.test(password)) {
+      alert('Password must be at least 8 characters and include uppercase, lowercase, number, and special character.');
+      return;
+    }
+
     try {
       const resp = await fetch(`${AUTH_URL}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName: regFullName, email: regEmail, password: regPassword, phone: regPhone }),
+        body: JSON.stringify({ fullName, email, password, phone: regPhone.trim() }),
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
@@ -170,7 +199,7 @@ export const LoginSimulator: React.FC<LoginSimulatorProps> = ({ currentSession, 
         onSessionChange({
           email: auth.email,
           fullName: auth.fullName || auth.email,
-          role: 'ADMIN',
+          role: 'GUEST',
           permissions: [],
         });
       }
