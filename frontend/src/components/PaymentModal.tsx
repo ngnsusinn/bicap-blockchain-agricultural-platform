@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { getAuthHeaders } from '../utils/auth';
 
 export interface PaymentData {
   subscriptionId: number;
@@ -25,7 +26,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentDat
   const checkStatus = useCallback(async () => {
     if (!paymentData?.paymentCode) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/subscriptions/payment-status/${paymentData.paymentCode}`);
+      const res = await fetch(`${API_BASE_URL}/subscriptions/payment-status/${paymentData.paymentCode}`, {
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.status === 'ACTIVE' || data.status === 'FAILED') {

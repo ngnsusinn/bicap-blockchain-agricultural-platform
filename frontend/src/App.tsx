@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getAuthHeaders } from './utils/auth';
 import ServicePackages from './pages/FarmManager/ServicePackages';
 
 const API_BASE_URL = 'http://localhost:8080/api';
@@ -176,7 +177,9 @@ export default function App() {
   useEffect(() => {
     const checkSubscription = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/subscriptions/farm/${farmId}`);
+        const res = await fetch(`${API_BASE_URL}/subscriptions/farm/${farmId}`, {
+          headers: getAuthHeaders(),
+        });
         if (res.ok) {
           const subData = await res.json();
           const activeSub = Array.isArray(subData) 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PaymentModal, { type PaymentData } from '../../components/PaymentModal';
+import { getAuthHeaders, isLoggedIn } from '../../utils/auth';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
@@ -40,7 +41,9 @@ const ServicePackages: React.FC = () => {
         setPackages(pkgData);
       }
 
-      const subRes = await fetch(`${API_BASE_URL}/subscriptions/farm/${farmId}`);
+      const subRes = await fetch(`${API_BASE_URL}/subscriptions/farm/${farmId}`, {
+        headers: getAuthHeaders(),
+      });
       if (subRes.ok) {
         const subData = await subRes.json();
         const activeSub = Array.isArray(subData) 
@@ -60,10 +63,15 @@ const ServicePackages: React.FC = () => {
   }, [fetchData]);
 
   const handleSubscribe = async (pkg: Package) => {
+    if (!isLoggedIn()) {
+      setError('Vui lòng đăng nhập để mua gói dịch vụ');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE_URL}/subscriptions/purchase`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ packageId: pkg.id, farmId })
       });
       if (res.ok) {
