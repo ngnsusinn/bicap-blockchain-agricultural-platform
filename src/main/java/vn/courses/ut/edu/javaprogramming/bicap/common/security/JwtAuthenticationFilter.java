@@ -34,6 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = getJwtFromRequest(request);
 
+            boolean authenticated = false;
             if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
                 String username = tokenProvider.getUsernameFromJWT(jwt);
 
@@ -43,16 +44,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-            } else {
+                authenticated = true;
+            }
+
+            if (!authenticated) {
                 // Fallback for frontend Simulator: Authenticate using X-Actor-Email header if present
                 String actorEmail = request.getHeader("X-Actor-Email");
                 if (StringUtils.hasText(actorEmail)) {
-                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(actorEmail);
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities());
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    try {
+                        UserDetails userDetails = customUserDetailsService.loadUserByUsername(actorEmail);
+                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities());
+                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    } catch (UsernameNotFoundException e) {
+                        System.out.println("Actor email not found in DB: " + actorEmail);
+                    }
                 }
             }
         } catch (UsernameNotFoundException | JwtException | IllegalArgumentException ex) {

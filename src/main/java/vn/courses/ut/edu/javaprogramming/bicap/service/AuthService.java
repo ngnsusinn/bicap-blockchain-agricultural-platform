@@ -29,6 +29,8 @@ import java.util.Set;
 public class AuthService {
 
     private static final String RETAILER_ROLE = "RETAILER";
+    private static final String FARM_MANAGER_ROLE = "FARM_MANAGER";
+    private static final String FARM_ROLE = "FARM";
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -50,44 +52,136 @@ public class AuthService {
     }
 
     public AuthResponse registerRetailer(RegisterRequest request) {
+        return registerUserWithRole(request, RETAILER_ROLE);
+    }
+
+    public AuthResponse registerFarmManager(RegisterRequest request) {
+        try {
+            return registerUserWithRole(request, FARM_MANAGER_ROLE);
+        } catch (ResourceNotFoundException e) {
+            return registerUserWithRole(request, FARM_ROLE);
+        }
+    }
+
+    private AuthResponse registerUserWithRole(RegisterRequest request, String roleName) {
         String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
         String phone = request.getPhone().trim();
 
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new BadRequestException("Password confirmation does not match");
         }
-        if (userRepository.existsByEmailIgnoreCase(email)) {
-            throw new ConflictException("Email is already registered");
+
+        var existingUserOpt = userRepository.findByEmailIgnoreCase(email);
+        if (existingUserOpt.isPresent()) {
+            User existingUser = existingUserOpt.get();
+            if (passwordEncoder.matches(request.getPassword(), existingUser.getPassword())) {
+                Role role = roleRepository.findByName(roleName)
+                        .orElseThrow(() -> new ResourceNotFoundException(roleName + " role is not configured"));
+                existingUser.getRoles().add(role);
+                User savedUser = userRepository.save(existingUser);
+                Authentication authentication = new UsernamePasswordAuthenticationToken(
+                        savedUser,
+                        null,
+                        savedUser.getAuthorities()
+                );
+                String accessToken = jwtTokenProvider.generateToken(authentication);
+                return AuthResponse.fromUser(accessToken, savedUser);
+            } else {
+                throw new ConflictException("Email is already registered");
+            }
         }
+
         if (userRepository.existsByPhone(phone)) {
             throw new ConflictException("Phone number is already registered");
         }
 
-        Role retailerRole = roleRepository.findByName(RETAILER_ROLE)
-                .orElseThrow(() -> new ResourceNotFoundException("RETAILER role is not configured"));
+        Role role = roleRepository.findByName(roleName)
+                .orElseThrow(() -> new ResourceNotFoundException(roleName + " role is not configured"));
 
-        User retailer = User.builder()
+        User user = User.builder()
                 .email(email)
                 .phone(phone)
                 .fullName(request.getFullName().trim())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .status(UserStatus.ACTIVE)
-                .roles(Set.of(retailerRole))
+                .roles(Set.of(role))
                 .build();
 
-        User savedRetailer = userRepository.save(retailer);
+        User savedUser = userRepository.save(user);
         Authentication authentication = new UsernamePasswordAuthenticationToken(
-                savedRetailer,
+                savedUser,
                 null,
-                savedRetailer.getAuthorities()
+                savedUser.getAuthorities()
         );
         String accessToken = jwtTokenProvider.generateToken(authentication);
 
-        return AuthResponse.fromUser(accessToken, savedRetailer);
+        return AuthResponse.fromUser(accessToken, savedUser);
     }
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
+        return authenticateAndBuildResponse(request);
+    }
+
+    @Transactional
+    public AuthResponse loginFarmManager(LoginRequest request) {
+        User user = authenticateUser(request);
+        boolean isFarmManager = user.getRoles().stream()
+                .anyMatch(r -> r.getName().equalsIgnoreCase("FARM_MANAGER") || r.getName().equalsIgnoreCase("FARM"));
+        if (!isFarmManager) {
+            Role role = roleRepository.findByName(FARM_MANAGER_ROLE)
+                    .orElseGet(() -> roleRepository.findByName(FARM_ROLE)
+                            .orElseThrow(() -> new ResourceNotFoundException("FARM_MANAGER role is not configured")));
+            user.getRoles().add(role);
+            user = userRepository.save(user);
+        }
+        Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+        String accessToken = jwtTokenProvider.generateToken(authentication);
+        return AuthResponse.fromUser(accessToken, user);
+    }
+
+    @Transactional
+    public AuthResponse loginRetailer(LoginRequest request) {
+        User user = authenticateUser(request);
+        boolean isRetailer = user.getRoles().stream()
+                .anyMatch(r -> r.getName().equalsIgnoreCase("RETAILER"));
+        if (!isRetailer) {
+            Role role = roleRepository.findByName(RETAILER_ROLE)
+                    .orElseThrow(() -> new ResourceNotFoundException("RETAILER role is not configured"));
+            user.getRoles().add(role);
+            user = userRepository.save(user);
+        }
+        Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+        String accessToken = jwtTokenProvider.generateToken(authentication);
+        return AuthResponse.fromUser(accessToken, user);
+    }
+
+    @Transactional(readOnly = true)
+    public AuthResponse loginAdmin(LoginRequest request) {
+        User user = authenticateUser(request);
+        boolean isAdmin = user.getRoles().stream()
+                .anyMatch(r -> r.getName().equalsIgnoreCase("ADMIN") || r.getName().equalsIgnoreCase("SUPER_ADMIN") || r.getName().equalsIgnoreCase("MODERATOR"));
+        if (!isAdmin) {
+            throw new UnauthorizedException("Account is not authorized for Admin portal");
+        }
+        Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+        String accessToken = jwtTokenProvider.generateToken(authentication);
+        return AuthResponse.fromUser(accessToken, user);
+    }
+
+    private User authenticateUser(LoginRequest request) {
+        String identifier = request.getIdentifier().trim();
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(identifier, request.getPassword())
+            );
+            return (User) authentication.getPrincipal();
+        } catch (AuthenticationException exception) {
+            throw new UnauthorizedException("Email, phone number, or password is incorrect");
+        }
+    }
+
+    private AuthResponse authenticateAndBuildResponse(LoginRequest request) {
         String identifier = request.getIdentifier().trim();
         try {
             Authentication authentication = authenticationManager.authenticate(

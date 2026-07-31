@@ -1,5 +1,5 @@
 import React from 'react';
-import type { UserSession } from './LoginSimulator';
+import type { UserSession } from '../types';
 
 interface AdminTableProps {
   admins: any[];
