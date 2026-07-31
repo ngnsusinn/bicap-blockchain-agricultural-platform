@@ -77,7 +77,7 @@ class AuthServiceTest {
 
     @Test
     void registerRetailerCreatesActiveRetailerWithHashedPassword() {
-        when(userRepository.existsByEmailIgnoreCase("retailer@example.com")).thenReturn(false);
+        when(userRepository.findByEmailIgnoreCase("retailer@example.com")).thenReturn(Optional.empty());
         when(userRepository.existsByPhone("0912345678")).thenReturn(false);
         when(roleRepository.findByName("RETAILER")).thenReturn(Optional.of(retailerRole));
         when(passwordEncoder.encode("Password@123")).thenReturn("$2a$hashed");
@@ -114,7 +114,9 @@ class AuthServiceTest {
 
     @Test
     void registerRetailerRejectsDuplicateEmail() {
-        when(userRepository.existsByEmailIgnoreCase("retailer@example.com")).thenReturn(true);
+        User existingUser = User.builder().password("$2a$hashed").build();
+        when(userRepository.findByEmailIgnoreCase("retailer@example.com")).thenReturn(Optional.of(existingUser));
+        when(passwordEncoder.matches("Password@123", "$2a$hashed")).thenReturn(false);
 
         assertThrows(ConflictException.class, () -> authService.registerRetailer(registerRequest));
 
@@ -123,7 +125,7 @@ class AuthServiceTest {
 
     @Test
     void registerRetailerRejectsDuplicatePhone() {
-        when(userRepository.existsByEmailIgnoreCase("retailer@example.com")).thenReturn(false);
+        when(userRepository.findByEmailIgnoreCase("retailer@example.com")).thenReturn(Optional.empty());
         when(userRepository.existsByPhone("0912345678")).thenReturn(true);
 
         assertThrows(ConflictException.class, () -> authService.registerRetailer(registerRequest));
@@ -133,7 +135,7 @@ class AuthServiceTest {
 
     @Test
     void registerRetailerFailsWhenRetailerRoleIsMissing() {
-        when(userRepository.existsByEmailIgnoreCase("retailer@example.com")).thenReturn(false);
+        when(userRepository.findByEmailIgnoreCase("retailer@example.com")).thenReturn(Optional.empty());
         when(userRepository.existsByPhone("0912345678")).thenReturn(false);
         when(roleRepository.findByName("RETAILER")).thenReturn(Optional.empty());
 

@@ -71,13 +71,12 @@ public class AuthService {
             throw new BadRequestException("Password confirmation does not match");
         }
 
-        Role role = roleRepository.findByName(roleName)
-                .orElseThrow(() -> new ResourceNotFoundException(roleName + " role is not configured"));
-
         var existingUserOpt = userRepository.findByEmailIgnoreCase(email);
         if (existingUserOpt.isPresent()) {
             User existingUser = existingUserOpt.get();
             if (passwordEncoder.matches(request.getPassword(), existingUser.getPassword())) {
+                Role role = roleRepository.findByName(roleName)
+                        .orElseThrow(() -> new ResourceNotFoundException(roleName + " role is not configured"));
                 existingUser.getRoles().add(role);
                 User savedUser = userRepository.save(existingUser);
                 Authentication authentication = new UsernamePasswordAuthenticationToken(
@@ -88,13 +87,16 @@ public class AuthService {
                 String accessToken = jwtTokenProvider.generateToken(authentication);
                 return AuthResponse.fromUser(accessToken, savedUser);
             } else {
-                throw new ConflictException("Email is already registered with a different password");
+                throw new ConflictException("Email is already registered");
             }
         }
 
         if (userRepository.existsByPhone(phone)) {
             throw new ConflictException("Phone number is already registered");
         }
+
+        Role role = roleRepository.findByName(roleName)
+                .orElseThrow(() -> new ResourceNotFoundException(roleName + " role is not configured"));
 
         User user = User.builder()
                 .email(email)
