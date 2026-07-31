@@ -1,12 +1,29 @@
+// ── Portal Type ──
+export type PortalType = 'admin' | 'farm' | 'retail';
+
+// ── User Session (stored in localStorage after login) ──
 export interface UserSession {
-  id?: number;
+  id: number;
   email: string;
   fullName: string;
   phone?: string;
   role: 'SUPER_ADMIN' | 'ADMIN' | 'MODERATOR' | 'FARM_MANAGER' | 'RETAILER' | 'SHIPPING_MGR' | 'SHIP_DRIVER' | 'GUEST';
   permissions: string[];
+  accessToken: string;
 }
 
+// ── Backend AuthResponse (from POST /api/auth/*/login) ──
+export interface AuthApiResponse {
+  accessToken: string;
+  tokenType: string;
+  userId: number;
+  email: string;
+  phone: string;
+  fullName: string;
+  roles: string[];
+}
+
+// ── Admin CRUD types ──
 export interface PermissionResponse {
   id: number;
   code: string;

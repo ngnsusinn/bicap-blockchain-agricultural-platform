@@ -22,6 +22,7 @@ public class AuthController {
         this.authService = authService;
     }
 
+    // ── Generic Endpoints ──
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.registerRetailer(request));
@@ -30,5 +31,33 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    // ── Farm Manager Endpoints (BICAP-7) ──
+    @PostMapping("/farm/register")
+    public ResponseEntity<AuthResponse> registerFarm(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.registerFarmManager(request));
+    }
+
+    @PostMapping("/farm/login")
+    public ResponseEntity<AuthResponse> loginFarm(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.loginFarmManager(request));
+    }
+
+    // ── Retailer Endpoints (BICAP-36) ──
+    @PostMapping({"/retailer/register", "/retail/register"})
+    public ResponseEntity<AuthResponse> registerRetailer(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.registerRetailer(request));
+    }
+
+    @PostMapping({"/retailer/login", "/retail/login"})
+    public ResponseEntity<AuthResponse> loginRetailer(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.loginRetailer(request));
+    }
+
+    // ── Admin Endpoints ──
+    @PostMapping("/admin/login")
+    public ResponseEntity<AuthResponse> loginAdmin(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.loginAdmin(request));
     }
 }

@@ -1,83 +1,60 @@
-# Created by Antigravity for IntelliJ IDEA & Full-stack Project (BICAP)
+# BICAP - Blockchain Agricultural Platform
+# Comprehensive .gitignore for Spring Boot Backend + React Frontend + Monorepo
 
-### JetBrains (IntelliJ IDEA, WebStorm, Rider, etc.) ###
+# ── IDEs & Editors ──
+.vscode/
 .idea/
 *.iws
 *.iml
 *.ipr
-out/
-cmake-build-*/
+*.swp
+*.swo
+*~
+.classpath
+.project
+.settings/
+.nbproject/
 
-### Java (Maven, Gradle, general) ###
-# Compiled class file
+# ── AI Agents & Dev Tooling ──
+.antigravity/
+.gemini/
+.claude/
+.cursor/
+
+# ── Java & Maven Build Outputs ──
+target/
+**/target/
 *.class
-
-# Log files
-*.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools APIs (Xcode, Android)
-.mtj.tmp/
-
-# Package Files
 *.jar
 *.war
-*.nar
 *.ear
-*.zip
-*.tar.gz
-*.rar
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+*.nar
 hs_err_pid*
 replay_pid*
-
-# Maven
-target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.restore
-release.properties
-dependency-reduced-pom.xml
-buildNumber.properties
 .mvn/timing.properties
 !.mvn/wrapper/maven-wrapper.jar
 
-# Gradle
-.gradle/
-/build/
-!gradle/wrapper/gradle-wrapper.jar
-!gradle/wrapper/gradle-wrapper.properties
-
-### Node / React / NextJS / React Native ###
+# ── Node.js / Frontend Build Outputs (admin-web, frontend, etc.) ──
 node_modules/
-/build/
-/dist/
-/.next/
-/out/
+**/node_modules/
+dist/
+**/dist/
+build/
+**/build/
+out/
+**/out/
+.next/
+.nuxt/
 .tscache/
+.eslintcache
+.stylelintcache
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
-.eslintcache
-.stylelintcache
-.rpt2_cache/
-.rts2_cache_*/
-.next
-.nuxt
-.vuepress/dist
-.serverless/
-.fusebox/
-.dynamodb/
-.expo/
-.eas/
 
-### Environment / Secrets ###
+# ── Environment & Secret Files ──
 .env
 .env.local
 .env.development.local
@@ -87,45 +64,7 @@ lerna-debug.log*
 *.env.*
 !.env.example
 
-### Solidity & Blockchain (Truffle, Hardhat) ###
-/artifacts/
-/cache/
-/typechain/
-/typechain-types/
-/coverage/
-/coverage.json
-.openzeppelin/
-
-### .NET / C# (for C# .NET Backend) ###
-# Build results
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-x64/
-x86/
-[Aa]rm/
-[Aa]rm64/
-bbin/
-bin/
-obj/
-/tags
-# Visual Studio / Rider cache / personal settings
-.vs/
-[Tt]est[Rr]esults/
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
-
-### Databases (SQL Server / Redis) ###
-*.db
-*.database
-*.ldf
-*.mdf
-*.sdf
-
-### Operating System ###
+# ── OS & System Files ──
 .DS_Store
 .DS_Store?
 ._*
@@ -133,3 +72,13 @@ obj/
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
+
+# ── Blockchain & Smart Contracts (if applicable) ──
+artifacts/
+cache/
+typechain/
+typechain-types/
+coverage/
+coverage.json
+.openzeppelin/

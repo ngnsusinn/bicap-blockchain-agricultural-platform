@@ -104,6 +104,70 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.error").value("Validation Failed"));
     }
 
+    @Test
+    void farmRegisterReturnsCreated() throws Exception {
+        RegisterRequest request = new RegisterRequest(
+                "Farm Owner",
+                "farm@example.com",
+                "0987654321",
+                "Password@123",
+                "Password@123"
+        );
+        when(authService.registerFarmManager(any(RegisterRequest.class))).thenReturn(farmAuthResponse());
+
+        mockMvc.perform(post("/api/auth/farm/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value("farm@example.com"))
+                .andExpect(jsonPath("$.roles[0]").value("FARM_MANAGER"));
+
+        verify(authService).registerFarmManager(any(RegisterRequest.class));
+    }
+
+    @Test
+    void farmLoginReturnsOk() throws Exception {
+        LoginRequest request = new LoginRequest("0987654321", "Password@123");
+        when(authService.loginFarmManager(any(LoginRequest.class))).thenReturn(farmAuthResponse());
+
+        mockMvc.perform(post("/api/auth/farm/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("farm-access-token"));
+
+        verify(authService).loginFarmManager(any(LoginRequest.class));
+    }
+
+    @Test
+    void retailerLoginReturnsOk() throws Exception {
+        LoginRequest request = new LoginRequest("0912345678", "Password@123");
+        when(authService.loginRetailer(any(LoginRequest.class))).thenReturn(authResponse());
+
+        mockMvc.perform(post("/api/auth/retailer/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("access-token"));
+
+        verify(authService).loginRetailer(any(LoginRequest.class));
+    }
+
+    @Test
+    void adminLoginReturnsOk() throws Exception {
+        LoginRequest request = new LoginRequest("admin@bicap.com", "Password@123");
+        AuthResponse adminResponse = new AuthResponse("admin-token", "Bearer", 1L, "admin@bicap.com", "0900000000", "System Admin", Set.of("ADMIN"));
+        when(authService.loginAdmin(any(LoginRequest.class))).thenReturn(adminResponse);
+
+        mockMvc.perform(post("/api/auth/admin/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("admin-token"));
+
+        verify(authService).loginAdmin(any(LoginRequest.class));
+    }
+
     private AuthResponse authResponse() {
         return new AuthResponse(
                 "access-token",
@@ -113,6 +177,18 @@ class AuthControllerTest {
                 "0912345678",
                 "Retailer User",
                 Set.of("RETAILER")
+        );
+    }
+
+    private AuthResponse farmAuthResponse() {
+        return new AuthResponse(
+                "farm-access-token",
+                "Bearer",
+                11L,
+                "farm@example.com",
+                "0987654321",
+                "Farm Owner",
+                Set.of("FARM_MANAGER")
         );
     }
 }

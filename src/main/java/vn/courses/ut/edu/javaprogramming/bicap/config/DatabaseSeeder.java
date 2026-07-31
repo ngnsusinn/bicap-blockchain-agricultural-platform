@@ -47,8 +47,8 @@ public class DatabaseSeeder implements CommandLineRunner {
                 Set.of(adminRead));
         
         // Seed Functional Roles
-        seedRole("FARM_MANAGER", "Farm Manager for managing farms, seasons, and exports", Set.of());
-        seedRole("RETAILER", "Retailer for purchasing products and tracking orders", Set.of());
+        Role farmManagerRole = seedRole("FARM_MANAGER", "Farm Manager for managing farms, seasons, and exports", Set.of());
+        Role retailerRole = seedRole("RETAILER", "Retailer for purchasing products and tracking orders", Set.of());
         seedRole("SHIPPING_MGR", "Shipping Manager for coordinating deliveries", Set.of());
         seedRole("SHIP_DRIVER", "Shipping Driver for executing shipments", Set.of());
         seedRole("GUEST", "Guest user for browsing products and educational content", Set.of());
@@ -57,6 +57,10 @@ public class DatabaseSeeder implements CommandLineRunner {
         seedUser("superadmin@bicap.com", "Superadmin@2026", "Super Admin", "0987654321", superAdminRole);
         seedUser("admin@bicap.com", "Adminpassword@2026", "Admin User", "0912345678", adminRole);
         seedUser("moderator@bicap.com", "Moderator@2026", "Moderator User", "0901234567", moderatorRole);
+        seedUser("farm@bicap.com", "Farmpassword@2026", "Chủ Trang Trại BICAP", "0922334455", farmManagerRole);
+        seedUser("farm@bicap.vn", "Farmpassword@2026", "Chủ Trang Trại BICAP VN", "0922334456", farmManagerRole);
+        seedUser("retailer@bicap.com", "Retailpassword@2026", "Nhà Bán Lẻ BICAP", "0933445566", retailerRole);
+        seedUser("retail@bicap.com", "Retailpassword@2026", "Nhà Bán Lẻ BICAP Short", "0933445567", retailerRole);
     }
 
     private Permission seedPermission(String code, String description) {
@@ -86,18 +90,26 @@ public class DatabaseSeeder implements CommandLineRunner {
     }
 
     private void seedUser(String email, String password, String fullName, String phone, Role role) {
-        if (!userRepository.existsByEmail(email)) {
-            Set<Role> roles = new HashSet<>();
-            roles.add(role);
+        Set<Role> roles = new HashSet<>();
+        roles.add(role);
 
-            userRepository.save(User.builder()
-                    .email(email)
-                    .password(passwordEncoder.encode(password))
-                    .fullName(fullName)
-                    .phone(phone)
-                    .status(UserStatus.ACTIVE)
-                    .roles(roles)
-                    .build());
-        }
+        userRepository.findByEmail(email).ifPresentOrElse(
+                existingUser -> {
+                    existingUser.setPassword(passwordEncoder.encode(password));
+                    existingUser.setFullName(fullName);
+                    existingUser.setPhone(phone);
+                    existingUser.setStatus(UserStatus.ACTIVE);
+                    existingUser.setRoles(roles);
+                    userRepository.save(existingUser);
+                },
+                () -> userRepository.save(User.builder()
+                        .email(email)
+                        .password(passwordEncoder.encode(password))
+                        .fullName(fullName)
+                        .phone(phone)
+                        .status(UserStatus.ACTIVE)
+                        .roles(roles)
+                        .build())
+        );
     }
 }
