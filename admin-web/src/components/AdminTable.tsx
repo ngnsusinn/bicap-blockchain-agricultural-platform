@@ -124,15 +124,18 @@ export const AdminTable: React.FC<AdminTableProps> = ({
                     <td style={tdStyle}>{admin.email}</td>
                     <td style={tdStyle}>{admin.phone || '-'}</td>
                     <td style={tdStyle}>
-                      <span style={roleBadgeStyle}>{admin.role}</span>
+                      <span style={roleBadgeStyle}>{((admin.roles || [])[0]?.name) || 'N/A'}</span>
                     </td>
                     <td style={tdStyle}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '300px' }}>
-                        {admin.permissions.map((perm: string) => (
-                          <span key={perm} style={permStyle}>
-                            {perm}
-                          </span>
-                        ))}
+                        {((admin.roles || []) as any[])
+                          .flatMap((role) => role.permissions || [])
+                          .map((perm: any) => perm.code)
+                          .map((permCode: string) => (
+                            <span key={permCode} style={permStyle}>
+                              {permCode}
+                            </span>
+                          ))}
                       </div>
                     </td>
                     <td style={tdStyle}>

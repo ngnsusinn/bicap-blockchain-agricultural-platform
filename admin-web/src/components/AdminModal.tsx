@@ -33,14 +33,30 @@ export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Sync state if edit mode
+  const resolveAdminRole = (adminData: any) => {
+    if (!adminData?.roles?.length) {
+      return 'ADMIN';
+    }
+    return adminData.roles[0].name || 'ADMIN';
+  };
+
+  const resolveAdminPermissions = (adminData: any) => {
+    if (!adminData?.roles?.length) {
+      return [];
+    }
+    return adminData.roles.flatMap((role: any) =>
+      role.permissions?.map((perm: any) => perm.code) || []
+    );
+  };
+
   useEffect(() => {
     if (admin) {
       setFullName(admin.fullName);
       setEmail(admin.email);
       setPhone(admin.phone || '');
-      setRole(admin.role);
+      setRole(resolveAdminRole(admin));
       setStatus(admin.status);
-      setSelectedPermissions(admin.permissions || []);
+      setSelectedPermissions(resolveAdminPermissions(admin));
       setPassword(''); // Don't edit password unless entered
     } else {
       setFullName('');
