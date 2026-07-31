@@ -4,6 +4,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.common.security.CustomUserDetails
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -62,6 +63,9 @@ public class SecurityConfig {
                                 "/api/auth/logout"
                         ).permitAll()
                         .requestMatchers("/api/public/**").permitAll()
+                        
+                        .requestMatchers(HttpMethod.GET, "/api/service-packages/**").permitAll()
+                        
                         .anyRequest().authenticated()
                 );
 
