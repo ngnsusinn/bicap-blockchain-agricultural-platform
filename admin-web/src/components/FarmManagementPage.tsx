@@ -1,38 +1,46 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { UserSession, FarmRegistration } from '../types';
+import type { UserSession, FarmRegistration, FarmCertification } from '../types';
 import { API_ORIGIN, authHeaders, formatDate } from '../utils/api';
-import { StatusBadge } from './StatusBadge';
+import { STATUS_META, StatusBadge } from './StatusBadge';
 
-interface FarmApprovalPageProps {
+interface FarmManagementPageProps {
   currentSession: UserSession;
   onToast: (text: string, type?: 'info' | 'success' | 'error') => void;
 }
 
 const TABS = [
+  { id: '', label: '📋 Tất Cả' },
+  { id: 'APPROVED', label: '✅ Đang Hoạt Động' },
   { id: 'PENDING', label: '⏳ Chờ Duyệt' },
-  { id: 'APPROVED', label: '✅ Đã Duyệt' },
   { id: 'REJECTED', label: '❌ Bị Từ Chối' },
+  { id: 'SUSPENDED', label: '🛑 Tạm Ngưng' },
+  { id: 'INACTIVE', label: '⚪ Ngừng Hoạt Động' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
 
-const DEFAULT_CERT_TYPE = 'Giấy phép kinh doanh';
+const STATUS_OPTIONS = [
+  { id: 'APPROVED', label: '✅ Đang hoạt động' },
+  { id: 'SUSPENDED', label: '🛑 Tạm ngưng' },
+  { id: 'INACTIVE', label: '⚪ Ngừng hoạt động' },
+];
 
-export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSession, onToast }) => {
-  const [tab, setTab] = useState<TabId>('PENDING');
+export const FarmManagementPage: React.FC<FarmManagementPageProps> = ({ currentSession, onToast }) => {
+  const [tab, setTab] = useState<TabId>('APPROVED');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [farms, setFarms] = useState<FarmRegistration[]>([]);
-  const [counts, setCounts] = useState<Record<string, number>>({ PENDING: 0, APPROVED: 0, REJECTED: 0 });
   const [loading, setLoading] = useState(false);
   const [selectedFarm, setSelectedFarm] = useState<FarmRegistration | null>(null);
-  const [rejectFarm, setRejectFarm] = useState<FarmRegistration | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
+  const [statusFarm, setStatusFarm] = useState<FarmRegistration | null>(null);
+  const [newStatus, setNewStatus] = useState('');
+  const [notesFarm, setNotesFarm] = useState<FarmRegistration | null>(null);
+  const [notesText, setNotesText] = useState('');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const detailSeqRef = useRef(0);
 
-  const canApprove = currentSession.role === 'SUPER_ADMIN' || currentSession.role === 'ADMIN';
+  const canManage = currentSession.role === 'SUPER_ADMIN' || currentSession.role === 'ADMIN';
 
   // Debounce the search input so typing doesn't fire one request per keystroke.
   useEffect(() => {
@@ -56,7 +64,7 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
       setFarms(data.content || []);
       const totalPagesValue = Math.max(1, data.totalPages || 1);
       setTotalPages(totalPagesValue);
-      // Clamp the current page when the list shrank (e.g. after an approval moved the row out).
+      // Clamp the current page when the list shrank (e.g. after a status change moved the row out).
       if (page >= totalPagesValue) {
         setPage(Math.max(0, totalPagesValue - 1));
       }
@@ -78,25 +86,8 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
     return () => controller.abort();
   }, [fetchFarms]);
 
-  const fetchCounts = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_ORIGIN}/api/admin/farms/stats`, { headers: authHeaders(currentSession.email) });
-      if (res.ok) {
-        const data = await res.json();
-        setCounts(data);
-      }
-    } catch {
-      // Non-critical — badge counts stay at 0 if the stats call fails.
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSession]);
-
-  useEffect(() => { fetchCounts(); }, [fetchCounts]);
-
-  const refresh = () => { fetchFarms(); fetchCounts(); };
-
-  // ── Open detail (fetches certifications); sequence-guarded so a slow earlier
-  // ── response can never overwrite a newer one, and errors surface as toasts.
+  // ── Open detail (fetches certifications + full info); sequence-guarded and
+  // ── surfaces fetch errors instead of silently showing summary-only data.
   const handleViewDetail = async (farm: FarmRegistration) => {
     const seq = ++detailSeqRef.current;
     setSelectedFarm(farm);
@@ -116,55 +107,58 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
     }
   };
 
-  // ── Approve ──
-  const handleApprove = async (farm: FarmRegistration) => {
-    if (!canApprove) { onToast('Bạn không có quyền phê duyệt nông trại.', 'error'); return; }
-    if (farm.certificationCount === 0) {
-      const proceed = window.confirm(
-        `Cảnh báo: Nông trại "${farm.name}" KHÔNG có giấy phép kinh doanh / chứng nhận đính kèm.\n\nBạn vẫn muốn phê duyệt hồ sơ này?`
-      );
-      if (!proceed) return;
-    } else if (!window.confirm(`Phê duyệt đăng ký nông trại "${farm.name}"?`)) {
-      return;
-    }
+  // ── Change operating status ──
+  const openStatusModal = (farm: FarmRegistration) => {
+    if (!canManage) { onToast('Bạn không có quyền thay đổi trạng thái nông trại.', 'error'); return; }
+    setStatusFarm(farm);
+    setNewStatus(farm.status === 'APPROVED' ? 'SUSPENDED' : 'APPROVED');
+  };
+
+  const confirmStatusChange = async () => {
+    if (!statusFarm) return;
     try {
-      const res = await fetch(`${API_ORIGIN}/api/admin/farms/${farm.id}/approve`, {
+      const res = await fetch(`${API_ORIGIN}/api/admin/farms/${statusFarm.id}/status`, {
         method: 'PUT',
-        headers: authHeaders(currentSession.email),
+        headers: { ...authHeaders(currentSession.email), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Phê duyệt thất bại.'); }
-      onToast(`Đã phê duyệt nông trại "${farm.name}".`, 'success');
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Cập nhật trạng thái thất bại.'); }
+      onToast(`Đã cập nhật trạng thái "${statusFarm.name}" thành "${STATUS_META[newStatus].label}".`, 'success');
+      setStatusFarm(null);
       setSelectedFarm(null);
-      refresh();
+      fetchFarms();
     } catch (err: any) {
       onToast(err.message, 'error');
     }
   };
 
-  // ── Reject (with mandatory reason) ──
-  const openRejectModal = (farm: FarmRegistration) => {
-    if (!canApprove) { onToast('Bạn không có quyền từ chối nông trại.', 'error'); return; }
-    setRejectFarm(farm);
-    setRejectReason('');
+  // ── Edit admin notes ──
+  const openNotesModal = (farm: FarmRegistration) => {
+    if (!canManage) { onToast('Bạn không có quyền chỉnh sửa ghi chú.', 'error'); return; }
+    setNotesFarm(farm);
+    setNotesText(farm.adminNotes || '');
   };
 
-  const confirmReject = async () => {
-    if (!rejectFarm) return;
-    if (!rejectReason.trim()) {
-      onToast('Vui lòng nhập lý do từ chối.', 'error');
+  const confirmNotesSave = async () => {
+    if (!notesFarm) return;
+    // Trim BEFORE validating/sending so surrounding whitespace never trips the
+    // 2000-char limit (mirrors the backend trim-first behaviour).
+    const trimmed = notesText.trim();
+    if (trimmed.length > 2000) {
+      onToast('Ghi chú không được vượt quá 2000 ký tự.', 'error');
       return;
     }
     try {
-      const res = await fetch(`${API_ORIGIN}/api/admin/farms/${rejectFarm.id}/reject`, {
+      const res = await fetch(`${API_ORIGIN}/api/admin/farms/${notesFarm.id}/notes`, {
         method: 'PUT',
         headers: { ...authHeaders(currentSession.email), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'REJECT', reason: rejectReason.trim() }),
+        body: JSON.stringify({ notes: trimmed }),
       });
-      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Từ chối thất bại.'); }
-      onToast(`Đã từ chối nông trại "${rejectFarm.name}".`, 'success');
-      setRejectFarm(null);
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Lưu ghi chú thất bại.'); }
+      onToast('Đã lưu ghi chú Admin.', 'success');
+      setNotesFarm(null);
       setSelectedFarm(null);
-      refresh();
+      fetchFarms();
     } catch (err: any) {
       onToast(err.message, 'error');
     }
@@ -176,9 +170,9 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 className="dashboard-title">Duyệt Đăng Ký Nông Trại</h1>
+          <h1 className="dashboard-title">Quản Lý Nông Trại</h1>
           <p className="dashboard-subtitle">
-            Xem xét hồ sơ đăng ký nông trại (giấy phép kinh doanh, chứng nhận) và phê duyệt hoặc từ chối đăng ký mới.
+            Xem và quản lý thông tin chi tiết của tất cả nông trại: chứng nhận, liên hệ, vị trí, trạng thái hoạt động và ghi chú nội bộ.
           </p>
         </div>
       </div>
@@ -198,9 +192,6 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
             }}
           >
             {t.label}
-            <span style={{ marginLeft: '8px', padding: '2px 8px', borderRadius: '10px', background: 'rgba(255,255,255,0.08)', fontSize: '11px' }}>
-              {counts[t.id] ?? 0}
-            </span>
           </button>
         ))}
       </div>
@@ -229,9 +220,9 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
                 <th style={thStyle}>Tên Nông Trại</th>
                 <th style={thStyle}>Chủ Sở Hữu</th>
                 <th style={thStyle}>Địa Chỉ</th>
-                <th style={thStyle}>Diện Tích (ha)</th>
-                <th style={thStyle}>Hồ Sơ</th>
-                <th style={thStyle}>Ngày Đăng Ký</th>
+                <th style={thStyle}>Diện Tích</th>
+                <th style={thStyle}>Loại Sản Phẩm</th>
+                <th style={thStyle}>Chứng Nhận</th>
                 <th style={thStyle}>Trạng Thái</th>
                 <th style={thStyle}>Thao Tác</th>
               </tr>
@@ -251,7 +242,8 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{farm.ownerEmail || ''}</div>
                     </td>
                     <td style={tdStyle}><span style={{ fontSize: '12px' }}>{farm.address}</span></td>
-                    <td style={tdStyle}>{farm.area}</td>
+                    <td style={tdStyle}>{farm.area} ha</td>
+                    <td style={tdStyle}><span style={{ fontSize: '12px' }}>{farm.productTypes || '—'}</span></td>
                     <td style={tdStyle}>
                       <span
                         style={{
@@ -260,38 +252,15 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
                           background: farm.certificationCount > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
                         }}
                       >
-                        {farm.certificationCount > 0 ? `${farm.certificationCount} chứng nhận` : 'Thiếu hồ sơ ⚠️'}
+                        {farm.certificationCount > 0 ? `${farm.certificationCount} chứng nhận` : 'Không có'}
                       </span>
                     </td>
-                    <td style={tdStyle}><span style={{ fontSize: '12px' }}>{formatDate(farm.createdAt)}</span></td>
                     <td style={tdStyle}><StatusBadge status={farm.status} /></td>
                     <td style={tdStyle}>
                       <div style={{ display: 'flex', gap: '6px' }}>
-                        <button
-                          onClick={() => handleViewDetail(farm)}
-                          style={actionBtnStyle}
-                          title="Xem chi tiết hồ sơ"
-                        >
-                          👁️
-                        </button>
-                        {farm.status === 'PENDING' && canApprove && (
-                          <>
-                            <button
-                              onClick={() => handleApprove(farm)}
-                              style={{ ...actionBtnStyle, background: 'rgba(16,185,129,0.15)', borderColor: 'rgba(16,185,129,0.3)' }}
-                              title="Phê duyệt"
-                            >
-                              ✅
-                            </button>
-                            <button
-                              onClick={() => openRejectModal(farm)}
-                              style={{ ...actionBtnStyle, background: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.3)' }}
-                              title="Từ chối"
-                            >
-                              ❌
-                            </button>
-                          </>
-                        )}
+                        <button onClick={() => handleViewDetail(farm)} style={actionBtnStyle} title="Xem chi tiết">👁️</button>
+                        <button onClick={() => openNotesModal(farm)} style={actionBtnStyle} title="Ghi chú Admin">📝</button>
+                        <button onClick={() => openStatusModal(farm)} style={{ ...actionBtnStyle, background: 'rgba(139,92,246,0.12)', borderColor: 'rgba(139,92,246,0.3)' }} title="Đổi trạng thái hoạt động">🔄</button>
                       </div>
                     </td>
                   </tr>
@@ -330,10 +299,7 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
       {/* ── Detail modal ── */}
       {selectedFarm && (
         <div style={overlayStyle} onClick={() => setSelectedFarm(null)}>
-          <div
-            style={{ ...modalStyle, maxWidth: '720px' }}
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div style={{ ...modalStyle, maxWidth: '760px' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
               <div>
                 <h2 style={{ margin: 0, color: '#fff', fontSize: '20px', fontWeight: 700 }}>{selectedFarm.name}</h2>
@@ -345,9 +311,9 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
               </div>
             </div>
 
-            {/* Owner info */}
+            {/* Owner / contact */}
             <div style={sectionStyle}>
-              <h3 style={sectionTitleStyle}>👤 Chủ Sở Hữu</h3>
+              <h3 style={sectionTitleStyle}>👤 Liên Hệ Chủ Sở Hữu</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <InfoField label="Họ tên" value={selectedFarm.ownerName || '—'} />
                 <InfoField label="Email" value={selectedFarm.ownerEmail || '—'} />
@@ -359,27 +325,46 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
             {/* Farm info */}
             <div style={sectionStyle}>
               <h3 style={sectionTitleStyle}>🏞️ Thông Tin Nông Trại</h3>
+              {selectedFarm.description && (
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.6', margin: '0 0 12px' }}>
+                  {selectedFarm.description}
+                </p>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <InfoField label="Diện tích" value={`${selectedFarm.area} ha`} />
+                <InfoField label="Loại sản phẩm" value={selectedFarm.productTypes || '—'} />
+                <InfoField label="Ngày cập nhật" value={formatDate(selectedFarm.updatedAt)} />
                 <InfoField
-                  label="Tọa độ GPS"
+                  label="Vị trí (GPS)"
                   value={hasGps(selectedFarm)
                     ? `${selectedFarm.gpsLat!.toFixed(6)}, ${selectedFarm.gpsLng!.toFixed(6)}`
                     : '—'}
                 />
               </div>
+              {hasGps(selectedFarm) && (
+                <a
+                  href={`https://www.google.com/maps?q=${selectedFarm.gpsLat},${selectedFarm.gpsLng}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: 'inline-block', marginTop: '12px', padding: '8px 14px', borderRadius: '8px',
+                    fontSize: '12px', fontWeight: 600, background: 'rgba(6,182,212,0.12)',
+                    border: '1px solid rgba(6,182,212,0.3)', color: '#67e8f9', textDecoration: 'none',
+                  }}
+                >
+                  🗺️ Xem vị trí trên Google Maps
+                </a>
+              )}
             </div>
 
             {/* Certifications */}
             <div style={sectionStyle}>
-              <h3 style={sectionTitleStyle}>📄 Giấy Phép Kinh Doanh & Chứng Nhận</h3>
+              <h3 style={sectionTitleStyle}>📄 Giấy Phép & Chứng Nhận</h3>
               {!selectedFarm.certifications || selectedFarm.certifications.length === 0 ? (
-                <p style={{ color: '#fca5a5', fontSize: '13px' }}>
-                  ⚠️ Hồ sơ chưa đính kèm giấy phép kinh doanh hoặc chứng nhận. Cân nhắc trước khi phê duyệt.
-                </p>
+                <p style={{ color: '#fca5a5', fontSize: '13px' }}>⚠️ Nông trại chưa đính kèm giấy phép kinh doanh hoặc chứng nhận.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {selectedFarm.certifications.map((cert) => (
+                  {selectedFarm.certifications.map((cert: FarmCertification) => (
                     <div
                       key={cert.id}
                       style={{
@@ -389,7 +374,7 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
                       }}
                     >
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: '13px', color: '#fff' }}>{cert.type || DEFAULT_CERT_TYPE}</div>
+                        <div style={{ fontWeight: 600, fontSize: '13px', color: '#fff' }}>{cert.type}</div>
                         <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                           Hết hạn: {formatDate(cert.expiryDate)}
                         </div>
@@ -412,14 +397,24 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
               )}
             </div>
 
-            {/* Actions */}
-            {selectedFarm.status === 'PENDING' && (
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                <button onClick={() => openRejectModal(selectedFarm)} className="btn btn-danger" disabled={!canApprove}>
-                  ❌ Từ chối
+            {/* Admin notes */}
+            <div style={sectionStyle}>
+              <h3 style={sectionTitleStyle}>🗒️ Ghi Chú Admin</h3>
+              <p style={{ fontSize: '13px', color: selectedFarm.adminNotes ? '#fff' : 'var(--text-muted)', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-wrap' }}>
+                {selectedFarm.adminNotes || 'Chưa có ghi chú nội bộ.'}
+              </p>
+              {canManage && (
+                <button onClick={() => openNotesModal(selectedFarm)} className="btn btn-secondary" style={{ marginTop: '12px', padding: '8px 14px', fontSize: '12px' }}>
+                  ✏️ {selectedFarm.adminNotes ? 'Sửa ghi chú' : 'Thêm ghi chú'}
                 </button>
-                <button onClick={() => handleApprove(selectedFarm)} className="btn btn-primary" disabled={!canApprove}>
-                  ✅ Phê duyệt
+              )}
+            </div>
+
+            {/* Actions */}
+            {canManage && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+                <button onClick={() => openStatusModal(selectedFarm)} className="btn btn-secondary">
+                  🔄 Đổi trạng thái hoạt động
                 </button>
               </div>
             )}
@@ -427,34 +422,66 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
         </div>
       )}
 
-      {/* ── Reject reason modal ── */}
-      {rejectFarm && (
-        <div style={overlayStyle} onClick={() => setRejectFarm(null)}>
-          <div style={{ ...modalStyle, maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
+      {/* ── Status change modal ── */}
+      {statusFarm && (
+        <div style={overlayStyle} onClick={() => setStatusFarm(null)}>
+          <div style={{ ...modalStyle, maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: '0 0 16px', color: '#fff', fontSize: '17px', fontWeight: 700 }}>
-              ❌ Từ chối nông trại "{rejectFarm.name}"
+              🔄 Đổi trạng thái — {statusFarm.name}
             </h3>
-            <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-              Lý do từ chối <span style={{ color: '#f87171' }}>*</span>
-            </label>
+            <p style={{ margin: '0 0 14px', color: 'var(--text-secondary)', fontSize: '13px' }}>
+              Trạng thái hiện tại: <StatusBadge status={statusFarm.status} />
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {STATUS_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setNewStatus(opt.id)}
+                  style={{
+                    padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--border-color)',
+                    background: newStatus === opt.id ? 'rgba(139,92,246,0.15)' : 'rgba(255,255,255,0.03)',
+                    color: newStatus === opt.id ? '#c4b5fd' : 'var(--text-secondary)',
+                    fontWeight: newStatus === opt.id ? 700 : 500, fontSize: '13px', cursor: 'pointer', textAlign: 'left',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '18px' }}>
+              <button onClick={() => setStatusFarm(null)} className="btn btn-secondary">Hủy</button>
+              <button onClick={confirmStatusChange} className="btn btn-primary">Xác nhận</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Notes modal ── */}
+      {notesFarm && (
+        <div style={overlayStyle} onClick={() => setNotesFarm(null)}>
+          <div style={{ ...modalStyle, maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 16px', color: '#fff', fontSize: '17px', fontWeight: 700 }}>
+              🗒️ Ghi chú Admin — {notesFarm.name}
+            </h3>
             <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Nhập lý do từ chối (bắt buộc). Lý do này sẽ được thông báo cho chủ nông trại..."
-              rows={4}
+              value={notesText}
+              onChange={(e) => setNotesText(e.target.value)}
+              placeholder="Nhập ghi chú nội bộ (tối đa 2000 ký tự)..."
+              rows={6}
               style={{
                 width: '100%', padding: '12px', borderRadius: '8px', boxSizing: 'border-box',
                 background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)',
                 color: '#fff', fontSize: '13px', outline: 'none', resize: 'vertical', fontFamily: 'inherit',
               }}
             />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '18px' }}>
-              <button onClick={() => setRejectFarm(null)} className="btn btn-secondary">
-                Hủy
-              </button>
-              <button onClick={confirmReject} className="btn btn-danger">
-                Xác nhận từ chối
-              </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+              <span style={{ fontSize: '11px', color: notesText.trim().length > 2000 ? '#f87171' : 'var(--text-muted)' }}>
+                {notesText.trim().length} / 2000 ký tự
+              </span>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={() => setNotesFarm(null)} className="btn btn-secondary">Hủy</button>
+                <button onClick={confirmNotesSave} className="btn btn-primary">Lưu ghi chú</button>
+              </div>
             </div>
           </div>
         </div>

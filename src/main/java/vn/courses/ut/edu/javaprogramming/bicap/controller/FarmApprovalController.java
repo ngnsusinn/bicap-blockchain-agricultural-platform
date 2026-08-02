@@ -2,7 +2,9 @@ package vn.courses.ut.edu.javaprogramming.bicap.controller;
 
 import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmApprovalRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmDetailResponse;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmNotesUpdateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmResponse;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmStatusUpdateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.service.FarmApprovalService;
 import jakarta.validation.Valid;
@@ -65,5 +67,25 @@ public class FarmApprovalController {
             @Valid @RequestBody FarmApprovalRequest request) {
         FarmResponse rejected = farmApprovalService.rejectFarm(id, request, actorEmail);
         return ResponseEntity.ok(rejected);
+    }
+
+    // ── Farm management (BICAP-4 / SRS-ADM-003) ──
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<FarmResponse> updateStatus(
+            @RequestHeader("X-Actor-Email") String actorEmail,
+            @PathVariable Long id,
+            @Valid @RequestBody FarmStatusUpdateRequest request) {
+        FarmResponse updated = farmApprovalService.updateStatus(id, request, actorEmail);
+        return ResponseEntity.ok(updated);
+    }
+
+    @PutMapping("/{id}/notes")
+    public ResponseEntity<FarmResponse> updateNotes(
+            @RequestHeader("X-Actor-Email") String actorEmail,
+            @PathVariable Long id,
+            @Valid @RequestBody FarmNotesUpdateRequest request) {
+        FarmResponse updated = farmApprovalService.updateNotes(id, request, actorEmail);
+        return ResponseEntity.ok(updated);
     }
 }

@@ -1,5 +1,7 @@
 package vn.courses.ut.edu.javaprogramming.bicap.service;
 
+import vn.courses.ut.edu.javaprogramming.bicap.common.security.ActorAuthorizer;
+import vn.courses.ut.edu.javaprogramming.bicap.common.util.SearchUtils;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.AdminCreateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.AdminResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.AdminUpdateRequest;
@@ -8,9 +10,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ConflictException;
-import vn.courses.ut.edu.javaprogramming.bicap.exception.ForbiddenException;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundException;
-import vn.courses.ut.edu.javaprogramming.bicap.exception.UnauthorizedException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.PermissionRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.RoleRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
@@ -40,16 +40,7 @@ public class AdminService {
     private static final String PASSWORD_PATTERN = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&_#^()+=.-])[A-Za-z\\d@$!%*?&_#^()+=.-]{8,}$";
 
     private void checkSuperAdmin(String actorEmail) {
-        if (actorEmail == null || actorEmail.trim().isEmpty()) {
-            throw new UnauthorizedException("Actor email header is missing");
-        }
-        User actor = userRepository.findByEmail(actorEmail)
-                .orElseThrow(() -> new UnauthorizedException("Actor not found"));
-        boolean isSuperAdmin = actor.getRoles().stream()
-                .anyMatch(role -> "SUPER_ADMIN".equalsIgnoreCase(role.getName()));
-        if (!isSuperAdmin) {
-            throw new ForbiddenException("Only SUPER_ADMIN is authorized for this operation");
-        }
+        ActorAuthorizer.requireSuperAdmin(userRepository, actorEmail);
     }
 
     private void validatePasswordStrength(String password) {
@@ -60,7 +51,7 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public Page<AdminResponse> getAdmins(UserStatus status, String role, String search, Pageable pageable) {
-        return userRepository.findAdminsFiltered(status, role, search, pageable)
+        return userRepository.findAdminsFiltered(status, role, SearchUtils.escapeLike(search), pageable)
                 .map(AdminResponse::fromUser);
     }
 

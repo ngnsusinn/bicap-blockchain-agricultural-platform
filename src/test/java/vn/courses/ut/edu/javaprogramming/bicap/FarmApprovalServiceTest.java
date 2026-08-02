@@ -2,7 +2,9 @@ package vn.courses.ut.edu.javaprogramming.bicap;
 
 import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmApprovalRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmDetailResponse;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmNotesUpdateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmResponse;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmStatusUpdateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmCertification;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmStatus;
@@ -24,6 +26,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.HashSet;
 import java.util.List;
@@ -32,6 +37,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -175,5 +181,217 @@ public class FarmApprovalServiceTest {
 
         assertThrows(ForbiddenException.class,
                 () -> farmApprovalService.getFarmDetail(100L, "farmer@bicap.com"));
+    }
+
+    @Test
+    void getFarms_shouldBatchLoadOwnersAndCertCounts() {
+        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
+        Page<Farm> page = new PageImpl<>(List.of(pendingFarm), PageRequest.of(0, 10), 1);
+        when(farmRepository.findFarmsFiltered(any(), any(), any())).thenReturn(page);
+        when(userRepository.findAllById(any())).thenReturn(List.of(farmOwner));
+        FarmCertification cert = FarmCertification.builder()
+                .id(1L).farmId(100L).type("VietGAP")
+                .fileUrl("https://bicap.vn/docs/cert.pdf")
+                .build();
+        when(certificationRepository.findByFarmIdIn(any())).thenReturn(List.of(cert));
+
+        Page<FarmResponse> result = farmApprovalService.getFarms(null, null, PageRequest.of(0, 10), "super@bicap.com");
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Trang Trại Xanh", result.getContent().get(0).getName());
+        assertEquals("Chủ Trang Trại", result.getContent().get(0).getOwnerName());
+        assertEquals(1, result.getContent().get(0).getCertificationCount());
+
+        // Batched — exactly one owner query and one cert query for the whole page, never per-farm
+        verify(userRepository, times(1)).findAllById(any());
+        verify(certificationRepository, times(1)).findByFarmIdIn(any());
+        verify(certificationRepository, never()).findByFarmId(anyLong());
+        verify(userRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    void getFarmDetail_shouldLoadCertsOnce() {
+        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
+        when(farmRepository.findById(100L)).thenReturn(Optional.of(pendingFarm));
+        when(userRepository.findById(10L)).thenReturn(Optional.of(farmOwner));
+        FarmCertification cert = FarmCertification.builder()
+                .id(1L).farmId(100L).type("VietGAP")
+                .fileUrl("https://bicap.vn/docs/cert.pdf")
+                .build();
+        when(certificationRepository.findByFarmId(100L)).thenReturn(List.of(cert));
+
+        FarmDetailResponse detail = farmApprovalService.getFarmDetail(100L, "super@bicap.com");
+
+        assertEquals(1, detail.getCertificationCount());
+        assertEquals(1, detail.getCertifications().size());
+        // The same cert query feeds both count and list — only one call
+        verify(certificationRepository, times(1)).findByFarmId(100L);
+    }
+
+    // ── Farm management (BICAP-4 / SRS-ADM-003) ──
+
+    private Farm approvedFarm;
+
+    private Farm approvedFarmEntity() {
+        if (approvedFarm == null) {
+            approvedFarm = Farm.builder()
+                    .id(101L).userId(10L).name("Đã Duyệt")
+                    .address("Hà Nội").area(8.0)
+                    .status(FarmStatus.APPROVED)
+                    .build();
+        }
+        return approvedFarm;
+    }
+
+    @Test
+    void updateStatus_shouldChangeOperatingStatus() {
+        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
+        when(farmRepository.findById(101L)).thenReturn(Optional.of(approvedFarmEntity()));
+        when(userRepository.findById(10L)).thenReturn(Optional.of(farmOwner));
+        when(certificationRepository.findByFarmId(101L)).thenReturn(List.of());
+        when(farmRepository.save(any(Farm.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        FarmStatusUpdateRequest request = new FarmStatusUpdateRequest("SUSPENDED");
+        FarmResponse result = farmApprovalService.updateStatus(101L, request, "super@bicap.com");
+
+        assertEquals(FarmStatus.SUSPENDED, result.getStatus());
+        verify(notificationRepository).save(any(Notification.class));
+    }
+
+    @Test
+    void updateStatus_suspendedToApproved_shouldReactivate() {
+        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
+        Farm suspendedFarm = Farm.builder()
+                .id(102L).userId(10L).name("Tạm Ngưng")
+                .address("Hà Nội").area(8.0)
+                .status(FarmStatus.SUSPENDED)
+                .build();
+        when(farmRepository.findById(102L)).thenReturn(Optional.of(suspendedFarm));
+        when(userRepository.findById(10L)).thenReturn(Optional.of(farmOwner));
+        when(certificationRepository.findByFarmId(102L)).thenReturn(List.of());
+        when(farmRepository.save(any(Farm.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        FarmStatusUpdateRequest request = new FarmStatusUpdateRequest("APPROVED");
+        FarmResponse result = farmApprovalService.updateStatus(102L, request, "super@bicap.com");
+
+        assertEquals(FarmStatus.APPROVED, result.getStatus());
+        verify(notificationRepository).save(any(Notification.class));
+    }
+
+    @Test
+    void updateStatus_onPendingFarm_shouldThrowBadRequest() {
+        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
+        when(farmRepository.findById(100L)).thenReturn(Optional.of(pendingFarm));
+
+        FarmStatusUpdateRequest request = new FarmStatusUpdateRequest("APPROVED");
+        assertThrows(BadRequestException.class,
+                () -> farmApprovalService.updateStatus(100L, request, "super@bicap.com"));
+        verify(farmRepository, never()).save(any());
+    }
+
+    @Test
+    void updateStatus_onRejectedFarm_shouldThrowBadRequest() {
+        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
+        Farm rejectedFarm = Farm.builder()
+                .id(103L).userId(10L).name("Bị Từ Chối")
+                .address("Tiền Giang").area(15.0)
+                .status(FarmStatus.REJECTED)
+                .build();
+        when(farmRepository.findById(103L)).thenReturn(Optional.of(rejectedFarm));
+
+        FarmStatusUpdateRequest request = new FarmStatusUpdateRequest("APPROVED");
+        assertThrows(BadRequestException.class,
+                () -> farmApprovalService.updateStatus(103L, request, "super@bicap.com"));
+        verify(farmRepository, never()).save(any());
+    }
+
+    @Test
+    void updateStatus_sameStatus_shouldBeIdempotent() {
+        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
+        when(farmRepository.findById(101L)).thenReturn(Optional.of(approvedFarmEntity()));
+        when(userRepository.findById(10L)).thenReturn(Optional.of(farmOwner));
+        when(certificationRepository.findByFarmId(101L)).thenReturn(List.of());
+
+        FarmStatusUpdateRequest request = new FarmStatusUpdateRequest("APPROVED");
+        FarmResponse result = farmApprovalService.updateStatus(101L, request, "super@bicap.com");
+
+        assertEquals(FarmStatus.APPROVED, result.getStatus());
+        verify(farmRepository, never()).save(any());
+        verify(notificationRepository, never()).save(any());
+    }
+
+    @Test
+    void updateNotes_shouldSetAdminNotes() {
+        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
+        when(farmRepository.findById(100L)).thenReturn(Optional.of(pendingFarm));
+        when(userRepository.findById(10L)).thenReturn(Optional.of(farmOwner));
+        when(certificationRepository.findByFarmId(100L)).thenReturn(List.of());
+        when(farmRepository.save(any(Farm.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        FarmNotesUpdateRequest request = new FarmNotesUpdateRequest("  Hồ sơ đầy đủ, chủ trại uy tín.  ");
+        FarmResponse result = farmApprovalService.updateNotes(100L, request, "super@bicap.com");
+
+        assertEquals("Hồ sơ đầy đủ, chủ trại uy tín.", result.getAdminNotes());
+    }
+
+    @Test
+    void updateNotes_blank_shouldClearNotes() {
+        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
+        when(farmRepository.findById(100L)).thenReturn(Optional.of(pendingFarm));
+        when(userRepository.findById(10L)).thenReturn(Optional.of(farmOwner));
+        when(certificationRepository.findByFarmId(100L)).thenReturn(List.of());
+        when(farmRepository.save(any(Farm.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        FarmNotesUpdateRequest request = new FarmNotesUpdateRequest("   ");
+        FarmResponse result = farmApprovalService.updateNotes(100L, request, "super@bicap.com");
+
+        assertNull(result.getAdminNotes());
+    }
+
+    @Test
+    void updateNotes_maxLengthPlusPadding_shouldPassBecauseTrimmedFirst() {
+        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
+        when(farmRepository.findById(100L)).thenReturn(Optional.of(pendingFarm));
+        when(userRepository.findById(10L)).thenReturn(Optional.of(farmOwner));
+        when(certificationRepository.findByFarmId(100L)).thenReturn(List.of());
+        when(farmRepository.save(any(Farm.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // 2000 meaningful chars + 5 trailing spaces: raw length 2005 > 2000, but the
+        // stored (trimmed) value fits — the old @Size-on-raw bug would have rejected it.
+        String body = "a".repeat(2000) + "     ";
+        FarmNotesUpdateRequest request = new FarmNotesUpdateRequest(body);
+        FarmResponse result = farmApprovalService.updateNotes(100L, request, "super@bicap.com");
+
+        assertEquals("a".repeat(2000), result.getAdminNotes());
+    }
+
+    @Test
+    void updateNotes_trimmedLengthOverLimit_shouldThrowBadRequest() {
+        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
+        when(farmRepository.findById(100L)).thenReturn(Optional.of(pendingFarm));
+
+        FarmNotesUpdateRequest request = new FarmNotesUpdateRequest("b".repeat(2001));
+        assertThrows(BadRequestException.class,
+                () -> farmApprovalService.updateNotes(100L, request, "super@bicap.com"));
+        verify(farmRepository, never()).save(any());
+    }
+
+    @Test
+    void updateStatus_byNonAdmin_shouldThrowForbidden() {
+        when(userRepository.findByEmail("farmer@bicap.com")).thenReturn(Optional.of(farmOwner));
+
+        FarmStatusUpdateRequest request = new FarmStatusUpdateRequest("SUSPENDED");
+        assertThrows(ForbiddenException.class,
+                () -> farmApprovalService.updateStatus(100L, request, "farmer@bicap.com"));
+    }
+
+    @Test
+    void updateStatus_unknownFarm_shouldThrowNotFound() {
+        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
+        when(farmRepository.findById(999L)).thenReturn(Optional.empty());
+
+        FarmStatusUpdateRequest request = new FarmStatusUpdateRequest("SUSPENDED");
+        assertThrows(ResourceNotFoundException.class,
+                () -> farmApprovalService.updateStatus(999L, request, "super@bicap.com"));
     }
 }

@@ -46,3 +46,33 @@ export interface AdminUser {
   avatarUrl?: string;
   roles: RoleResponse[];
 }
+
+// ── Farm types (shared by Farm Approval BICAP-3 & Farm Management BICAP-4) ──
+export type FarmStatusType = 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED' | 'INACTIVE';
+
+export interface FarmCertification {
+  id: number;
+  type: string;
+  fileUrl: string;
+  expiryDate: string;
+}
+
+export interface FarmRegistration {
+  id: number;
+  name: string;
+  address: string;
+  area: number;
+  gpsLat: number | null;
+  gpsLng: number | null;
+  description?: string | null;
+  productTypes?: string | null;
+  adminNotes?: string | null;
+  status: FarmStatusType;
+  createdAt: string;
+  updatedAt?: string | null;
+  ownerName: string | null;
+  ownerEmail: string | null;
+  ownerPhone: string | null;
+  certificationCount: number;
+  certifications?: FarmCertification[];
+}
