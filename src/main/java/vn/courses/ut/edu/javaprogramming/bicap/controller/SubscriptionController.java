@@ -14,7 +14,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/subscriptions")
-@CrossOrigin(origins = "*")
 public class SubscriptionController {
 
     private final SubscriptionService subscriptionService;
@@ -26,6 +25,12 @@ public class SubscriptionController {
     @PostMapping("/purchase")
     public ResponseEntity<PurchasePackageResponse> purchasePackage(@Valid @RequestBody PurchasePackageRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(subscriptionService.purchasePackage(request));
+    }
+
+    /** Subscriptions of the farms owned by the authenticated user (no client-supplied farmId). */
+    @GetMapping("/my")
+    public ResponseEntity<List<SubscriptionResponse>> getMySubscriptions() {
+        return ResponseEntity.ok(subscriptionService.getMySubscriptions());
     }
 
     @GetMapping("/farm/{farmId}")

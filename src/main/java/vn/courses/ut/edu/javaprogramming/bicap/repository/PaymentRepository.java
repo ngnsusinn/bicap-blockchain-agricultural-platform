@@ -8,4 +8,5 @@ import java.util.Optional;
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findByTxRef(String txRef);
     List<Payment> findByOrderId(Long orderId);
+    List<Payment> findBySubscriptionId(Long subscriptionId);
 }

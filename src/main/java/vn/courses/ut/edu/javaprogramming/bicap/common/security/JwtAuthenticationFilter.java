@@ -5,6 +5,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import io.jsonwebtoken.JwtException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -29,6 +31,8 @@ import java.io.IOException;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
     private final JwtTokenProvider tokenProvider;
     private final CustomUserDetailsService customUserDetailsService;
 
@@ -48,6 +52,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
 
+                // M-26: a suspended/deleted account's JWT must not keep working — an
+                // existing token does not revive an account that was disabled after issue.
+                if (!userDetails.isEnabled()) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 // Reject header impersonation: X-Actor-Email (when present) must belong
                 // to the authenticated user, not to someone else.
                 String actorEmail = request.getHeader("X-Actor-Email");
@@ -61,7 +72,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (UsernameNotFoundException | JwtException | IllegalArgumentException ex) {
-            System.out.println("Could not set user authentication in security context: " + ex);
+            log.debug("Could not set user authentication in security context: {}", ex.getMessage());
         }
 
         filterChain.doFilter(request, response);

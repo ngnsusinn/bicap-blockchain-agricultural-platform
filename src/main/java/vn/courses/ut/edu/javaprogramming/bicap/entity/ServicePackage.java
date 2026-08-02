@@ -29,6 +29,13 @@ public class ServicePackage {
     public ServicePackage() {
     }
 
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+    }
+
     public ServicePackage(Long id, String name, String description, BigDecimal price, int durationDays, String features, String status, LocalDateTime createdAt) {
         this.id = id;
         this.name = name;

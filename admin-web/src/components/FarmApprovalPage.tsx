@@ -31,6 +31,8 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const detailSeqRef = useRef(0);
+  // M-17: guards against double-clicking approve/reject and double-submitting the form.
+  const [processing, setProcessing] = useState(false);
 
   const canApprove = currentSession.role === 'SUPER_ADMIN' || currentSession.role === 'ADMIN';
 
@@ -119,6 +121,7 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
   // ── Approve ──
   const handleApprove = async (farm: FarmRegistration) => {
     if (!canApprove) { onToast('Bạn không có quyền phê duyệt nông trại.', 'error'); return; }
+    if (processing) return;
     if (farm.certificationCount === 0) {
       const proceed = window.confirm(
         `Cảnh báo: Nông trại "${farm.name}" KHÔNG có giấy phép kinh doanh / chứng nhận đính kèm.\n\nBạn vẫn muốn phê duyệt hồ sơ này?`
@@ -127,6 +130,7 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
     } else if (!window.confirm(`Phê duyệt đăng ký nông trại "${farm.name}"?`)) {
       return;
     }
+    setProcessing(true);
     try {
       const res = await fetch(`${API_ORIGIN}/api/admin/farms/${farm.id}/approve`, {
         method: 'PUT',
@@ -138,6 +142,8 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
       refresh();
     } catch (err: any) {
       onToast(err.message, 'error');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -154,6 +160,8 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
       onToast('Vui lòng nhập lý do từ chối.', 'error');
       return;
     }
+    if (processing) return;
+    setProcessing(true);
     try {
       const res = await fetch(`${API_ORIGIN}/api/admin/farms/${rejectFarm.id}/reject`, {
         method: 'PUT',
@@ -167,6 +175,8 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
       refresh();
     } catch (err: any) {
       onToast(err.message, 'error');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -415,11 +425,11 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
             {/* Actions */}
             {selectedFarm.status === 'PENDING' && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                <button onClick={() => openRejectModal(selectedFarm)} className="btn btn-danger" disabled={!canApprove}>
+                <button onClick={() => openRejectModal(selectedFarm)} className="btn btn-danger" disabled={!canApprove || processing}>
                   ❌ Từ chối
                 </button>
-                <button onClick={() => handleApprove(selectedFarm)} className="btn btn-primary" disabled={!canApprove}>
-                  ✅ Phê duyệt
+                <button onClick={() => handleApprove(selectedFarm)} className="btn btn-primary" disabled={!canApprove || processing}>
+                  {processing ? 'Đang xử lý...' : '✅ Phê duyệt'}
                 </button>
               </div>
             )}
@@ -452,8 +462,8 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
               <button onClick={() => setRejectFarm(null)} className="btn btn-secondary">
                 Hủy
               </button>
-              <button onClick={confirmReject} className="btn btn-danger">
-                Xác nhận từ chối
+              <button onClick={confirmReject} className="btn btn-danger" disabled={processing}>
+                {processing ? 'Đang xử lý...' : 'Xác nhận từ chối'}
               </button>
             </div>
           </div>

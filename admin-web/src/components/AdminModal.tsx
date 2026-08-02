@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import type { AdminUser } from '../types';
 
 interface AdminModalProps {
-  admin: any | null; // Null if creating
+  admin: AdminUser | null; // Null if creating
   onClose: () => void;
   onSave: (adminData: any) => void;
+}
+
+/** Backend AdminResponse nests role/permission data under roles[] — derive the edit values. */
+function primaryRole(admin: AdminUser): string {
+  return admin.roles?.[0]?.name ?? 'ADMIN';
+}
+
+function permissionCodes(admin: AdminUser): string[] {
+  return (admin.roles ?? []).flatMap((r) => (r.permissions ?? []).map((p) => p.code));
 }
 
 const ALL_PERMISSIONS = [
@@ -31,6 +41,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }
   const [status, setStatus] = useState('ACTIVE');
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   // Sync state if edit mode
   useEffect(() => {
@@ -38,9 +49,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }
       setFullName(admin.fullName);
       setEmail(admin.email);
       setPhone(admin.phone || '');
-      setRole(admin.role);
+      setRole(primaryRole(admin));
       setStatus(admin.status);
-      setSelectedPermissions(admin.permissions || []);
+      setSelectedPermissions(permissionCodes(admin));
       setPassword(''); // Don't edit password unless entered
     } else {
       setFullName('');
@@ -101,7 +112,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }
     return Object.keys(tempErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
@@ -118,7 +129,12 @@ export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }
       data.password = password;
     }
 
-    onSave(data);
+    setSubmitting(true);
+    try {
+      await onSave(data);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -266,8 +282,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }
             <button type="button" onClick={onClose} className="btn btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
-              {isEdit ? 'Save Changes' : 'Create Admin'}
+            <button type="submit" disabled={submitting} className="btn btn-primary" style={{ opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>
+              {submitting ? 'Đang lưu...' : isEdit ? 'Save Changes' : 'Create Admin'}
             </button>
           </div>
         </form>

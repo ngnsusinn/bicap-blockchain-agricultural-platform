@@ -5,7 +5,7 @@ import java.util.List;
 
 public class AdminUpdateRequest {
 
-    @NotBlank(message = "Full name is required")
+    @Size(min = 2, max = 255, message = "Full name must be between 2 and 255 characters")
     private String fullName;
 
     @Pattern(regexp = "^(0\\d{9})?$", message = "Phone number must be a valid 10-digit Vietnamese number starting with 0")

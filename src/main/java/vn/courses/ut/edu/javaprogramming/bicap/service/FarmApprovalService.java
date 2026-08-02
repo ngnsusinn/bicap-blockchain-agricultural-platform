@@ -172,17 +172,28 @@ public class FarmApprovalService {
         Farm farm = farmRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Farm not found with id: " + id));
 
-        // Guard: the management endpoint only applies to farms that already passed the
-        // BICAP-3 approval workflow. PENDING/REJECTED farms must be handled through
-        // the approve/reject endpoints — flipping them straight to APPROVED here would
-        // bypass the approval process, and PENDING → SUSPENDED would strand the farm
-        // forever (it could never return to the approval queue).
-        if (farm.getStatus() == FarmStatus.PENDING || farm.getStatus() == FarmStatus.REJECTED) {
-            throw new BadRequestException("Farm is in " + farm.getStatus()
-                    + " status — use the approval endpoints (/approve, /reject) instead of status management");
+        FarmStatus newStatus;
+        try {
+            newStatus = FarmStatus.valueOf(request.getStatus());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid farm status: " + request.getStatus());
         }
 
-        FarmStatus newStatus = FarmStatus.valueOf(request.getStatus());
+        // Guard: the management endpoint only applies to farms that already passed the
+        // BICAP-3 approval workflow. PENDING farms must be handled through the approve/reject
+        // endpoints — flipping them straight to APPROVED here would bypass the approval process,
+        // and PENDING → SUSPENDED would strand the farm forever (it could never return to the
+        // approval queue).
+        if (farm.getStatus() == FarmStatus.PENDING) {
+            throw new BadRequestException("Farm is in PENDING status — use the approval endpoints (/approve, /reject) instead of status management");
+        }
+
+        // M-24: a REJECTED farm may resubmit — REJECTED → PENDING returns it to the approval
+        // queue (documented "may resubmit" behavior). No other transition out of REJECTED is allowed.
+        if (farm.getStatus() == FarmStatus.REJECTED && newStatus != FarmStatus.PENDING) {
+            throw new BadRequestException("A rejected farm can only be resubmitted to PENDING status");
+        }
+
         if (farm.getStatus() == newStatus) {
             return toSummary(farm, farm.getUserId());
         }
@@ -198,6 +209,9 @@ public class FarmApprovalService {
         } else if (newStatus == FarmStatus.APPROVED) {
             notifyOwner(saved, "SUCCESS", "Nông trại đã được kích hoạt lại",
                     "Nông trại \"" + saved.getName() + "\" đã được Admin kích hoạt hoạt động trở lại.");
+        } else if (newStatus == FarmStatus.PENDING) {
+            notifyOwner(saved, "INFO", "Đăng ký nông trại đã được nộp lại",
+                    "Hồ sơ nông trại \"" + saved.getName() + "\" đã được nộp lại và chờ Admin phê duyệt.");
         }
 
         return toSummary(saved, saved.getUserId());

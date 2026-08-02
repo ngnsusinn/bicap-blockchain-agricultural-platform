@@ -127,15 +127,12 @@ public class DatabaseSeeder implements CommandLineRunner {
         Set<Role> roles = new HashSet<>();
         roles.add(role);
 
-        return userRepository.findByEmail(email).map(
-                existingUser -> {
-                    existingUser.setPassword(passwordEncoder.encode(password));
-                    existingUser.setFullName(fullName);
-                    existingUser.setPhone(phone);
-                    existingUser.setStatus(UserStatus.ACTIVE);
-                    existingUser.setRoles(roles);
-                    return userRepository.save(existingUser);
-                }).orElseGet(() -> userRepository.save(User.builder()
+        // Security (C-2 / M-15): NEVER overwrite an existing user's password, roles,
+        // name, phone or status. A live account that an operator already changed (or
+        // that was created through the portal) must not be silently reverted to the
+        // seeded demo credentials on every boot. The seeder only creates missing users.
+        return userRepository.findByEmail(email)
+                .orElseGet(() -> userRepository.save(User.builder()
                         .email(email)
                         .password(passwordEncoder.encode(password))
                         .fullName(fullName)

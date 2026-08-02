@@ -17,6 +17,20 @@ services:
       - SPRING_REDIS_PORT=${SPRING_REDIS_PORT}
       - SPRING_REDIS_PASSWORD=${SPRING_REDIS_PASSWORD}
       - SPRING_REDIS_SSL=${SPRING_REDIS_SSL}
+      # Schema mode — 'validate' (default in app) needs migrations; the compose
+      # fallback lets existing cloud DBs boot while Hibernate updates them.
+      - DDL_AUTO=${DDL_AUTO:-update}
+      # Required secrets — the backend refuses to start when these are unset.
+      - JWT_SECRET=${JWT_SECRET}
+      - SEPAY_API_KEY=${SEPAY_API_KEY}
+      - SEPAY_ACCOUNT_NO=${SEPAY_ACCOUNT_NO:-123456789}
+      - SEPAY_BANK_NAME=${SEPAY_BANK_NAME:-MBBank}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
     networks:
       - bicap-network
     restart: unless-stopped
@@ -32,6 +46,33 @@ services:
       - "3001:80"
     environment:
       - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    networks:
+      - bicap-network
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------------
+  # BICAP Farm Manager Portal React Frontend
+  # ------------------------------------------------------------------------
+  farm-portal:
+    build:
+      context: ./frontend
+    container_name: bicap-farm-portal
+    ports:
+      - "3002:80"
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
     networks:
       - bicap-network
     restart: unless-stopped

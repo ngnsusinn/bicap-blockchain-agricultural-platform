@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
+import { API_BASE_URL } from '../../utils/auth';
 
 interface RegisterFormProps {
   role: 'FARM_MANAGER' | 'RETAILER';
@@ -69,8 +70,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess, onS
 
     try {
       const endpoint = role === 'FARM_MANAGER'
-        ? 'http://localhost:8080/api/auth/farm/register'
-        : 'http://localhost:8080/api/auth/retailer/register';
+        ? `${API_BASE_URL}/auth/farm/register`
+        : `${API_BASE_URL}/auth/retailer/register`;
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -104,21 +105,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess, onS
         setErrorMessage(errorData.message || 'Đăng ký thất bại. Email hoặc số điện thoại có thể đã được đăng ký.');
       }
     } catch (err) {
-      // Mock fallback cho môi trường dev
-      console.warn('Backend server unreachable, executing dev fallback registration');
-      setSuccessMessage('Đăng ký thành công! Hệ thống đã gửi email xác nhận.');
-      setTimeout(() => {
-        onSuccess({
-          token: 'mock-jwt-token-registered',
-          user: {
-            id: Date.now(),
-            email,
-            fullName,
-            role,
-          },
-          pendingVerification: true,
-        });
-      }, 1200);
+      // M-1: no mock/silent "success" on network failure.
+      console.warn('Backend server unreachable:', err);
+      setErrorMessage('Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend đang chạy.');
     } finally {
       setLoading(false);
     }

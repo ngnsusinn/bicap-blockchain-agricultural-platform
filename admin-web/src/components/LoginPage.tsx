@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { UserSession, PortalType, AuthApiResponse } from '../types';
+import { API_ORIGIN } from '../utils/api';
 
 // ── Portal configurations ──
 const PORTAL_CONFIG = {
@@ -7,7 +8,7 @@ const PORTAL_CONFIG = {
     icon: '🛡️',
     title: 'Quản Trị Hệ Thống',
     subtitle: 'Đăng nhập vào Bảng điều khiển Quản trị viên',
-    loginUrl: 'http://localhost:8080/api/auth/admin/login',
+    loginUrl: `${API_ORIGIN}/api/auth/admin/login`,
     registerUrl: '',
     canRegister: false,
     btnLabel: 'Đăng nhập Admin',
@@ -21,8 +22,8 @@ const PORTAL_CONFIG = {
     icon: '🌾',
     title: 'Cổng Nông Trại',
     subtitle: 'Đăng nhập vào hệ thống Quản lý Nông trại',
-    loginUrl: 'http://localhost:8080/api/auth/farm/login',
-    registerUrl: 'http://localhost:8080/api/auth/farm/register',
+    loginUrl: `${API_ORIGIN}/api/auth/farm/login`,
+    registerUrl: `${API_ORIGIN}/api/auth/farm/register`,
     canRegister: true,
     btnLabel: 'Đăng nhập Farm Manager',
     registerLabel: 'Đăng ký tài khoản Nông trại',
@@ -35,8 +36,8 @@ const PORTAL_CONFIG = {
     icon: '🛒',
     title: 'Sàn Nông Sản',
     subtitle: 'Đăng nhập vào Sàn giao dịch Nông sản sạch',
-    loginUrl: 'http://localhost:8080/api/auth/retailer/login',
-    registerUrl: 'http://localhost:8080/api/auth/retailer/register',
+    loginUrl: `${API_ORIGIN}/api/auth/retailer/login`,
+    registerUrl: `${API_ORIGIN}/api/auth/retailer/register`,
     canRegister: true,
     btnLabel: 'Đăng nhập Retailer',
     registerLabel: 'Đăng ký tài khoản Nhà bán lẻ',
