@@ -30,7 +30,12 @@ interface FarmApprovalPageProps {
   onToast: (text: string, type?: 'info' | 'success' | 'error') => void;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+// Normalize the API base to the server ORIGIN.
+// VITE_API_BASE_URL may be set to the origin (http://localhost:8080) or to an
+// app-specific base such as http://localhost:8080/api/admins (App.tsx convention).
+// Endpoints here live under /api/admin/farms, so strip any trailing /api/... path.
+const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/admins')
+  .replace(/\/api(?:\/.*)?$/, '');
 
 const TABS = [
   { id: 'PENDING', label: '⏳ Chờ Duyệt' },
@@ -75,7 +80,7 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
     setLoading(true);
     try {
       const params = new URLSearchParams({ status: tab, search: searchTerm, page: page.toString(), size: '10' });
-      const res = await fetch(`${API_BASE_URL}/api/admin/farms?${params}`, { headers: authHeaders() });
+      const res = await fetch(`${API_ORIGIN}/api/admin/farms?${params}`, { headers: authHeaders() });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || 'Lỗi tải danh sách nông trại.');
@@ -95,7 +100,7 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
 
   const fetchCounts = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/farms/stats`, { headers: authHeaders() });
+      const res = await fetch(`${API_ORIGIN}/api/admin/farms/stats`, { headers: authHeaders() });
       if (res.ok) {
         const data = await res.json();
         setCounts(data);
@@ -115,7 +120,7 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
   const handleViewDetail = async (farm: FarmRegistration) => {
     setSelectedFarm(farm);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/farms/${farm.id}`, { headers: authHeaders() });
+      const res = await fetch(`${API_ORIGIN}/api/admin/farms/${farm.id}`, { headers: authHeaders() });
       if (res.ok) {
         const data = await res.json();
         setSelectedFarm({ ...farm, ...data });
@@ -137,7 +142,7 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
       return;
     }
     try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/farms/${farm.id}/approve`, {
+      const res = await fetch(`${API_ORIGIN}/api/admin/farms/${farm.id}/approve`, {
         method: 'PUT',
         headers: authHeaders(),
       });
@@ -164,7 +169,7 @@ export const FarmApprovalPage: React.FC<FarmApprovalPageProps> = ({ currentSessi
       return;
     }
     try {
-      const res = await fetch(`${API_BASE_URL}/api/admin/farms/${rejectFarm.id}/reject`, {
+      const res = await fetch(`${API_ORIGIN}/api/admin/farms/${rejectFarm.id}/reject`, {
         method: 'PUT',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'REJECT', reason: rejectReason.trim() }),
