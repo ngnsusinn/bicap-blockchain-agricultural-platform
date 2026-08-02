@@ -12,7 +12,7 @@ if exist .env (
     )
 )
 
-cd admin-web
+cd frontend
 
 if not exist node_modules (
     echo node_modules not found. Installing dependencies...
