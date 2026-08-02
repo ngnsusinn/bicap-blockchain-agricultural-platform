@@ -17,6 +17,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+/**
+ * Authenticates requests exclusively from a valid Bearer JWT.
+ *
+ * <p>Security: the {@code X-Actor-Email} header is NEVER used to authenticate — an
+ * unauthenticated request with that header alone cannot impersonate a user (the old
+ * fallback branch allowed exactly that). When the header is supplied it must match the
+ * authenticated user's canonical email; a mismatch leaves the request unauthenticated
+ * so Spring Security rejects it with 401.
+ */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -34,33 +43,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = getJwtFromRequest(request);
 
-            boolean authenticated = false;
             if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
                 String username = tokenProvider.getUsernameFromJWT(jwt);
 
                 UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                authenticated = true;
-            }
-
-            if (!authenticated) {
-                // Fallback for frontend Simulator: Authenticate using X-Actor-Email header if present
+                // Reject header impersonation: X-Actor-Email (when present) must belong
+                // to the authenticated user, not to someone else.
                 String actorEmail = request.getHeader("X-Actor-Email");
-                if (StringUtils.hasText(actorEmail)) {
-                    try {
-                        UserDetails userDetails = customUserDetailsService.loadUserByUsername(actorEmail);
-                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                                userDetails, null, userDetails.getAuthorities());
-                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                if (!StringUtils.hasText(actorEmail)
+                        || actorEmail.trim().equalsIgnoreCase(userDetails.getUsername())) {
+                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities());
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
-                    } catch (UsernameNotFoundException e) {
-                        System.out.println("Actor email not found in DB: " + actorEmail);
-                    }
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             }
         } catch (UsernameNotFoundException | JwtException | IllegalArgumentException ex) {

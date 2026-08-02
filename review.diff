@@ -1,0 +1,570 @@
+diff --git a/admin-web/src/App.tsx b/admin-web/src/App.tsx
+index 54069ce..ee80efa 100644
+--- a/admin-web/src/App.tsx
++++ b/admin-web/src/App.tsx
+@@ -6,6 +6,7 @@ import { StatsCards } from './components/StatsCards';
+ import { AdminTable } from './components/AdminTable';
+ import { AdminModal } from './components/AdminModal';
+ import { FarmApprovalPage } from './components/FarmApprovalPage';
++import { FarmManagementPage } from './components/FarmManagementPage';
+ import { Toast } from './components/Toast';
+ import type { ToastMessage } from './components/Toast';
+ 
+@@ -231,6 +232,10 @@ export default function App() {
+             <FarmApprovalPage currentSession={currentSession!} onToast={showToast} />
+           )}
+ 
++          {currentPortal === 'admin' && currentTab === 'farmmgmt' && (
++            <FarmManagementPage currentSession={currentSession!} onToast={showToast} />
++          )}
++
+           {/* ── FARM DASHBOARD ── */}
+           {currentPortal === 'farm' && currentTab === 'overview' && (
+             <div>
+diff --git a/admin-web/src/components/FarmApprovalPage.tsx b/admin-web/src/components/FarmApprovalPage.tsx
+index 9703f00..b81c6eb 100644
+--- a/admin-web/src/components/FarmApprovalPage.tsx
++++ b/admin-web/src/components/FarmApprovalPage.tsx
+@@ -16,8 +16,12 @@ export interface FarmRegistration {
+   area: number;
+   gpsLat: number | null;
+   gpsLng: number | null;
++  description?: string | null;
++  productTypes?: string | null;
++  adminNotes?: string | null;
+   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED' | 'INACTIVE';
+   createdAt: string;
++  updatedAt?: string | null;
+   ownerName: string | null;
+   ownerEmail: string | null;
+   ownerPhone: string | null;
+diff --git a/admin-web/src/components/Sidebar.tsx b/admin-web/src/components/Sidebar.tsx
+index d4c6c57..aeba2ae 100644
+--- a/admin-web/src/components/Sidebar.tsx
++++ b/admin-web/src/components/Sidebar.tsx
+@@ -7,6 +7,7 @@ const MENU_ITEMS: Record<PortalType, { id: string; label: string; icon: string;
+     { id: 'overview', label: 'Dashboard Overview', icon: '📊' },
+     { id: 'admins', label: 'Admin Management', icon: '👤' },
+     { id: 'farms', label: 'Farm Approval', icon: '🚜' },
++    { id: 'farmmgmt', label: 'Farm Management', icon: '🏞️' },
+     { id: 'products', label: 'Traceability & QR', icon: '🔍', disabled: true },
+     { id: 'iot', label: 'IoT Sensoring', icon: '🌡️', disabled: true },
+     { id: 'settings', label: 'System Settings', icon: '⚙️', disabled: true },
+diff --git a/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/config/DatabaseSeeder.java b/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/config/DatabaseSeeder.java
+index 6628ad6..a4a81b6 100644
+--- a/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/config/DatabaseSeeder.java
++++ b/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/config/DatabaseSeeder.java
+@@ -75,18 +75,26 @@ public class DatabaseSeeder implements CommandLineRunner {
+         seedUser("retailer@bicap.com", "Retailpassword@2026", "Nhà Bán Lẻ BICAP", "0933445566", retailerRole);
+         seedUser("retail@bicap.com", "Retailpassword@2026", "Nhà Bán Lẻ BICAP Short", "0933445567", retailerRole);
+ 
+-        // 4. Seed Sample Farm Registrations (BICAP-3 — admin approval queue)
++        // 4. Seed Sample Farm Registrations (BICAP-3 — admin approval queue; BICAP-4 — management list)
+         seedFarm(farmOwner1.getId(), "Trang Trại Xanh Đồng Nai", "Xã Long An, Huyện Long Thành, Đồng Nai",
+                 12.5, 10.824610, 107.058112, FarmStatus.PENDING,
++                "Trang trại chuyên canh rau sạch theo tiêu chuẩn VietGAP, cung cấp rau ăn lá cho các chuỗi siêu thị khu vực Đông Nam Bộ.",
++                "Rau ăn lá, Rau gia vị, Dưa leo",
+                 "Giấy phép kinh doanh số 0312345678", "https://bicap.vn/docs/dongnai-license.pdf", LocalDate.now().plusYears(5));
+         seedFarm(farmOwner2.getId(), "HTX Nông Sản Sạch Lâm Đồng", "Xã Đạ Đờn, Huyện Lâm Hà, Lâm Đồng",
+                 25.0, 11.811100, 108.366700, FarmStatus.PENDING,
++                "Hợp tác xã sản xuất rau củ quả công nghệ cao trên vùng đất cao nguyên, có nhà màng và hệ thống tưới tự động.",
++                "Bắp cải, Súp lơ, Cà chua, Dâu tây",
+                 "Giấy chứng nhận VietGAP", "https://bicap.vn/docs/lamdong-vietgap.pdf", LocalDate.now().plusYears(2));
+         seedFarm(farmOwner1.getId(), "Trang Trại Hữu Cơ Sông Hồng", "Xã Đan Phượng, Hà Nội",
+                 8.0, 21.122300, 105.681300, FarmStatus.APPROVED,
++                "Trang trại nông nghiệp hữu cơ ngoại thành Hà Nội, chuyên canh tác không hóa chất theo chứng nhận Organic.",
++                "Lúa hữu cơ, Rau hữu cơ, Gà thả vườn",
+                 "Giấy chứng nhận Organic", "https://bicap.vn/docs/hanoi-organic.pdf", LocalDate.now().plusYears(3));
+         seedFarm(farmOwner2.getId(), "Vườn Sạch Tiền Giang", "Xã Tân Lập, Huyện Tân Phước, Tiền Giang",
+                 15.75, 10.467500, 106.209900, FarmStatus.REJECTED,
++                "Vườn cây ăn trái miền Tây, tập trung sản xuất trái cây sạch xuất khẩu sang thị trường châu Âu.",
++                "Xoài cát Hòa Lộc, Chôm chôm, Sầu riêng",
+                 "Giấy phép kinh doanh số 0123456789", "https://bicap.vn/docs/tiengiang-license.pdf", LocalDate.now().plusYears(1));
+     }
+ 
+@@ -141,6 +149,7 @@ public class DatabaseSeeder implements CommandLineRunner {
+ 
+     private void seedFarm(Long ownerUserId, String name, String address, double area,
+                           double gpsLat, double gpsLng, FarmStatus status,
++                          String description, String productTypes,
+                           String certType, String certFileUrl, LocalDate certExpiry) {
+         Farm farm = farmRepository.findByUserId(ownerUserId).orElseGet(() -> farmRepository.save(
+                 Farm.builder()
+@@ -150,8 +159,11 @@ public class DatabaseSeeder implements CommandLineRunner {
+                         .area(area)
+                         .gpsLat(gpsLat)
+                         .gpsLng(gpsLng)
++                        .description(description)
++                        .productTypes(productTypes)
+                         .status(status)
+                         .createdAt(LocalDateTime.now())
++                        .updatedAt(LocalDateTime.now())
+                         .build()
+         ));
+ 
+diff --git a/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/controller/FarmApprovalController.java b/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/controller/FarmApprovalController.java
+index e775b21..9a22d28 100644
+--- a/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/controller/FarmApprovalController.java
++++ b/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/controller/FarmApprovalController.java
+@@ -2,7 +2,9 @@ package vn.courses.ut.edu.javaprogramming.bicap.controller;
+ 
+ import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmApprovalRequest;
+ import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmDetailResponse;
++import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmNotesUpdateRequest;
+ import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmResponse;
++import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmStatusUpdateRequest;
+ import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmStatus;
+ import vn.courses.ut.edu.javaprogramming.bicap.service.FarmApprovalService;
+ import jakarta.validation.Valid;
+@@ -66,4 +68,24 @@ public class FarmApprovalController {
+         FarmResponse rejected = farmApprovalService.rejectFarm(id, request, actorEmail);
+         return ResponseEntity.ok(rejected);
+     }
++
++    // ── Farm management (BICAP-4 / SRS-ADM-003) ──
++
++    @PutMapping("/{id}/status")
++    public ResponseEntity<FarmResponse> updateStatus(
++            @RequestHeader("X-Actor-Email") String actorEmail,
++            @PathVariable Long id,
++            @Valid @RequestBody FarmStatusUpdateRequest request) {
++        FarmResponse updated = farmApprovalService.updateStatus(id, request, actorEmail);
++        return ResponseEntity.ok(updated);
++    }
++
++    @PutMapping("/{id}/notes")
++    public ResponseEntity<FarmResponse> updateNotes(
++            @RequestHeader("X-Actor-Email") String actorEmail,
++            @PathVariable Long id,
++            @Valid @RequestBody FarmNotesUpdateRequest request) {
++        FarmResponse updated = farmApprovalService.updateNotes(id, request, actorEmail);
++        return ResponseEntity.ok(updated);
++    }
+ }
+diff --git a/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/dto/FarmDetailResponse.java b/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/dto/FarmDetailResponse.java
+index 88f14e3..656fa0e 100644
+--- a/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/dto/FarmDetailResponse.java
++++ b/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/dto/FarmDetailResponse.java
+@@ -13,7 +13,9 @@ public class FarmDetailResponse extends FarmResponse {
+ 
+     public FarmDetailResponse(FarmResponse summary, List<FarmCertificationResponse> certifications) {
+         super(summary.getId(), summary.getName(), summary.getAddress(), summary.getArea(),
+-                summary.getGpsLat(), summary.getGpsLng(), summary.getStatus(), summary.getCreatedAt(),
++                summary.getGpsLat(), summary.getGpsLng(),
++                summary.getDescription(), summary.getProductTypes(), summary.getAdminNotes(),
++                summary.getStatus(), summary.getCreatedAt(), summary.getUpdatedAt(),
+                 summary.getOwnerName(), summary.getOwnerEmail(), summary.getOwnerPhone(),
+                 summary.getCertificationCount());
+         this.certifications = certifications;
+diff --git a/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/dto/FarmResponse.java b/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/dto/FarmResponse.java
+index dbfba20..96f54db 100644
+--- a/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/dto/FarmResponse.java
++++ b/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/dto/FarmResponse.java
+@@ -6,7 +6,8 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmStatus;
+ import java.time.LocalDateTime;
+ 
+ /**
+- * Summary payload for a farm registration in the admin approval list (BICAP-3 / SRS-ADM-002).
++ * Summary payload for a farm registration in the admin approval list (BICAP-3 / SRS-ADM-002)
++ * and the farm management list (BICAP-4 / SRS-ADM-003).
+  */
+ public class FarmResponse {
+     private Long id;
+@@ -15,8 +16,12 @@ public class FarmResponse {
+     private Double area;
+     private Double gpsLat;
+     private Double gpsLng;
++    private String description;
++    private String productTypes;
++    private String adminNotes;
+     private FarmStatus status;
+     private LocalDateTime createdAt;
++    private LocalDateTime updatedAt;
+     private String ownerName;
+     private String ownerEmail;
+     private String ownerPhone;
+@@ -25,16 +30,21 @@ public class FarmResponse {
+     public FarmResponse() {}
+ 
+     public FarmResponse(Long id, String name, String address, Double area, Double gpsLat, Double gpsLng,
+-                        FarmStatus status, LocalDateTime createdAt, String ownerName, String ownerEmail,
+-                        String ownerPhone, Integer certificationCount) {
++                        String description, String productTypes, String adminNotes,
++                        FarmStatus status, LocalDateTime createdAt, LocalDateTime updatedAt,
++                        String ownerName, String ownerEmail, String ownerPhone, Integer certificationCount) {
+         this.id = id;
+         this.name = name;
+         this.address = address;
+         this.area = area;
+         this.gpsLat = gpsLat;
+         this.gpsLng = gpsLng;
++        this.description = description;
++        this.productTypes = productTypes;
++        this.adminNotes = adminNotes;
+         this.status = status;
+         this.createdAt = createdAt;
++        this.updatedAt = updatedAt;
+         this.ownerName = ownerName;
+         this.ownerEmail = ownerEmail;
+         this.ownerPhone = ownerPhone;
+@@ -53,10 +63,18 @@ public class FarmResponse {
+     public void setGpsLat(Double gpsLat) { this.gpsLat = gpsLat; }
+     public Double getGpsLng() { return gpsLng; }
+     public void setGpsLng(Double gpsLng) { this.gpsLng = gpsLng; }
++    public String getDescription() { return description; }
++    public void setDescription(String description) { this.description = description; }
++    public String getProductTypes() { return productTypes; }
++    public void setProductTypes(String productTypes) { this.productTypes = productTypes; }
++    public String getAdminNotes() { return adminNotes; }
++    public void setAdminNotes(String adminNotes) { this.adminNotes = adminNotes; }
+     public FarmStatus getStatus() { return status; }
+     public void setStatus(FarmStatus status) { this.status = status; }
+     public LocalDateTime getCreatedAt() { return createdAt; }
+     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
++    public LocalDateTime getUpdatedAt() { return updatedAt; }
++    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+     public String getOwnerName() { return ownerName; }
+     public void setOwnerName(String ownerName) { this.ownerName = ownerName; }
+     public String getOwnerEmail() { return ownerEmail; }
+@@ -77,8 +95,12 @@ public class FarmResponse {
+         private Double area;
+         private Double gpsLat;
+         private Double gpsLng;
++        private String description;
++        private String productTypes;
++        private String adminNotes;
+         private FarmStatus status;
+         private LocalDateTime createdAt;
++        private LocalDateTime updatedAt;
+         private String ownerName;
+         private String ownerEmail;
+         private String ownerPhone;
+@@ -92,15 +114,20 @@ public class FarmResponse {
+         public FarmResponseBuilder area(Double area) { this.area = area; return this; }
+         public FarmResponseBuilder gpsLat(Double gpsLat) { this.gpsLat = gpsLat; return this; }
+         public FarmResponseBuilder gpsLng(Double gpsLng) { this.gpsLng = gpsLng; return this; }
++        public FarmResponseBuilder description(String description) { this.description = description; return this; }
++        public FarmResponseBuilder productTypes(String productTypes) { this.productTypes = productTypes; return this; }
++        public FarmResponseBuilder adminNotes(String adminNotes) { this.adminNotes = adminNotes; return this; }
+         public FarmResponseBuilder status(FarmStatus status) { this.status = status; return this; }
+         public FarmResponseBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
++        public FarmResponseBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
+         public FarmResponseBuilder ownerName(String ownerName) { this.ownerName = ownerName; return this; }
+         public FarmResponseBuilder ownerEmail(String ownerEmail) { this.ownerEmail = ownerEmail; return this; }
+         public FarmResponseBuilder ownerPhone(String ownerPhone) { this.ownerPhone = ownerPhone; return this; }
+         public FarmResponseBuilder certificationCount(Integer certificationCount) { this.certificationCount = certificationCount; return this; }
+ 
+         public FarmResponse build() {
+-            return new FarmResponse(id, name, address, area, gpsLat, gpsLng, status, createdAt,
++            return new FarmResponse(id, name, address, area, gpsLat, gpsLng,
++                    description, productTypes, adminNotes, status, createdAt, updatedAt,
+                     ownerName, ownerEmail, ownerPhone, certificationCount);
+         }
+     }
+diff --git a/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/entity/Farm.java b/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/entity/Farm.java
+index a03e011..0b71238 100644
+--- a/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/entity/Farm.java
++++ b/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/entity/Farm.java
+@@ -4,7 +4,7 @@ import jakarta.persistence.*;
+ import java.time.LocalDateTime;
+ 
+ /**
+- * Farm registration profile (BICAP-3 / BICAP-9).
++ * Farm registration profile (BICAP-3 / BICAP-9) and managed farm record (BICAP-4 / SRS-ADM-003).
+  * Maps to the `farms` table — a registration record owned by a Farm Manager user.
+  */
+ @Entity
+@@ -32,6 +32,17 @@ public class Farm {
+     @Column(name = "gps_lng")
+     private Double gpsLng;
+ 
++    @Column(length = 2000)
++    private String description;
++
++    /** Comma-separated product types, e.g. "rau, củ, quả" (BICAP-4 display). */
++    @Column(name = "product_types", length = 500)
++    private String productTypes;
++
++    /** Internal admin notes (SRS-ADM-003, max 2000 chars). */
++    @Column(name = "admin_notes", length = 2000)
++    private String adminNotes;
++
+     @Enumerated(EnumType.STRING)
+     @Column(nullable = false)
+     private FarmStatus status = FarmStatus.PENDING;
+@@ -39,10 +50,15 @@ public class Farm {
+     @Column(name = "created_at", updatable = false)
+     private LocalDateTime createdAt;
+ 
++    @Column(name = "updated_at")
++    private LocalDateTime updatedAt;
++
+     public Farm() {
+     }
+ 
+-    public Farm(Long id, Long userId, String name, String address, Double area, Double gpsLat, Double gpsLng, FarmStatus status, LocalDateTime createdAt) {
++    public Farm(Long id, Long userId, String name, String address, Double area, Double gpsLat, Double gpsLng,
++                String description, String productTypes, String adminNotes, FarmStatus status,
++                LocalDateTime createdAt, LocalDateTime updatedAt) {
+         this.id = id;
+         this.userId = userId;
+         this.name = name;
+@@ -50,20 +66,31 @@ public class Farm {
+         this.area = area;
+         this.gpsLat = gpsLat;
+         this.gpsLng = gpsLng;
++        this.description = description;
++        this.productTypes = productTypes;
++        this.adminNotes = adminNotes;
+         this.status = status;
+         this.createdAt = createdAt;
++        this.updatedAt = updatedAt;
+     }
+ 
+     @PrePersist
+     protected void onCreate() {
++        LocalDateTime now = LocalDateTime.now();
+         if (this.createdAt == null) {
+-            this.createdAt = LocalDateTime.now();
++            this.createdAt = now;
+         }
++        this.updatedAt = now;
+         if (this.status == null) {
+             this.status = FarmStatus.PENDING;
+         }
+     }
+ 
++    @PreUpdate
++    protected void onUpdate() {
++        this.updatedAt = LocalDateTime.now();
++    }
++
+     public Long getId() { return id; }
+     public void setId(Long id) { this.id = id; }
+     public Long getUserId() { return userId; }
+@@ -78,10 +105,18 @@ public class Farm {
+     public void setGpsLat(Double gpsLat) { this.gpsLat = gpsLat; }
+     public Double getGpsLng() { return gpsLng; }
+     public void setGpsLng(Double gpsLng) { this.gpsLng = gpsLng; }
++    public String getDescription() { return description; }
++    public void setDescription(String description) { this.description = description; }
++    public String getProductTypes() { return productTypes; }
++    public void setProductTypes(String productTypes) { this.productTypes = productTypes; }
++    public String getAdminNotes() { return adminNotes; }
++    public void setAdminNotes(String adminNotes) { this.adminNotes = adminNotes; }
+     public FarmStatus getStatus() { return status; }
+     public void setStatus(FarmStatus status) { this.status = status; }
+     public LocalDateTime getCreatedAt() { return createdAt; }
+     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
++    public LocalDateTime getUpdatedAt() { return updatedAt; }
++    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+ 
+     public static FarmBuilder builder() {
+         return new FarmBuilder();
+@@ -95,8 +130,12 @@ public class Farm {
+         private Double area;
+         private Double gpsLat;
+         private Double gpsLng;
++        private String description;
++        private String productTypes;
++        private String adminNotes;
+         private FarmStatus status;
+         private LocalDateTime createdAt;
++        private LocalDateTime updatedAt;
+ 
+         FarmBuilder() {}
+ 
+@@ -107,11 +146,16 @@ public class Farm {
+         public FarmBuilder area(Double area) { this.area = area; return this; }
+         public FarmBuilder gpsLat(Double gpsLat) { this.gpsLat = gpsLat; return this; }
+         public FarmBuilder gpsLng(Double gpsLng) { this.gpsLng = gpsLng; return this; }
++        public FarmBuilder description(String description) { this.description = description; return this; }
++        public FarmBuilder productTypes(String productTypes) { this.productTypes = productTypes; return this; }
++        public FarmBuilder adminNotes(String adminNotes) { this.adminNotes = adminNotes; return this; }
+         public FarmBuilder status(FarmStatus status) { this.status = status; return this; }
+         public FarmBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
++        public FarmBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
+ 
+         public Farm build() {
+-            return new Farm(id, userId, name, address, area, gpsLat, gpsLng, status, createdAt);
++            return new Farm(id, userId, name, address, area, gpsLat, gpsLng,
++                    description, productTypes, adminNotes, status, createdAt, updatedAt);
+         }
+     }
+ }
+diff --git a/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/service/FarmApprovalService.java b/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/service/FarmApprovalService.java
+index 3523297..12d5966 100644
+--- a/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/service/FarmApprovalService.java
++++ b/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/service/FarmApprovalService.java
+@@ -3,7 +3,9 @@ package vn.courses.ut.edu.javaprogramming.bicap.service;
+ import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmApprovalRequest;
+ import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmCertificationResponse;
+ import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmDetailResponse;
++import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmNotesUpdateRequest;
+ import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmResponse;
++import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmStatusUpdateRequest;
+ import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
+ import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmCertification;
+ import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmStatus;
+@@ -168,6 +170,45 @@ public class FarmApprovalService {
+         return farm;
+     }
+ 
++    // ── Farm management (BICAP-4 / SRS-ADM-003) ──
++
++    public FarmResponse updateStatus(Long id, FarmStatusUpdateRequest request, String actorEmail) {
++        checkAdminApprove(actorEmail);
++        Farm farm = farmRepository.findById(id)
++                .orElseThrow(() -> new ResourceNotFoundException("Farm not found with id: " + id));
++
++        FarmStatus newStatus = FarmStatus.valueOf(request.getStatus());
++        if (farm.getStatus() == newStatus) {
++            return toSummary(farm, farm.getUserId());
++        }
++        farm.setStatus(newStatus);
++        Farm saved = farmRepository.save(farm);
++
++        if (newStatus == FarmStatus.SUSPENDED) {
++            notifyOwner(saved, "WARNING", "Nông trại bị tạm ngưng hoạt động",
++                    "Nông trại \"" + saved.getName() + "\" đã bị tạm ngưng hoạt động bởi Admin.");
++        } else if (newStatus == FarmStatus.INACTIVE) {
++            notifyOwner(saved, "WARNING", "Nông trại ngừng hoạt động",
++                    "Nông trại \"" + saved.getName() + "\" đã bị Admin đặt ở trạng thái ngừng hoạt động.");
++        } else if (newStatus == FarmStatus.APPROVED) {
++            notifyOwner(saved, "SUCCESS", "Nông trại đã được kích hoạt lại",
++                    "Nông trại \"" + saved.getName() + "\" đã được Admin kích hoạt hoạt động trở lại.");
++        }
++
++        return toSummary(saved, saved.getUserId());
++    }
++
++    public FarmResponse updateNotes(Long id, FarmNotesUpdateRequest request, String actorEmail) {
++        checkAdminApprove(actorEmail);
++        Farm farm = farmRepository.findById(id)
++                .orElseThrow(() -> new ResourceNotFoundException("Farm not found with id: " + id));
++
++        String notes = request.getNotes();
++        farm.setAdminNotes(notes == null || notes.trim().isEmpty() ? null : notes.trim());
++        Farm saved = farmRepository.save(farm);
++        return toSummary(saved, saved.getUserId());
++    }
++
+     private void notifyOwner(Farm farm, String type, String title, String content) {
+         Notification notification = Notification.builder()
+                 .userId(farm.getUserId())
+@@ -190,8 +231,12 @@ public class FarmApprovalService {
+                 .area(farm.getArea())
+                 .gpsLat(farm.getGpsLat())
+                 .gpsLng(farm.getGpsLng())
++                .description(farm.getDescription())
++                .productTypes(farm.getProductTypes())
++                .adminNotes(farm.getAdminNotes())
+                 .status(farm.getStatus())
+                 .createdAt(farm.getCreatedAt())
++                .updatedAt(farm.getUpdatedAt())
+                 .ownerName(owner != null ? owner.getFullName() : null)
+                 .ownerEmail(owner != null ? owner.getEmail() : null)
+                 .ownerPhone(owner != null ? owner.getPhone() : null)
+diff --git a/src/test/java/vn/courses/ut/edu/javaprogramming/bicap/FarmApprovalServiceTest.java b/src/test/java/vn/courses/ut/edu/javaprogramming/bicap/FarmApprovalServiceTest.java
+index 88ac0db..4979e6d 100644
+--- a/src/test/java/vn/courses/ut/edu/javaprogramming/bicap/FarmApprovalServiceTest.java
++++ b/src/test/java/vn/courses/ut/edu/javaprogramming/bicap/FarmApprovalServiceTest.java
+@@ -2,7 +2,9 @@ package vn.courses.ut.edu.javaprogramming.bicap;
+ 
+ import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmApprovalRequest;
+ import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmDetailResponse;
++import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmNotesUpdateRequest;
+ import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmResponse;
++import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmStatusUpdateRequest;
+ import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
+ import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmCertification;
+ import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmStatus;
+@@ -176,4 +178,88 @@ public class FarmApprovalServiceTest {
+         assertThrows(ForbiddenException.class,
+                 () -> farmApprovalService.getFarmDetail(100L, "farmer@bicap.com"));
+     }
++
++    // ── Farm management (BICAP-4 / SRS-ADM-003) ──
++
++    @Test
++    void updateStatus_shouldChangeOperatingStatus() {
++        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
++        when(farmRepository.findById(100L)).thenReturn(Optional.of(pendingFarm));
++        when(userRepository.findById(10L)).thenReturn(Optional.of(farmOwner));
++        when(certificationRepository.findByFarmId(100L)).thenReturn(List.of());
++        when(farmRepository.save(any(Farm.class))).thenAnswer(inv -> inv.getArgument(0));
++
++        FarmStatusUpdateRequest request = new FarmStatusUpdateRequest("SUSPENDED");
++        FarmResponse result = farmApprovalService.updateStatus(100L, request, "super@bicap.com");
++
++        assertEquals(FarmStatus.SUSPENDED, result.getStatus());
++        verify(notificationRepository).save(any(Notification.class));
++    }
++
++    @Test
++    void updateStatus_sameStatus_shouldBeIdempotent() {
++        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
++        Farm approvedFarm = Farm.builder()
++                .id(101L).userId(10L).name("Đã Duyệt")
++                .address("Hà Nội").area(8.0)
++                .status(FarmStatus.APPROVED)
++                .build();
++        when(farmRepository.findById(101L)).thenReturn(Optional.of(approvedFarm));
++        when(userRepository.findById(10L)).thenReturn(Optional.of(farmOwner));
++        when(certificationRepository.findByFarmId(101L)).thenReturn(List.of());
++
++        FarmStatusUpdateRequest request = new FarmStatusUpdateRequest("APPROVED");
++        FarmResponse result = farmApprovalService.updateStatus(101L, request, "super@bicap.com");
++
++        assertEquals(FarmStatus.APPROVED, result.getStatus());
++        verify(farmRepository, never()).save(any());
++        verify(notificationRepository, never()).save(any());
++    }
++
++    @Test
++    void updateNotes_shouldSetAdminNotes() {
++        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
++        when(farmRepository.findById(100L)).thenReturn(Optional.of(pendingFarm));
++        when(userRepository.findById(10L)).thenReturn(Optional.of(farmOwner));
++        when(certificationRepository.findByFarmId(100L)).thenReturn(List.of());
++        when(farmRepository.save(any(Farm.class))).thenAnswer(inv -> inv.getArgument(0));
++
++        FarmNotesUpdateRequest request = new FarmNotesUpdateRequest("  Hồ sơ đầy đủ, chủ trại uy tín.  ");
++        FarmResponse result = farmApprovalService.updateNotes(100L, request, "super@bicap.com");
++
++        assertEquals("Hồ sơ đầy đủ, chủ trại uy tín.", result.getAdminNotes());
++    }
++
++    @Test
++    void updateNotes_blank_shouldClearNotes() {
++        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
++        when(farmRepository.findById(100L)).thenReturn(Optional.of(pendingFarm));
++        when(userRepository.findById(10L)).thenReturn(Optional.of(farmOwner));
++        when(certificationRepository.findByFarmId(100L)).thenReturn(List.of());
++        when(farmRepository.save(any(Farm.class))).thenAnswer(inv -> inv.getArgument(0));
++
++        FarmNotesUpdateRequest request = new FarmNotesUpdateRequest("   ");
++        FarmResponse result = farmApprovalService.updateNotes(100L, request, "super@bicap.com");
++
++        assertNull(result.getAdminNotes());
++    }
++
++    @Test
++    void updateStatus_byNonAdmin_shouldThrowForbidden() {
++        when(userRepository.findByEmail("farmer@bicap.com")).thenReturn(Optional.of(farmOwner));
++
++        FarmStatusUpdateRequest request = new FarmStatusUpdateRequest("SUSPENDED");
++        assertThrows(ForbiddenException.class,
++                () -> farmApprovalService.updateStatus(100L, request, "farmer@bicap.com"));
++    }
++
++    @Test
++    void updateStatus_unknownFarm_shouldThrowNotFound() {
++        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
++        when(farmRepository.findById(999L)).thenReturn(Optional.empty());
++
++        FarmStatusUpdateRequest request = new FarmStatusUpdateRequest("SUSPENDED");
++        assertThrows(ResourceNotFoundException.class,
++                () -> farmApprovalService.updateStatus(999L, request, "super@bicap.com"));
++    }
+ }

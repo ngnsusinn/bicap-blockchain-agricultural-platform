@@ -16,14 +16,21 @@ public interface FarmRepository extends JpaRepository<Farm, Long> {
 
     Optional<Farm> findByUserId(Long userId);
 
+    Optional<Farm> findByName(String name);
+
     Page<Farm> findByStatus(FarmStatus status, Pageable pageable);
 
     long countByStatus(FarmStatus status);
 
+    /**
+     * Search term is matched literally: callers must escape {@code !}, {@code %} and
+     * {@code _} in the input with {@code !} (e.g. {@code % → !%}) so user input like
+     * "%" or "_" is not interpreted as a LIKE wildcard. See {@code FarmApprovalService.escapeLike}.
+     */
     @Query("SELECT DISTINCT f FROM Farm f WHERE " +
            "(:status IS NULL OR f.status = :status) AND " +
-           "(:search IS NULL OR LOWER(f.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(f.address) LIKE LOWER(CONCAT('%', :search, '%')))")
+           "(:search IS NULL OR LOWER(f.name) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!' " +
+           "OR LOWER(f.address) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!')")
     Page<Farm> findFarmsFiltered(
             @Param("status") FarmStatus status,
             @Param("search") String search,

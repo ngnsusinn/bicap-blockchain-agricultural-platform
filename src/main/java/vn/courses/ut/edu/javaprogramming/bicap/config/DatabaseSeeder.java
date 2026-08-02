@@ -17,7 +17,6 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -75,18 +74,26 @@ public class DatabaseSeeder implements CommandLineRunner {
         seedUser("retailer@bicap.com", "Retailpassword@2026", "Nhà Bán Lẻ BICAP", "0933445566", retailerRole);
         seedUser("retail@bicap.com", "Retailpassword@2026", "Nhà Bán Lẻ BICAP Short", "0933445567", retailerRole);
 
-        // 4. Seed Sample Farm Registrations (BICAP-3 — admin approval queue)
+        // 4. Seed Sample Farm Registrations (BICAP-3 — admin approval queue; BICAP-4 — management list)
         seedFarm(farmOwner1.getId(), "Trang Trại Xanh Đồng Nai", "Xã Long An, Huyện Long Thành, Đồng Nai",
                 12.5, 10.824610, 107.058112, FarmStatus.PENDING,
+                "Trang trại chuyên canh rau sạch theo tiêu chuẩn VietGAP, cung cấp rau ăn lá cho các chuỗi siêu thị khu vực Đông Nam Bộ.",
+                "Rau ăn lá, Rau gia vị, Dưa leo",
                 "Giấy phép kinh doanh số 0312345678", "https://bicap.vn/docs/dongnai-license.pdf", LocalDate.now().plusYears(5));
         seedFarm(farmOwner2.getId(), "HTX Nông Sản Sạch Lâm Đồng", "Xã Đạ Đờn, Huyện Lâm Hà, Lâm Đồng",
                 25.0, 11.811100, 108.366700, FarmStatus.PENDING,
+                "Hợp tác xã sản xuất rau củ quả công nghệ cao trên vùng đất cao nguyên, có nhà màng và hệ thống tưới tự động.",
+                "Bắp cải, Súp lơ, Cà chua, Dâu tây",
                 "Giấy chứng nhận VietGAP", "https://bicap.vn/docs/lamdong-vietgap.pdf", LocalDate.now().plusYears(2));
         seedFarm(farmOwner1.getId(), "Trang Trại Hữu Cơ Sông Hồng", "Xã Đan Phượng, Hà Nội",
                 8.0, 21.122300, 105.681300, FarmStatus.APPROVED,
+                "Trang trại nông nghiệp hữu cơ ngoại thành Hà Nội, chuyên canh tác không hóa chất theo chứng nhận Organic.",
+                "Lúa hữu cơ, Rau hữu cơ, Gà thả vườn",
                 "Giấy chứng nhận Organic", "https://bicap.vn/docs/hanoi-organic.pdf", LocalDate.now().plusYears(3));
         seedFarm(farmOwner2.getId(), "Vườn Sạch Tiền Giang", "Xã Tân Lập, Huyện Tân Phước, Tiền Giang",
                 15.75, 10.467500, 106.209900, FarmStatus.REJECTED,
+                "Vườn cây ăn trái miền Tây, tập trung sản xuất trái cây sạch xuất khẩu sang thị trường châu Âu.",
+                "Xoài cát Hòa Lộc, Chôm chôm, Sầu riêng",
                 "Giấy phép kinh doanh số 0123456789", "https://bicap.vn/docs/tiengiang-license.pdf", LocalDate.now().plusYears(1));
     }
 
@@ -139,10 +146,27 @@ public class DatabaseSeeder implements CommandLineRunner {
         );
     }
 
+    /**
+     * Seeds one farm per unique {@code name}. Existing farms are matched by name and
+     * backfilled with the current seed values (description, productTypes, status...),
+     * so re-running the seeder never duplicates farms nor leaves stale demo data —
+     * a farmer may own several farms, so owner-based dedup is intentionally avoided.
+     */
     private void seedFarm(Long ownerUserId, String name, String address, double area,
                           double gpsLat, double gpsLng, FarmStatus status,
+                          String description, String productTypes,
                           String certType, String certFileUrl, LocalDate certExpiry) {
-        Farm farm = farmRepository.findByUserId(ownerUserId).orElseGet(() -> farmRepository.save(
+        Farm farm = farmRepository.findByName(name).map(existing -> {
+            existing.setUserId(ownerUserId);
+            existing.setAddress(address);
+            existing.setArea(area);
+            existing.setGpsLat(gpsLat);
+            existing.setGpsLng(gpsLng);
+            existing.setDescription(description);
+            existing.setProductTypes(productTypes);
+            existing.setStatus(status);
+            return farmRepository.save(existing);
+        }).orElseGet(() -> farmRepository.save(
                 Farm.builder()
                         .userId(ownerUserId)
                         .name(name)
@@ -150,8 +174,9 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .area(area)
                         .gpsLat(gpsLat)
                         .gpsLng(gpsLng)
+                        .description(description)
+                        .productTypes(productTypes)
                         .status(status)
-                        .createdAt(LocalDateTime.now())
                         .build()
         ));
 
@@ -162,7 +187,6 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .type(certType)
                     .fileUrl(certFileUrl)
                     .expiryDate(certExpiry)
-                    .createdAt(LocalDateTime.now())
                     .build());
         }
     }

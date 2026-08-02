@@ -19,12 +19,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmailIgnoreCase(String email);
     boolean existsByPhone(String phone);
 
+    /**
+     * Search term is matched literally: callers must escape {@code !}, {@code %} and
+     * {@code _} with {@code !} (see {@link vn.courses.ut.edu.javaprogramming.bicap.common.util.SearchUtils}).
+     */
     @Query("SELECT DISTINCT u FROM User u LEFT JOIN u.roles r WHERE " +
            "(:status IS NULL OR u.status = :status) AND " +
            "(:role IS NULL OR LOWER(r.name) = LOWER(:role)) AND " +
-           "(:search IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR u.phone LIKE CONCAT('%', :search, '%'))")
+           "(:search IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!' " +
+           "OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!' " +
+           "OR u.phone LIKE CONCAT('%', :search, '%') ESCAPE '!')")
     Page<User> findAdminsFiltered(
             @Param("status") UserStatus status,
             @Param("role") String role,

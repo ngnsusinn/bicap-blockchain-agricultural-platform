@@ -13,7 +13,9 @@ public class FarmDetailResponse extends FarmResponse {
 
     public FarmDetailResponse(FarmResponse summary, List<FarmCertificationResponse> certifications) {
         super(summary.getId(), summary.getName(), summary.getAddress(), summary.getArea(),
-                summary.getGpsLat(), summary.getGpsLng(), summary.getStatus(), summary.getCreatedAt(),
+                summary.getGpsLat(), summary.getGpsLng(),
+                summary.getDescription(), summary.getProductTypes(), summary.getAdminNotes(),
+                summary.getStatus(), summary.getCreatedAt(), summary.getUpdatedAt(),
                 summary.getOwnerName(), summary.getOwnerEmail(), summary.getOwnerPhone(),
                 summary.getCertificationCount());
         this.certifications = certifications;
