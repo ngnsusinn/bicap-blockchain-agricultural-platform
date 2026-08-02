@@ -6,7 +6,7 @@ const MENU_ITEMS: Record<PortalType, { id: string; label: string; icon: string; 
   admin: [
     { id: 'overview', label: 'Dashboard Overview', icon: '📊' },
     { id: 'admins', label: 'Admin Management', icon: '👤' },
-    { id: 'farms', label: 'Farm Approval', icon: '🚜', disabled: true },
+    { id: 'farms', label: 'Farm Approval', icon: '🚜' },
     { id: 'products', label: 'Traceability & QR', icon: '🔍', disabled: true },
     { id: 'iot', label: 'IoT Sensoring', icon: '🌡️', disabled: true },
     { id: 'settings', label: 'System Settings', icon: '⚙️', disabled: true },

@@ -5,6 +5,7 @@ import { LoginPage } from './components/LoginPage';
 import { StatsCards } from './components/StatsCards';
 import { AdminTable } from './components/AdminTable';
 import { AdminModal } from './components/AdminModal';
+import { FarmApprovalPage } from './components/FarmApprovalPage';
 import { Toast } from './components/Toast';
 import type { ToastMessage } from './components/Toast';
 
@@ -224,6 +225,10 @@ export default function App() {
                 currentPage={currentPage} onPageChange={setCurrentPage} totalPages={totalPages}
               />
             </div>
+          )}
+
+          {currentPortal === 'admin' && currentTab === 'farms' && (
+            <FarmApprovalPage currentSession={currentSession!} onToast={showToast} />
           )}
 
           {/* ── FARM DASHBOARD ── */}
