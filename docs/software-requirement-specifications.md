@@ -2016,8 +2016,8 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 |-----|----------|---------|------------|
 | 1 | User Requirements Document | BICAP-91 | ✅ Hoàn thành (v2.0) |
 | 2 | Software Requirement Specifications (SRS) | BICAP-92 | 📝 Tài liệu này |
-| 3 | Architecture Design | BICAP-93 | ⏳ Chưa bắt đầu |
-| 4 | Detail Design | BICAP-94 | ⏳ Chưa bắt đầu |
+| 3 | Architecture Design | BICAP-93 | ✅ Hoàn thành (v1.0) |
+| 4 | Detail Design | BICAP-94 | ✅ Hoàn thành (v1.0) |
 | 5 | System Implementation Document | BICAP-95 | ⏳ Chưa bắt đầu |
 | 6 | Testing Document | BICAP-96 | ⏳ Chưa bắt đầu |
 | 7 | Installation Guide | BICAP-97 | ⏳ Chưa bắt đầu |
