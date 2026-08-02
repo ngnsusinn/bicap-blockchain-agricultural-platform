@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getAuthHeaders } from '../utils/auth';
+import { getAuthHeaders } from '../../utils/auth';
 
 export interface PaymentData {
   subscriptionId: number;
@@ -96,9 +96,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentDat
     color: '#fff',
     fontFamily: "'Inter', sans-serif",
     position: 'relative',
-    animation: 'slideUp 0.4s ease-out forwards',
-    maxHeight: '90vh',
-    overflowY: 'auto'
+    animation: 'slideUp 0.4s ease-out forwards'
   };
 
   const closeBtnStyle: React.CSSProperties = {
@@ -186,6 +184,17 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentDat
     marginBottom: '24px'
   };
 
+  const qrContainerStyle: React.CSSProperties = {
+    display: 'flex',
+    justifyContent: 'center',
+    background: '#fff',
+    padding: '16px',
+    borderRadius: '16px',
+    width: 'fit-content',
+    margin: '0 auto 24px auto',
+    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)'
+  };
+
   const statusContainerStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
@@ -226,28 +235,26 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentDat
             50% { opacity: 0.5; }
             100% { opacity: 1; }
           }
-          .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.02);
-            border-radius: 8px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(139, 92, 246, 0.3);
-            border-radius: 8px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(139, 92, 246, 0.5);
-          }
         `}
       </style>
       <div style={overlayStyle}>
-        <div style={modalStyle} className="custom-scrollbar">
+        <div style={modalStyle}>
           <button style={closeBtnStyle} onClick={onClose} onMouseOver={e => e.currentTarget.style.color = '#fff'} onMouseOut={e => e.currentTarget.style.color = '#a1a1aa'}>×</button>
           
           <h2 style={titleStyle}>Payment Instructions</h2>
-          <p style={subtitleStyle}>Please transfer exactly the amount below</p>
+          <p style={subtitleStyle}>Quét mã QR hoặc chuyển khoản thủ công</p>
+
+          <div style={qrContainerStyle}>
+            <img 
+              src={`https://img.vietqr.io/image/${paymentData.bankName}-${paymentData.accountNumber}-compact2.png?amount=${paymentData.amount}&addInfo=${encodeURIComponent(paymentData.transferContent || paymentData.paymentCode)}`} 
+              alt="VietQR Code" 
+              style={{ width: '220px', height: '220px', objectFit: 'contain' }}
+              onError={(e) => {
+                // Ẩn QR code nếu ngân hàng không hỗ trợ VietQR format này
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </div>
 
           <div style={rowStyle}>
             <span style={labelStyle}>Bank</span>
@@ -283,14 +290,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentDat
           </div>
 
           <div style={highlightContentStyle}>
-            <div style={{ ...labelStyle, marginBottom: '12px' }}>QR Code Thanh Toán</div>
-            <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
-              <img 
-                src={`https://img.vietqr.io/image/${paymentData.bankName}-${paymentData.accountNumber}-compact2.png?amount=${paymentData.amount}&addInfo=${encodeURIComponent(paymentData.transferContent || paymentData.paymentCode)}&accountName=BICAP`} 
-                alt="VietQR" 
-                style={{ borderRadius: '12px', border: '2px solid rgba(139, 92, 246, 0.5)', maxWidth: '100%', height: 'auto' }}
-              />
-            </div>
             <div style={{ ...labelStyle, marginBottom: '12px' }}>Transfer Content</div>
             <div style={{ 
               fontSize: '28px', 

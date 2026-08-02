@@ -79,8 +79,15 @@ const ServicePackages: React.FC = () => {
         setPaymentData(data);
         setIsPaymentModalOpen(true);
       } else {
-        setError('Failed to initiate purchase');
-        setTimeout(() => setError(null), 3000);
+        const errorData = await res.text();
+        console.error("Backend error:", errorData);
+        try {
+            const parsed = JSON.parse(errorData);
+            setError(`Lỗi: ${parsed.message || 'Không thể tạo giao dịch'}`);
+        } catch {
+            setError(`Lỗi: ${errorData || 'Failed to initiate purchase'}`);
+        }
+        setTimeout(() => setError(null), 5000);
       }
     } catch (err) {
       setError('Network error');

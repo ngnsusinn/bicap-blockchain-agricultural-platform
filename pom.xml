@@ -19,6 +19,7 @@
 
     <properties>
         <java.version>21</java.version>
+        <start-class>vn.courses.ut.edu.javaprogramming.bicap.Application</start-class>
         <jjwt.version>0.12.5</jjwt.version>
     </properties>
 

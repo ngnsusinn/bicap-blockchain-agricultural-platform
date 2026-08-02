@@ -58,6 +58,7 @@ public class SecurityConfig {
                                 "/api/auth/**"
                         ).permitAll()
                         .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/subscriptions/purchase").permitAll()
                         
                         .requestMatchers(HttpMethod.GET, "/api/service-packages/**").permitAll()
                         

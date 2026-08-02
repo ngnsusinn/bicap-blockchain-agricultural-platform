@@ -81,4 +81,11 @@ public class Subscription {
             return new Subscription(id, farmId, packageId, startDate, endDate, status, createdAt);
         }
     }
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+    }
 }

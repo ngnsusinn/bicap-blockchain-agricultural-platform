@@ -54,10 +54,17 @@ public class SubscriptionService {
         subscription.setFarmId(request.getFarmId());
         subscription.setPackageId(request.getPackageId());
         subscription.setStatus("PENDING_PAYMENT");
-        subscription.setStartDate(null);
-        subscription.setEndDate(null);
+        subscription.setStartDate(java.time.LocalDate.now());
+        subscription.setEndDate(java.time.LocalDate.now().plusDays(servicePackage.getDurationDays()));
 
-        subscription = subscriptionRepository.save(subscription);
+        try {
+            subscription = subscriptionRepository.save(subscription);
+            // force flush to throw exception immediately
+            subscriptionRepository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            ex.printStackTrace();
+            throw new BadRequestException("DataIntegrityViolationException: " + ex.getMostSpecificCause().getMessage());
+        }
 
         String paymentCode = "BICAP" + subscription.getId() + String.format("%04d", new Random().nextInt(10000));
         
