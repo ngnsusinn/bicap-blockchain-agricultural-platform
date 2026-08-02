@@ -25,17 +25,20 @@ public class AdminController {
 
     @GetMapping
     public ResponseEntity<Page<AdminResponse>> getAdmins(
+            @RequestHeader("X-Actor-Email") String actorEmail,
             @RequestParam(required = false) UserStatus status,
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String search,
             @PageableDefault(size = 10) Pageable pageable) {
-        Page<AdminResponse> admins = adminService.getAdmins(status, role, search, pageable);
+        Page<AdminResponse> admins = adminService.getAdmins(status, role, search, pageable, actorEmail);
         return ResponseEntity.ok(admins);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AdminResponse> getAdminById(@PathVariable Long id) {
-        AdminResponse admin = adminService.getAdminById(id);
+    public ResponseEntity<AdminResponse> getAdminById(
+            @RequestHeader("X-Actor-Email") String actorEmail,
+            @PathVariable Long id) {
+        AdminResponse admin = adminService.getAdminById(id, actorEmail);
         return ResponseEntity.ok(admin);
     }
 

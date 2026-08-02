@@ -5,9 +5,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.courses.ut.edu.javaprogramming.bicap.config.SepayConfig;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.SepayWebhookRequest;
+import vn.courses.ut.edu.javaprogramming.bicap.exception.UnauthorizedException;
 import vn.courses.ut.edu.javaprogramming.bicap.service.SepayService;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -22,30 +22,22 @@ public class SepayWebhookController {
         this.sepayConfig = sepayConfig;
     }
 
+    /**
+     * Fail-closed webhook (C-3): authentication is a strict {@code Bearer <apiKey>} comparison
+     * against the configured key. When the key is empty or a placeholder, startup already
+     * refused to boot (SecretConfigValidator), so an unconfigured webhook is unreachable.
+     * Validation failures return 400/401 so the gateway retries and nothing is silently dropped.
+     */
     @PostMapping("/webhook")
     public ResponseEntity<Map<String, String>> handleWebhook(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestBody SepayWebhookRequest request) {
-        
-        Map<String, String> response = new HashMap<>();
 
-        if (sepayConfig.getApiKey() != null && !sepayConfig.getApiKey().isEmpty()) {
-            String expectedAuth = "Bearer " + sepayConfig.getApiKey();
-            if (authHeader == null || !authHeader.equals(expectedAuth)) {
-                response.put("success", "false");
-                response.put("message", "Unauthorized webhook call");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-            }
+        String expectedAuth = "Bearer " + sepayConfig.getApiKey();
+        if (authHeader == null || !expectedAuth.equals(authHeader)) {
+            throw new UnauthorizedException("Unauthorized webhook call");
         }
 
-        try {
-            sepayService.handleWebhook(request);
-            response.put("success", "true");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            response.put("success", "false");
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
+        return ResponseEntity.ok(sepayService.handleWebhook(request));
     }
 }

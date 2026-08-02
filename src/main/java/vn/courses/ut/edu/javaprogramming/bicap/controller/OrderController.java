@@ -9,7 +9,6 @@ import vn.courses.ut.edu.javaprogramming.bicap.service.OrderService;
 
 @RestController
 @RequestMapping("/api/orders")
-@CrossOrigin(origins = "*")
 public class OrderController {
 
     private final OrderService orderService;
@@ -19,7 +18,9 @@ public class OrderController {
     }
 
     @PostMapping("/deposit")
-    public ResponseEntity<DepositResponse> createDeposit(@Valid @RequestBody CreateDepositRequest request) {
-        return ResponseEntity.ok(orderService.createDeposit(request));
+    public ResponseEntity<DepositResponse> createDeposit(
+            @RequestHeader("X-Actor-Email") String actorEmail,
+            @Valid @RequestBody CreateDepositRequest request) {
+        return ResponseEntity.ok(orderService.createDeposit(request, actorEmail));
     }
 }

@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { getAuthHeaders, isLoggedIn, getCurrentUser, saveSession, logout } from './utils/auth';
+import { getAuthHeaders, isLoggedIn, getCurrentUser, saveSession, logout, API_BASE_URL } from './utils/auth';
 import type { UserSession } from './utils/auth';
 import ServicePackages from './pages/FarmManager/ServicePackages';
 import AuthPage from './pages/Auth/AuthPage';
-
-const API_BASE_URL = 'http://localhost:8080/api';
 
 /* ── Sidebar Component (Dành cho Farm Manager - BICAP-7) ── */
 interface SidebarProps {
@@ -82,7 +80,6 @@ export default function App() {
   const [user, setUser] = useState<UserSession | null>(getCurrentUser());
   const [currentTab, setCurrentTab] = useState('packages');
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
-  const farmId = 1;
 
   // Xử lý sau khi Đăng nhập thành công từ AuthPage
   const handleLoginSuccess = (token: string, userData: any) => {
@@ -98,13 +95,14 @@ export default function App() {
     setUser(null);
   };
 
-  // Check subscription status nếu là Farm Manager
+  // Check subscription status nếu là Farm Manager — dùng endpoint "my" thay vì farmId=1
+  // (M-2: không còn mã cứng farm #1; farmId được lấy từ danh sách nông trại của user).
   useEffect(() => {
     if (!authenticated || user?.role !== 'FARM_MANAGER') return;
 
     const checkSubscription = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/subscriptions/farm/${farmId}`, {
+        const res = await fetch(`${API_BASE_URL}/subscriptions/my`, {
           headers: getAuthHeaders(),
         });
         if (res.ok) {
@@ -120,25 +118,34 @@ export default function App() {
       }
     };
 
+    // Resolve the user's farmId from their own farm records (M-2), so downstream
+    // pages (ServicePackages) no longer need a hardcoded value.
+    const resolveFarmId = async () => {
+      if (user?.farmId) return;
+      try {
+        const res = await fetch(`${API_BASE_URL}/farms/my`, { headers: getAuthHeaders() });
+        if (res.ok) {
+          const farms = await res.json();
+          if (Array.isArray(farms) && farms.length > 0 && typeof farms[0]?.id === 'number') {
+            const updated = { ...user!, farmId: farms[0].id };
+            saveSession(localStorage.getItem('accessToken') || '', updated);
+            setUser(updated);
+          }
+        }
+      } catch (e) {
+        // Non-fatal: farmId is resolved lazily by ServicePackages too.
+      }
+    };
+
     checkSubscription();
-  }, [authenticated, user, currentTab]);
+    resolveFarmId();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authenticated, user?.role, currentTab]);
 
   // Render AuthPage nếu chưa đăng nhập (Hỗ trợ cả BICAP-7 và BICAP-36)
   if (!authenticated) {
     return <AuthPage onLoginSuccess={handleLoginSuccess} />;
   }
-
-  // Hàm chuyển đổi giao diện trực tiếp giữa Farm Manager và Retailer
-  const switchRole = (newRole: 'FARM_MANAGER' | 'RETAILER') => {
-    const updatedUser: UserSession = {
-      id: newRole === 'FARM_MANAGER' ? 1 : 2,
-      email: newRole === 'FARM_MANAGER' ? 'farm@bicap.com' : 'retailer@bicap.com',
-      fullName: newRole === 'FARM_MANAGER' ? 'Chủ Trang Trại BICAP' : 'Nhà Bán Lẻ BICAP',
-      role: newRole,
-    };
-    saveSession('mock-token-' + newRole, updatedUser);
-    setUser(updatedUser);
-  };
 
   // Render Retailer Portal nếu người dùng là RETAILER (BICAP-36)
   if (user?.role === 'RETAILER') {
@@ -152,21 +159,6 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button
-              onClick={() => switchRole('FARM_MANAGER')}
-              style={{
-                background: 'rgba(16, 185, 129, 0.2)',
-                border: '1px solid rgba(16, 185, 129, 0.4)',
-                color: '#34d399',
-                padding: '6px 14px',
-                borderRadius: '8px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              🌾 Chuyển sang UI Farm Manager
-            </button>
             <span style={{ fontSize: '13px', color: '#cbd5e1' }}>
               Xin chào, <strong>{user.fullName}</strong> <span style={roleBadgeRetailerStyle}>Retailer</span>
             </span>
@@ -230,21 +222,6 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button
-              onClick={() => switchRole('RETAILER')}
-              style={{
-                background: 'rgba(6, 182, 212, 0.2)',
-                border: '1px solid rgba(6, 182, 212, 0.4)',
-                color: '#38bdf8',
-                padding: '6px 14px',
-                borderRadius: '8px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              🛒 Chuyển sang UI Retailer
-            </button>
             <span style={{ fontSize: '13px', color: '#cbd5e1' }}>
               Xin chào, <strong>{user?.fullName}</strong> <span style={roleBadgeFarmStyle}>Farm Manager</span>
             </span>

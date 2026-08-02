@@ -1,8 +1,8 @@
 import React from 'react';
-import type { UserSession } from '../types';
+import type { UserSession, AdminUser } from '../types';
 
 interface AdminTableProps {
-  admins: any[];
+  admins: AdminUser[];
   currentSession: UserSession;
   searchTerm: string;
   onSearchChange: (val: string) => void;
@@ -10,11 +10,20 @@ interface AdminTableProps {
   onStatusFilterChange: (val: string) => void;
   roleFilter: string;
   onRoleFilterChange: (val: string) => void;
-  onEdit: (admin: any) => void;
+  onEdit: (admin: AdminUser) => void;
   onDelete: (id: number) => void;
   currentPage: number;
   onPageChange: (page: number) => void;
   totalPages: number;
+}
+
+/** Backend AdminResponse nests role/permission data under roles[] — derive the display values. */
+function primaryRole(admin: AdminUser): string {
+  return admin.roles?.[0]?.name ?? '';
+}
+
+function permissionCodes(admin: AdminUser): string[] {
+  return (admin.roles ?? []).flatMap((r) => (r.permissions ?? []).map((p) => p.code));
 }
 
 export const AdminTable: React.FC<AdminTableProps> = ({
@@ -101,6 +110,8 @@ export const AdminTable: React.FC<AdminTableProps> = ({
               admins.map((admin) => {
                 const isSelf = admin.email === currentSession.email;
                 const statusConfig = statusStyles[admin.status] || statusStyles.ACTIVE;
+                const role = primaryRole(admin);
+                const permissions = permissionCodes(admin);
 
                 return (
                   <tr key={admin.id} style={trStyle}>
@@ -124,15 +135,19 @@ export const AdminTable: React.FC<AdminTableProps> = ({
                     <td style={tdStyle}>{admin.email}</td>
                     <td style={tdStyle}>{admin.phone || '-'}</td>
                     <td style={tdStyle}>
-                      <span style={roleBadgeStyle}>{admin.role}</span>
+                      <span style={roleBadgeStyle}>{role || '-'}</span>
                     </td>
                     <td style={tdStyle}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '300px' }}>
-                        {admin.permissions.map((perm: string) => (
-                          <span key={perm} style={permStyle}>
-                            {perm}
-                          </span>
-                        ))}
+                        {permissions.length === 0 ? (
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>
+                        ) : (
+                          permissions.map((perm: string) => (
+                            <span key={perm} style={permStyle}>
+                              {perm}
+                            </span>
+                          ))
+                        )}
                       </div>
                     </td>
                     <td style={tdStyle}>

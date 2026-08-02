@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
-import type { UserSession, PortalType } from './types';
+import type { UserSession, PortalType, AdminUser } from './types';
 import { LoginPage } from './components/LoginPage';
 import { StatsCards } from './components/StatsCards';
 import { AdminTable } from './components/AdminTable';
@@ -54,15 +54,22 @@ export default function App() {
   });
 
   // ── Admin Table State ──
-  const [admins, setAdmins] = useState<any[]>([]);
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [showModal, setShowModal] = useState(false);
-  const [selectedAdmin, setSelectedAdmin] = useState<any | null>(null);
+  const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  // Debounce search input so typing doesn't fire one request per keystroke (M-19).
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 350);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
 
   // ── Toast Helper ──
   const showToast = useCallback((text: string, type: ToastMessage['type'] = 'info') => {
@@ -95,13 +102,18 @@ export default function App() {
   const fetchAdmins = useCallback(async () => {
     if (!currentSession) return;
     try {
-      const params = new URLSearchParams({ search: searchTerm, status: statusFilter, role: roleFilter, page: currentPage.toString(), size: '5' });
+      const params = new URLSearchParams({ search: debouncedSearch, status: statusFilter, role: roleFilter, page: currentPage.toString(), size: '5' });
       const token = localStorage.getItem('bicap_token');
       const headers: Record<string, string> = { 'X-Actor-Email': currentSession.email };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
       const response = await fetch(`${API_BASE_URL}?${params}`, { headers });
       if (!response.ok) {
+        if (response.status === 401) {
+          handleLogout();
+          showToast('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'error');
+          return;
+        }
         if (response.status === 403) throw new Error('Access Denied (HTTP 403): Bạn không có quyền xem danh sách quản trị viên.');
         const errorData = await response.json();
         throw new Error(errorData.message || 'Lỗi tải danh sách quản trị viên.');
@@ -113,13 +125,14 @@ export default function App() {
       setAdmins([]); setTotalPages(1);
       showToast(err.message, 'error');
     }
-  }, [searchTerm, statusFilter, roleFilter, currentPage, currentSession, showToast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, statusFilter, roleFilter, currentPage, currentSession, showToast]);
 
   useEffect(() => {
     if (isAuthenticated && currentTab === 'admins' && currentPath.startsWith('/admin')) fetchAdmins();
   }, [fetchAdmins, currentTab, isAuthenticated, currentPath]);
 
-  const handleEditClick = (admin: any) => { setSelectedAdmin(admin); setShowModal(true); };
+  const handleEditClick = (admin: AdminUser) => { setSelectedAdmin(admin); setShowModal(true); };
 
   const handleDeleteClick = async (id: number) => {
     if (!currentSession) return;
@@ -129,7 +142,10 @@ export default function App() {
       const headers: Record<string, string> = { 'X-Actor-Email': currentSession.email };
       if (token) headers['Authorization'] = `Bearer ${token}`;
       const response = await fetch(`${API_BASE_URL}/${id}`, { method: 'DELETE', headers });
-      if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'Xoá thất bại.'); }
+      if (!response.ok) {
+        if (response.status === 401) { handleLogout(); showToast('Phiên đăng nhập đã hết hạn.', 'error'); return; }
+        const errorData = await response.json(); throw new Error(errorData.message || 'Xoá thất bại.');
+      }
       showToast('Đã xoá tài khoản quản trị viên.', 'success');
       fetchAdmins();
     } catch (err: any) { showToast(err.message, 'error'); }
@@ -145,7 +161,10 @@ export default function App() {
       const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-Actor-Email': currentSession.email };
       if (token) headers['Authorization'] = `Bearer ${token}`;
       const response = await fetch(url, { method, headers, body: JSON.stringify(adminData) });
-      if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'Thao tác thất bại.'); }
+      if (!response.ok) {
+        if (response.status === 401) { handleLogout(); showToast('Phiên đăng nhập đã hết hạn.', 'error'); return; }
+        const errorData = await response.json(); throw new Error(errorData.message || 'Thao tác thất bại.');
+      }
       showToast(isEdit ? 'Cập nhật thành công.' : 'Tạo tài khoản mới thành công.', 'success');
       setShowModal(false); setSelectedAdmin(null); fetchAdmins();
     } catch (err: any) { showToast(err.message, 'error'); }

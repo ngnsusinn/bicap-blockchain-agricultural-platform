@@ -30,7 +30,6 @@ public class AuthService {
 
     private static final String RETAILER_ROLE = "RETAILER";
     private static final String FARM_MANAGER_ROLE = "FARM_MANAGER";
-    private static final String FARM_ROLE = "FARM";
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -56,11 +55,9 @@ public class AuthService {
     }
 
     public AuthResponse registerFarmManager(RegisterRequest request) {
-        try {
-            return registerUserWithRole(request, FARM_MANAGER_ROLE);
-        } catch (ResourceNotFoundException e) {
-            return registerUserWithRole(request, FARM_ROLE);
-        }
+        // H-7: the FARM role fallback was dead code (FARM is never seeded) and silently
+        // hid misconfiguration. Resolve the intended role explicitly and fail fast.
+        return registerUserWithRole(request, FARM_MANAGER_ROLE);
     }
 
     private AuthResponse registerUserWithRole(RegisterRequest request, String roleName) {
@@ -71,24 +68,11 @@ public class AuthService {
             throw new BadRequestException("Password confirmation does not match");
         }
 
-        var existingUserOpt = userRepository.findByEmailIgnoreCase(email);
-        if (existingUserOpt.isPresent()) {
-            User existingUser = existingUserOpt.get();
-            if (passwordEncoder.matches(request.getPassword(), existingUser.getPassword())) {
-                Role role = roleRepository.findByName(roleName)
-                        .orElseThrow(() -> new ResourceNotFoundException(roleName + " role is not configured"));
-                existingUser.getRoles().add(role);
-                User savedUser = userRepository.save(existingUser);
-                Authentication authentication = new UsernamePasswordAuthenticationToken(
-                        savedUser,
-                        null,
-                        savedUser.getAuthorities()
-                );
-                String accessToken = jwtTokenProvider.generateToken(authentication);
-                return AuthResponse.fromUser(accessToken, savedUser);
-            } else {
-                throw new ConflictException("Email is already registered");
-            }
+        // M-4: an existing account is NEVER mutated by a register call, and the email is
+        // always reported as already registered (no "matching password" side channel that
+        // both leaks account existence AND grants an extra role to the existing user).
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new ConflictException("Email is already registered");
         }
 
         if (userRepository.existsByPhone(phone)) {
@@ -123,33 +107,29 @@ public class AuthService {
         return authenticateAndBuildResponse(request);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public AuthResponse loginFarmManager(LoginRequest request) {
         User user = authenticateUser(request);
         boolean isFarmManager = user.getRoles().stream()
                 .anyMatch(r -> r.getName().equalsIgnoreCase("FARM_MANAGER") || r.getName().equalsIgnoreCase("FARM"));
+        // M-3: a user who lacks the farm-manager role is NOT silently upgraded. Role
+        // assignment is a privileged operation — this endpoint only admits farm managers.
         if (!isFarmManager) {
-            Role role = roleRepository.findByName(FARM_MANAGER_ROLE)
-                    .orElseGet(() -> roleRepository.findByName(FARM_ROLE)
-                            .orElseThrow(() -> new ResourceNotFoundException("FARM_MANAGER role is not configured")));
-            user.getRoles().add(role);
-            user = userRepository.save(user);
+            throw new UnauthorizedException("Account is not authorized for the Farm portal");
         }
         Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
         String accessToken = jwtTokenProvider.generateToken(authentication);
         return AuthResponse.fromUser(accessToken, user);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public AuthResponse loginRetailer(LoginRequest request) {
         User user = authenticateUser(request);
         boolean isRetailer = user.getRoles().stream()
                 .anyMatch(r -> r.getName().equalsIgnoreCase("RETAILER"));
+        // M-3: no silent role upgrade on login — a user either is a retailer or not.
         if (!isRetailer) {
-            Role role = roleRepository.findByName(RETAILER_ROLE)
-                    .orElseThrow(() -> new ResourceNotFoundException("RETAILER role is not configured"));
-            user.getRoles().add(role);
-            user = userRepository.save(user);
+            throw new UnauthorizedException("Account is not authorized for the Retailer portal");
         }
         Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
         String accessToken = jwtTokenProvider.generateToken(authentication);

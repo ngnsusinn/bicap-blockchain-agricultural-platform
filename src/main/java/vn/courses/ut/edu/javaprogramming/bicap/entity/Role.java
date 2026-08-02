@@ -1,6 +1,8 @@
 package vn.courses.ut.edu.javaprogramming.bicap.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 import java.util.Set;
 
 @Entity
@@ -16,6 +18,7 @@ public class Role {
     private String description;
 
     @ManyToMany(fetch = FetchType.EAGER)
+    @Fetch(FetchMode.SUBSELECT)
     @JoinTable(
         name = "role_permissions",
         joinColumns = @JoinColumn(name = "role_id"),

@@ -14,7 +14,8 @@ import java.util.Optional;
 @Repository
 public interface FarmRepository extends JpaRepository<Farm, Long> {
 
-    Optional<Farm> findByUserId(Long userId);
+    /** One user may own several farms — returns the list, never a single Optional (dedup trap). */
+    List<Farm> findByUserId(Long userId);
 
     Optional<Farm> findByName(String name);
 

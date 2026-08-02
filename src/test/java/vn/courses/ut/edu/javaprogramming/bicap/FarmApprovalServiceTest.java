@@ -299,10 +299,31 @@ public class FarmApprovalServiceTest {
                 .build();
         when(farmRepository.findById(103L)).thenReturn(Optional.of(rejectedFarm));
 
+        // A REJECTED farm may only resubmit to PENDING — APPROVED directly is blocked.
         FarmStatusUpdateRequest request = new FarmStatusUpdateRequest("APPROVED");
         assertThrows(BadRequestException.class,
                 () -> farmApprovalService.updateStatus(103L, request, "super@bicap.com"));
         verify(farmRepository, never()).save(any());
+    }
+
+    @Test
+    void updateStatus_rejectedToPending_shouldAllowResubmit() {
+        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
+        Farm rejectedFarm = Farm.builder()
+                .id(103L).userId(10L).name("Bị Từ Chối")
+                .address("Tiền Giang").area(15.0)
+                .status(FarmStatus.REJECTED)
+                .build();
+        when(farmRepository.findById(103L)).thenReturn(Optional.of(rejectedFarm));
+        when(userRepository.findById(10L)).thenReturn(Optional.of(farmOwner));
+        when(certificationRepository.findByFarmId(103L)).thenReturn(List.of());
+        when(farmRepository.save(any(Farm.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        FarmStatusUpdateRequest request = new FarmStatusUpdateRequest("PENDING");
+        FarmResponse result = farmApprovalService.updateStatus(103L, request, "super@bicap.com");
+
+        assertEquals(FarmStatus.PENDING, result.getStatus());
+        verify(notificationRepository).save(any(Notification.class));
     }
 
     @Test

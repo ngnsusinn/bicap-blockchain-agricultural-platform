@@ -3,6 +3,8 @@ package vn.courses.ut.edu.javaprogramming.bicap.common.security;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -14,7 +16,9 @@ import java.util.Date;
 @Component
 public class JwtTokenProvider {
 
-    @Value("${app.jwt.secret:defaultSecretKeyWhichShouldBeAtLeast32BytesLongForHS256Algorithm}")
+    private static final Logger log = LoggerFactory.getLogger(JwtTokenProvider.class);
+
+    @Value("${app.jwt.secret}")
     private String jwtSecret;
 
     @Value("${app.jwt.expiration-ms:86400000}")
@@ -67,13 +71,13 @@ public class JwtTokenProvider {
             Jwts.parser().verifyWith(key()).build().parseSignedClaims(authToken);
             return true;
         } catch (MalformedJwtException ex) {
-            System.out.println("Invalid JWT token");
+            log.warn("Invalid JWT token: {}", ex.getMessage());
         } catch (ExpiredJwtException ex) {
-            System.out.println("Expired JWT token");
+            log.warn("Expired JWT token: {}", ex.getMessage());
         } catch (UnsupportedJwtException ex) {
-            System.out.println("Unsupported JWT token");
+            log.warn("Unsupported JWT token: {}", ex.getMessage());
         } catch (IllegalArgumentException ex) {
-            System.out.println("JWT claims string is empty.");
+            log.warn("JWT claims string is empty: {}", ex.getMessage());
         }
         return false;
     }

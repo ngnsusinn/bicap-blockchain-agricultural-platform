@@ -8,7 +8,13 @@ export interface UserSession {
   email: string;
   fullName: string;
   role: 'FARM_MANAGER' | 'RETAILER' | 'ADMIN';
+  /** farmId của nông trại đầu tiên người dùng sở hữu (nếu là Farm Manager). */
+  farmId?: number;
 }
+
+/** Base URL của backend — dùng VITE_API_BASE_URL nếu được cấu hình. */
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080')
+  .replace(/\/api(?:\/.*)?$/, '') + '/api';
 
 /**
  * Lấy Authorization header từ JWT token.

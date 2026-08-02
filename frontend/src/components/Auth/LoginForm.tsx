@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_BASE_URL } from '../../utils/auth';
 
 interface LoginFormProps {
   role: 'FARM_MANAGER' | 'RETAILER';
@@ -39,9 +40,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onSuccess, onSwitchT
     setLoading(true);
 
     try {
-      const endpoint = role === 'FARM_MANAGER' 
-        ? 'http://localhost:8080/api/auth/farm/login'
-        : 'http://localhost:8080/api/auth/retailer/login';
+      const endpoint = role === 'FARM_MANAGER'
+        ? `${API_BASE_URL}/auth/farm/login`
+        : `${API_BASE_URL}/auth/retailer/login`;
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -68,19 +69,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onSuccess, onSwitchT
         setErrorMessage(errorData.message || 'Email, số điện thoại hoặc mật khẩu không chính xác.');
       }
     } catch (err) {
-      // Mock fallback cho môi trường dev khi backend offline
-      console.warn('Backend server unreachable, using dev fallback authentication');
-      setTimeout(() => {
-        onSuccess({
-          token: 'mock-jwt-token-dev-mode',
-          user: {
-            id: 1,
-            email: identifier.includes('@') ? identifier : 'user@bicap.com',
-            fullName: role === 'FARM_MANAGER' ? 'Chủ Trang Trại BICAP' : 'Nhà Bán Lẻ BICAP',
-            role: role,
-          },
-        });
-      }, 600);
+      // M-1: no mock/silent "success" on network failure — a real error must surface
+      // so an outage is never mistaken for a successful login.
+      console.warn('Backend server unreachable:', err);
+      setErrorMessage('Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend đang chạy.');
     } finally {
       setLoading(false);
     }
@@ -95,56 +87,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onSuccess, onSwitchT
         <p style={{ fontSize: '13px', color: 'var(--text-secondary, #cbd5e1)' }}>
           Truy cập tài khoản <strong style={{ color: role === 'FARM_MANAGER' ? '#10b981' : '#06b6d4' }}>{roleTitle}</strong> của bạn
         </p>
-      </div>
-
-      {/* Quick 1-Click Demo Login Box */}
-      <div style={{ marginBottom: '20px', padding: '14px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.12)' }}>
-        <div style={{ fontSize: '12px', color: '#e2e8f0', marginBottom: '10px', fontWeight: 600, textAlign: 'center' }}>
-          ⚡ DÙNG THỬ GIAO DIỆN TRỰC TIẾP (1-CLICK):
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-          <button
-            type="button"
-            onClick={() => onSuccess({
-              token: 'mock-jwt-farm-demo',
-              user: { id: 1, email: 'farm@bicap.com', fullName: 'Chủ Trang Trại BICAP', role: 'FARM_MANAGER' }
-            })}
-            style={{
-              padding: '10px',
-              borderRadius: '8px',
-              border: 'none',
-              background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: '13px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 10px rgba(16, 185, 129, 0.3)',
-            }}
-          >
-            🌾 UI Farm
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onSuccess({
-              token: 'mock-jwt-retailer-demo',
-              user: { id: 2, email: 'retailer@bicap.com', fullName: 'Nhà Bán Lẻ BICAP', role: 'RETAILER' }
-            })}
-            style={{
-              padding: '10px',
-              borderRadius: '8px',
-              border: 'none',
-              background: 'linear-gradient(135deg, #0284c7 0%, #06b6d4 100%)',
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: '13px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 10px rgba(6, 182, 212, 0.3)',
-            }}
-          >
-            🛒 UI Retailer
-          </button>
-        </div>
       </div>
 
       {/* Global Error Alert */}

@@ -238,52 +238,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               )}
             </div>
 
-            {/* 4. Quick Access Demo Buttons */}
-            <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px dashed rgba(255, 255, 255, 0.15)', textAlign: 'center' }}>
-              <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '12px', fontWeight: 600 }}>
-                ⚡ TRUY CẬP TRỰC TIẾP GIAO DIỆN (KHÔNG CẦN BẤM ĐĂNG NHẬP):
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => onLoginSuccess('demo-farm-token', { id: 1, email: 'farm@bicap.com', fullName: 'Chủ Trang Trại BICAP', role: 'FARM_MANAGER' })}
-                  style={{
-                    padding: '11px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid rgba(16, 185, 129, 0.4)',
-                    background: 'linear-gradient(135deg, rgba(5, 150, 105, 0.2) 0%, rgba(16, 185, 129, 0.3) 100%)',
-                    color: '#34d399',
-                    fontWeight: 700,
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)',
-                  }}
-                >
-                  🌾 Mở UI Farm Manager
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => onLoginSuccess('demo-retailer-token', { id: 2, email: 'retailer@bicap.com', fullName: 'Nhà Bán Lẻ BICAP', role: 'RETAILER' })}
-                  style={{
-                    padding: '11px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid rgba(6, 182, 212, 0.4)',
-                    background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.2) 0%, rgba(6, 182, 212, 0.3) 100%)',
-                    color: '#38bdf8',
-                    fontWeight: 700,
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 4px 12px rgba(6, 182, 212, 0.15)',
-                  }}
-                >
-                  🛒 Mở UI Retailer
-                </button>
-              </div>
-            </div>
-
           </div>
         </div>
 

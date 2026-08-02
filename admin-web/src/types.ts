@@ -42,7 +42,7 @@ export interface AdminUser {
   email: string;
   fullName: string;
   phone: string;
-  status: 'ACTIVE' | 'INACTIVE';
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   avatarUrl?: string;
   roles: RoleResponse[];
 }

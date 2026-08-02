@@ -77,7 +77,6 @@ class AuthServiceTest {
 
     @Test
     void registerRetailerCreatesActiveRetailerWithHashedPassword() {
-        when(userRepository.findByEmailIgnoreCase("retailer@example.com")).thenReturn(Optional.empty());
         when(userRepository.existsByPhone("0912345678")).thenReturn(false);
         when(roleRepository.findByName("RETAILER")).thenReturn(Optional.of(retailerRole));
         when(passwordEncoder.encode("Password@123")).thenReturn("$2a$hashed");
@@ -114,9 +113,9 @@ class AuthServiceTest {
 
     @Test
     void registerRetailerRejectsDuplicateEmail() {
-        User existingUser = User.builder().password("$2a$hashed").build();
-        when(userRepository.findByEmailIgnoreCase("retailer@example.com")).thenReturn(Optional.of(existingUser));
-        when(passwordEncoder.matches("Password@123", "$2a$hashed")).thenReturn(false);
+        // M-4: an existing email is rejected outright — the account is never mutated and
+        // no "matching password" side channel can leak account existence or grant roles.
+        when(userRepository.existsByEmailIgnoreCase("retailer@example.com")).thenReturn(true);
 
         assertThrows(ConflictException.class, () -> authService.registerRetailer(registerRequest));
 
@@ -125,7 +124,6 @@ class AuthServiceTest {
 
     @Test
     void registerRetailerRejectsDuplicatePhone() {
-        when(userRepository.findByEmailIgnoreCase("retailer@example.com")).thenReturn(Optional.empty());
         when(userRepository.existsByPhone("0912345678")).thenReturn(true);
 
         assertThrows(ConflictException.class, () -> authService.registerRetailer(registerRequest));
@@ -135,7 +133,6 @@ class AuthServiceTest {
 
     @Test
     void registerRetailerFailsWhenRetailerRoleIsMissing() {
-        when(userRepository.findByEmailIgnoreCase("retailer@example.com")).thenReturn(Optional.empty());
         when(userRepository.existsByPhone("0912345678")).thenReturn(false);
         when(roleRepository.findByName("RETAILER")).thenReturn(Optional.empty());
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getAuthHeaders } from '../utils/auth';
+import { getAuthHeaders, API_BASE_URL } from '../utils/auth';
 
 export interface PaymentData {
   subscriptionId: number;
@@ -16,8 +16,6 @@ export interface PaymentModalProps {
   paymentData: PaymentData | null;
   onSuccess?: () => void;
 }
-
-const API_BASE_URL = 'http://localhost:8080/api';
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentData, onSuccess }) => {
   const [status, setStatus] = useState<'PENDING' | 'ACTIVE' | 'FAILED'>('PENDING');
@@ -46,10 +44,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentDat
       setCopiedField(null);
       return;
     }
-    
+
+    // Stop polling once the payment resolves (ACTIVE or FAILED) — don't poll forever.
+    if (status !== 'PENDING') return;
+
     const interval = setInterval(checkStatus, 5000);
     return () => clearInterval(interval);
-  }, [isOpen, checkStatus]);
+  }, [isOpen, checkStatus, status]);
 
   useEffect(() => {
     if (status === 'ACTIVE') {

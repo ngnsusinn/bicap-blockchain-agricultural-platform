@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PaymentModal, { type PaymentData } from '../../components/PaymentModal';
-import { getAuthHeaders, isLoggedIn } from '../../utils/auth';
-
-const API_BASE_URL = 'http://localhost:8080/api';
+import { getAuthHeaders, isLoggedIn, getCurrentUser, API_BASE_URL } from '../../utils/auth';
 
 interface Package {
   id: number;
@@ -29,9 +27,28 @@ const ServicePackages: React.FC = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [subscribing, setSubscribing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  const farmId = 1;
+
+  // M-2: farmId is no longer hardcoded to 1 — it comes from the authenticated
+  // user's session (derived from their own farm/subscription data in App.tsx),
+  // or resolved from the /api/farms/my endpoint below.
+  const [farmId, setFarmId] = useState<number | undefined>(getCurrentUser()?.farmId);
+
+  const resolveFarmId = useCallback(async () => {
+    if (farmId) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/farms/my`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const farms = await res.json();
+        if (Array.isArray(farms) && farms.length > 0) {
+          setFarmId(farms[0].id);
+        }
+      }
+    } catch (e) {
+      // Non-fatal: the purchase button will surface a clear error if no farmId is known.
+    }
+  }, [farmId]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -41,14 +58,15 @@ const ServicePackages: React.FC = () => {
         setPackages(pkgData);
       }
 
-      const subRes = await fetch(`${API_BASE_URL}/subscriptions/farm/${farmId}`, {
+      // M-2: use the authenticated user's own subscriptions rather than a hardcoded farmId.
+      const subRes = await fetch(`${API_BASE_URL}/subscriptions/my`, {
         headers: getAuthHeaders(),
       });
       if (subRes.ok) {
         const subData = await subRes.json();
-        const activeSub = Array.isArray(subData) 
+        const activeSub = Array.isArray(subData)
           ? subData.find((s: Subscription) => s.status === 'ACTIVE')
-          : (subData.status === 'ACTIVE' ? subData : null);
+          : (subData && subData.status === 'ACTIVE' ? subData : null);
         setCurrentSubscription(activeSub || null);
       }
     } catch (err) {
@@ -56,11 +74,12 @@ const ServicePackages: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [farmId]);
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    resolveFarmId();
+  }, [fetchData, resolveFarmId]);
 
   const handleSubscribe = async (pkg: Package) => {
     if (!isLoggedIn()) {
@@ -68,6 +87,13 @@ const ServicePackages: React.FC = () => {
       setTimeout(() => setError(null), 3000);
       return;
     }
+    if (!farmId) {
+      setError('Không xác định được nông trại của bạn. Vui lòng đăng ký nông trại trước.');
+      setTimeout(() => setError(null), 4000);
+      return;
+    }
+    if (subscribing) return; // M-17: prevent double-click duplicate purchases.
+    setSubscribing(true);
     try {
       const res = await fetch(`${API_BASE_URL}/subscriptions/purchase`, {
         method: 'POST',
@@ -79,12 +105,15 @@ const ServicePackages: React.FC = () => {
         setPaymentData(data);
         setIsPaymentModalOpen(true);
       } else {
-        setError('Failed to initiate purchase');
+        const errData = await res.json().catch(() => ({}));
+        setError(errData.message || 'Failed to initiate purchase');
         setTimeout(() => setError(null), 3000);
       }
     } catch (err) {
       setError('Network error');
       setTimeout(() => setError(null), 3000);
+    } finally {
+      setSubscribing(false);
     }
   };
 
@@ -282,8 +311,13 @@ const ServicePackages: React.FC = () => {
                       Current Plan
                     </div>
                   ) : (
-                    <button className="subscribe-btn" onClick={() => handleSubscribe(pkg)}>
-                      Subscribe Now
+                    <button
+                      className="subscribe-btn"
+                      onClick={() => handleSubscribe(pkg)}
+                      disabled={subscribing}
+                      style={{ opacity: subscribing ? 0.6 : 1, cursor: subscribing ? 'not-allowed' : 'pointer' }}
+                    >
+                      {subscribing ? 'Đang xử lý...' : 'Subscribe Now'}
                     </button>
                   )}
                 </div>
