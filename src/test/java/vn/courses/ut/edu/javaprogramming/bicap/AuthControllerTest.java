@@ -154,6 +154,56 @@ class AuthControllerTest {
     }
 
     @Test
+    void retailerRegisterReturnsCreated() throws Exception {
+        RegisterRequest request = new RegisterRequest(
+                "Retailer User",
+                "retailer@example.com",
+                "0912345678",
+                "Password@123",
+                "Password@123"
+        );
+        when(authService.registerRetailer(any(RegisterRequest.class))).thenReturn(authResponse());
+
+        mockMvc.perform(post("/api/auth/retailer/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userId").value(10))
+                .andExpect(jsonPath("$.roles[0]").value("RETAILER"));
+
+        verify(authService).registerRetailer(any(RegisterRequest.class));
+    }
+
+    @Test
+    void retailerEmailVerificationReturnsOk() throws Exception {
+        mockMvc.perform(post("/api/auth/retailer/verify-email")
+                        .param("token", "verification-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Email verified successfully"));
+
+        verify(authService).verifyRetailerEmail("verification-token");
+    }
+
+    @Test
+    void retailerRefreshReturnsRotatedTokens() throws Exception {
+        AuthResponse refreshed = new AuthResponse(
+                "new-access-token", "new-refresh-token", "Bearer", 10L,
+                "retailer@example.com", "0912345678", "Retailer User",
+                Set.of("RETAILER"), false
+        );
+        when(authService.refreshRetailerToken("refresh-token")).thenReturn(refreshed);
+
+        mockMvc.perform(post("/api/auth/retailer/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"refresh-token\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("new-access-token"))
+                .andExpect(jsonPath("$.refreshToken").value("new-refresh-token"));
+
+        verify(authService).refreshRetailerToken("refresh-token");
+    }
+
+    @Test
     void adminLoginReturnsOk() throws Exception {
         LoginRequest request = new LoginRequest("admin@bicap.com", "Password@123");
         AuthResponse adminResponse = new AuthResponse("admin-token", "Bearer", 1L, "admin@bicap.com", "0900000000", "System Admin", Set.of("ADMIN"));

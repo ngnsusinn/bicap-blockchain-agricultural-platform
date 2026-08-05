@@ -18,6 +18,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
     boolean existsByEmailIgnoreCase(String email);
     boolean existsByPhone(String phone);
+    boolean existsByPhoneAndIdNot(String phone, Long id);
 
     /**
      * Search term is matched literally: callers must escape {@code !}, {@code %} and

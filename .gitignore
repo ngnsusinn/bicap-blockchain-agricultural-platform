@@ -82,3 +82,6 @@ typechain-types/
 coverage/
 coverage.json
 .openzeppelin/
+
+# Runtime uploads (BICAP-37/38)
+uploads/
