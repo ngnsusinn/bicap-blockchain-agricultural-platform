@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL, getAuthHeaders, getCurrentUser } from '../utils/auth';
 
 interface Notification {
