@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.Map;
 
 @Component
 public class JwtTokenProvider {
@@ -23,6 +24,15 @@ public class JwtTokenProvider {
 
     @Value("${app.jwt.expiration-ms:86400000}")
     private int jwtExpirationMs;
+
+    @Value("${app.jwt.retailer-access-expiration-ms:900000}")
+    private long retailerAccessExpirationMs;
+
+    @Value("${app.jwt.refresh-expiration-ms:604800000}")
+    private long refreshExpirationMs;
+
+    @Value("${app.jwt.verification-expiration-ms:86400000}")
+    private long verificationExpirationMs;
 
     private SecretKey key() {
         byte[] keyBytes;
@@ -45,16 +55,46 @@ public class JwtTokenProvider {
 
     public String generateToken(Authentication authentication) {
         UserDetails userPrincipal = (UserDetails) authentication.getPrincipal();
+        return generateTypedToken(userPrincipal.getUsername(), "access", jwtExpirationMs);
+    }
 
+    public String generateRetailerAccessToken(UserDetails userPrincipal) {
+        return generateTypedToken(userPrincipal.getUsername(), "access", retailerAccessExpirationMs);
+    }
+
+    public String generateRefreshToken(UserDetails userPrincipal) {
+        return generateTypedToken(userPrincipal.getUsername(), "refresh", refreshExpirationMs);
+    }
+
+    public String generateEmailVerificationToken(UserDetails userPrincipal) {
+        return generateTypedToken(userPrincipal.getUsername(), "email_verification", verificationExpirationMs);
+    }
+
+    private String generateTypedToken(String subject, String type, long expirationMs) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
+        Date expiryDate = new Date(now.getTime() + expirationMs);
 
         return Jwts.builder()
-                .subject(userPrincipal.getUsername())
-                .issuedAt(new Date())
+                .subject(subject)
+                .claims(Map.of("type", type))
+                .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(key())
                 .compact();
+    }
+
+    public boolean isTokenType(String token, String expectedType) {
+        try {
+            String type = Jwts.parser()
+                    .verifyWith(key())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .get("type", String.class);
+            return expectedType.equals(type);
+        } catch (JwtException | IllegalArgumentException exception) {
+            return false;
+        }
     }
 
     public String getUsernameFromJWT(String token) {
@@ -68,8 +108,16 @@ public class JwtTokenProvider {
 
     public boolean validateToken(String authToken) {
         try {
-            Jwts.parser().verifyWith(key()).build().parseSignedClaims(authToken);
-            return true;
+            String type = Jwts.parser()
+                    .verifyWith(key())
+                    .build()
+                    .parseSignedClaims(authToken)
+                    .getPayload()
+                    .get("type", String.class);
+            // Tokens issued before typed JWTs were introduced have no type claim.
+            // Keep those existing sessions valid while rejecting typed refresh/
+            // verification tokens at the authentication filter.
+            return type == null || "access".equals(type);
         } catch (MalformedJwtException ex) {
             log.warn("Invalid JWT token: {}", ex.getMessage());
         } catch (ExpiredJwtException ex) {

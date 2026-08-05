@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { API_BASE_URL } from '../../utils/auth';
 import LoginForm from '../../components/Auth/LoginForm';
 import RegisterForm from '../../components/Auth/RegisterForm';
 
 interface AuthPageProps {
-  onLoginSuccess: (token: string, user: any) => void;
+  onLoginSuccess: (token: string, user: any, refreshToken?: string) => void;
   defaultRole?: 'FARM_MANAGER' | 'RETAILER';
   defaultMode?: 'login' | 'register';
 }
@@ -15,20 +16,42 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 }) => {
   const [role, setRole] = useState<'FARM_MANAGER' | 'RETAILER'>(defaultRole);
   const [mode, setMode] = useState<'login' | 'register'>(defaultMode);
+  const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error' | null>(null);
 
   const isFarm = role === 'FARM_MANAGER';
 
-  const handleSuccess = (data: { token?: string; user?: any; pendingVerification?: boolean }) => {
+  const handleSuccess = (data: { token?: string; refreshToken?: string; user?: any; pendingVerification?: boolean }) => {
     if (data.token && data.user) {
-      onLoginSuccess(data.token, data.user);
+      onLoginSuccess(data.token, data.user, data.refreshToken);
     } else {
       // Chuyển sang login sau khi đăng ký thành công nếu chưa trả về token ngay
       setMode('login');
     }
   };
 
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('verifyToken');
+    if (!token) return;
+    setRole('RETAILER');
+    setMode('login');
+    setVerificationStatus('loading');
+    fetch(`${API_BASE_URL}/auth/retailer/verify-email?token=${encodeURIComponent(token)}`, {
+      method: 'POST',
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error('Verification failed');
+        setVerificationStatus('success');
+        sessionStorage.setItem('retailerProfileRequired', '1');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      })
+      .catch(() => setVerificationStatus('error'));
+  }, []);
+
   return (
-    <div className="auth-page-wrapper" style={pageWrapperStyle}>
+    <div
+      className={`auth-page-wrapper ${isFarm ? 'auth-page-wrapper--farm' : 'auth-page-wrapper--retailer'}`}
+      style={pageWrapperStyle}
+    >
       {/* Background Glow Overlay */}
       <div
         style={{
@@ -48,7 +71,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
       <div style={containerStyle}>
         {/* Left Side: Brand Showcase & Slogan */}
-        <div style={leftPanelStyle} className="hide-mobile">
+        <div style={leftPanelStyle} className="auth-showcase hide-mobile">
           <div style={logoBadgeStyle}>
             <div style={logoIconStyle}>B</div>
             <span style={logoTextStyle}>BICAP Platform</span>
@@ -72,10 +95,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               </div>
             </div>
 
-            <div style={featureItemStyle}>
-              <span style={featureIconStyle}>🛒</span>
+            <div
+              style={featureItemStyle}
+              className={!isFarm ? 'auth-feature auth-feature--retailer-active' : 'auth-feature'}
+            >
+              <span style={featureIconStyle} className="auth-feature__icon" aria-hidden="true">🛒</span>
               <div>
-                <strong style={{ color: '#fff', fontSize: '14px', display: 'block' }}>Dành cho Nhà Bán Lẻ (BICAP-36)</strong>
+                <strong style={{ color: '#fff', fontSize: '14px', display: 'block' }}>Dành cho Nhà Bán Lẻ</strong>
                 <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>Tìm kiếm nguồn hàng nông sản sạch, đặt đơn hàng lớn & theo dõi tiến trình vận chuyển.</span>
               </div>
             </div>
@@ -91,8 +117,22 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         </div>
 
         {/* Right Side: Auth Card Container */}
-        <div style={rightPanelStyle}>
-          <div className="auth-card glass-panel" style={cardStyle}>
+        <div style={rightPanelStyle} className="auth-panel">
+          <div
+            className={`auth-card glass-panel ${!isFarm ? 'auth-card--retailer' : ''}`}
+            style={cardStyle}
+          >
+            {verificationStatus && (
+              <div
+                role={verificationStatus === 'error' ? 'alert' : 'status'}
+                aria-live="polite"
+                className={`retailer-verification retailer-verification--${verificationStatus}`}
+              >
+                {verificationStatus === 'loading' && 'Đang xác nhận địa chỉ email...'}
+                {verificationStatus === 'success' && 'Email đã được xác nhận. Bạn có thể đăng nhập ngay.'}
+                {verificationStatus === 'error' && 'Liên kết xác nhận không hợp lệ hoặc đã hết hạn.'}
+              </div>
+            )}
             
             {/* 1. Role Selector Tablist (BICAP-7 vs BICAP-36) */}
             <div
@@ -139,6 +179,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               <button
                 id="tab-retailer"
                 role="tab"
+                className="auth-role-tab auth-role-tab--retailer"
                 aria-selected={!isFarm}
                 aria-controls="auth-form-panel"
                 onClick={() => setRole('RETAILER')}
@@ -162,7 +203,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               >
                 <span>🛒</span>
                 <span>Retailer</span>
-                <span style={{ fontSize: '10px', opacity: 0.7 }}>(BICAP-36)</span>
               </button>
             </div>
 

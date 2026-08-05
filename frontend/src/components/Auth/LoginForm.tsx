@@ -3,7 +3,7 @@ import { API_BASE_URL } from '../../utils/auth';
 
 interface LoginFormProps {
   role: 'FARM_MANAGER' | 'RETAILER';
-  onSuccess: (data: { token: string; user: any }) => void;
+  onSuccess: (data: { token: string; refreshToken?: string; user: any }) => void;
   onSwitchToRegister: () => void;
 }
 
@@ -57,8 +57,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onSuccess, onSwitchT
         const data = await response.json();
         onSuccess({
           token: data.accessToken || data.token,
+          refreshToken: data.refreshToken,
           user: {
-            id: data.id || 1,
+            id: data.userId ?? data.id ?? 1,
             email: data.email || identifier,
             fullName: data.fullName || (role === 'FARM_MANAGER' ? 'Trần Văn Nông' : 'Nguyễn Thị Bán Lẻ'),
             role: role,

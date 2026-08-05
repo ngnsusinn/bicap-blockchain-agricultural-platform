@@ -26,6 +26,8 @@ import vn.courses.ut.edu.javaprogramming.bicap.exception.UnauthorizedException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.RoleRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.service.AuthService;
+import vn.courses.ut.edu.javaprogramming.bicap.service.VerificationEmailService;
+import vn.courses.ut.edu.javaprogramming.bicap.service.LoginAttemptService;
 
 import java.util.Optional;
 import java.util.Set;
@@ -37,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,6 +55,10 @@ class AuthServiceTest {
     private AuthenticationManager authenticationManager;
     @Mock
     private JwtTokenProvider jwtTokenProvider;
+    @Mock
+    private VerificationEmailService verificationEmailService;
+    @Mock
+    private LoginAttemptService loginAttemptService;
 
     @InjectMocks
     private AuthService authService;
@@ -76,7 +83,7 @@ class AuthServiceTest {
     }
 
     @Test
-    void registerRetailerCreatesActiveRetailerWithHashedPassword() {
+    void registerRetailerCreatesPendingRetailerAndSendsVerificationEmail() {
         when(userRepository.existsByPhone("0912345678")).thenReturn(false);
         when(roleRepository.findByName("RETAILER")).thenReturn(Optional.of(retailerRole));
         when(passwordEncoder.encode("Password@123")).thenReturn("$2a$hashed");
@@ -85,7 +92,7 @@ class AuthServiceTest {
             user.setId(10L);
             return user;
         });
-        when(jwtTokenProvider.generateToken(any(Authentication.class))).thenReturn("access-token");
+        when(jwtTokenProvider.generateEmailVerificationToken(any(User.class))).thenReturn("verification-token");
 
         AuthResponse response = authService.registerRetailer(registerRequest);
 
@@ -96,10 +103,12 @@ class AuthServiceTest {
         assertEquals("retailer@example.com", savedUser.getEmail());
         assertEquals("$2a$hashed", savedUser.getPassword());
         assertNotEquals(registerRequest.getPassword(), savedUser.getPassword());
-        assertEquals(UserStatus.ACTIVE, savedUser.getStatus());
+        assertEquals(UserStatus.PENDING_VERIFICATION, savedUser.getStatus());
         assertTrue(savedUser.getRoles().stream().anyMatch(role -> "RETAILER".equals(role.getName())));
-        assertEquals("access-token", response.getAccessToken());
+        assertEquals(null, response.getAccessToken());
+        assertTrue(response.isVerificationRequired());
         assertTrue(response.getRoles().contains("RETAILER"));
+        verify(verificationEmailService).sendRetailerVerification("retailer@example.com", "verification-token");
     }
 
     @Test
@@ -160,17 +169,132 @@ class AuthServiceTest {
         assertThrows(UnauthorizedException.class, () -> authService.login(request));
     }
 
-    private void assertSuccessfulLogin(String identifier) {
-        LoginRequest request = new LoginRequest(identifier, "Password@123");
-        User retailer = User.builder()
+    @Test
+    void loginRetailerAcceptsRetailerAccount() {
+        User retailer = retailerUser(Set.of(retailerRole));
+        Authentication authenticated = new UsernamePasswordAuthenticationToken(
+                retailer,
+                null,
+                retailer.getAuthorities()
+        );
+        when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
+        when(jwtTokenProvider.generateRetailerAccessToken(any(User.class))).thenReturn("access-token");
+        when(jwtTokenProvider.generateRefreshToken(any(User.class))).thenReturn("refresh-token");
+
+        AuthResponse response = authService.loginRetailer(
+                new LoginRequest("retailer@example.com", "Password@123")
+        );
+
+        assertEquals(10L, response.getUserId());
+        assertEquals("refresh-token", response.getRefreshToken());
+        assertTrue(response.getRoles().contains("RETAILER"));
+    }
+
+    @Test
+    void loginRetailerRejectsAccountWithoutRetailerRole() {
+        Role farmRole = Role.builder()
+                .id(9L)
+                .name("FARM_MANAGER")
+                .permissions(Set.of())
+                .build();
+        User farmManager = retailerUser(Set.of(farmRole));
+        Authentication authenticated = new UsernamePasswordAuthenticationToken(
+                farmManager,
+                null,
+                farmManager.getAuthorities()
+        );
+        when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
+
+        assertThrows(
+                UnauthorizedException.class,
+                () -> authService.loginRetailer(
+                        new LoginRequest("retailer@example.com", "Password@123")
+                )
+        );
+    }
+
+    @Test
+    void loginRetailerReportsSuspendedAccount() {
+        User suspended = retailerUser(Set.of(retailerRole));
+        suspended.setStatus(UserStatus.SUSPENDED);
+        when(userRepository.findByEmailIgnoreCaseOrPhone(
+                "retailer@example.com", "retailer@example.com"))
+                .thenReturn(Optional.of(suspended));
+
+        UnauthorizedException error = assertThrows(
+                UnauthorizedException.class,
+                () -> authService.loginRetailer(
+                        new LoginRequest("retailer@example.com", "Password@123"))
+        );
+
+        assertEquals("Account has been suspended", error.getMessage());
+        verifyNoInteractions(authenticationManager);
+    }
+
+    @Test
+    void fifthFailedLoginLocksAccountForThirtyMinutes() {
+        User account = retailerUser(Set.of(retailerRole));
+        account.setFailedLoginAttempts(4);
+        when(userRepository.findByEmailIgnoreCaseOrPhone(
+                "retailer@example.com", "retailer@example.com"))
+                .thenReturn(Optional.of(account));
+        when(authenticationManager.authenticate(any(Authentication.class)))
+                .thenThrow(new BadCredentialsException("Bad credentials"));
+
+        UnauthorizedException error = assertThrows(
+                UnauthorizedException.class,
+                () -> authService.loginRetailer(
+                        new LoginRequest("retailer@example.com", "WrongPassword@123"))
+        );
+
+        assertEquals("Account is temporarily locked for 30 minutes", error.getMessage());
+        verify(loginAttemptService).recordFailure(10L);
+    }
+
+    @Test
+    void verifyRetailerEmailActivatesPendingAccount() {
+        User retailer = retailerUser(Set.of(retailerRole));
+        retailer.setStatus(UserStatus.PENDING_VERIFICATION);
+        when(jwtTokenProvider.isTokenType("verification-token", "email_verification")).thenReturn(true);
+        when(jwtTokenProvider.getUsernameFromJWT("verification-token")).thenReturn("retailer@example.com");
+        when(userRepository.findByEmailIgnoreCase("retailer@example.com")).thenReturn(Optional.of(retailer));
+
+        authService.verifyRetailerEmail("verification-token");
+
+        assertEquals(UserStatus.ACTIVE, retailer.getStatus());
+        verify(userRepository).save(retailer);
+    }
+
+    @Test
+    void refreshRetailerTokenRotatesTokens() {
+        User retailer = retailerUser(Set.of(retailerRole));
+        when(jwtTokenProvider.isTokenType("refresh-token", "refresh")).thenReturn(true);
+        when(jwtTokenProvider.getUsernameFromJWT("refresh-token")).thenReturn("retailer@example.com");
+        when(userRepository.findByEmailIgnoreCase("retailer@example.com")).thenReturn(Optional.of(retailer));
+        when(jwtTokenProvider.generateRetailerAccessToken(retailer)).thenReturn("new-access-token");
+        when(jwtTokenProvider.generateRefreshToken(retailer)).thenReturn("new-refresh-token");
+
+        AuthResponse response = authService.refreshRetailerToken("refresh-token");
+
+        assertEquals("new-access-token", response.getAccessToken());
+        assertEquals("new-refresh-token", response.getRefreshToken());
+    }
+
+    private User retailerUser(Set<Role> roles) {
+        return User.builder()
                 .id(10L)
                 .email("retailer@example.com")
                 .phone("0912345678")
                 .fullName("Retailer User")
                 .password("$2a$hashed")
                 .status(UserStatus.ACTIVE)
-                .roles(Set.of(retailerRole))
+                .roles(roles)
                 .build();
+    }
+
+    private void assertSuccessfulLogin(String identifier) {
+        LoginRequest request = new LoginRequest(identifier, "Password@123");
+        User retailer = retailerUser(Set.of(retailerRole));
         Authentication authenticated = new UsernamePasswordAuthenticationToken(
                 retailer,
                 null,
