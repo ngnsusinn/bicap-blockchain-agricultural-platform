@@ -41,7 +41,6 @@ export default function ProfilePage({ onUserUpdated }: ProfilePageProps) {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [isCustomAvatar, setIsCustomAvatar] = useState(false);
 
   // Sample avatar presets for quick selection
   const avatarPresets = [

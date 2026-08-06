@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAuthHeaders, isLoggedIn, getCurrentUser, saveSession, logout, API_BASE_URL } from './utils/auth';
+import type { UserSession } from './utils/auth';
 import ServicePackages from './pages/FarmManager/ServicePackages';
 import AuthPage from './pages/Auth/AuthPage';
 import ProfilePage from './pages/FarmManager/ProfilePage';
