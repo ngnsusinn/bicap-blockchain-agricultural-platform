@@ -5,6 +5,8 @@ import ServicePackages from './pages/FarmManager/ServicePackages';
 import AuthPage from './pages/Auth/AuthPage';
 import RetailerProfilePage from './pages/Retailer/RetailerProfilePage';
 import RetailerBusinessPage from './pages/Retailer/RetailerBusinessPage';
+import NotificationBell from './components/NotificationBell';
+import IotDashboard from './pages/FarmManager/IotDashboard';
 
 /* ── Sidebar Component (Dành cho Farm Manager - BICAP-7) ── */
 interface SidebarProps {
@@ -248,6 +250,7 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <NotificationBell />
             <span style={{ fontSize: '13px', color: '#cbd5e1' }}>
               Xin chào, <strong>{user?.fullName}</strong> <span style={roleBadgeFarmStyle}>Farm Manager</span>
             </span>
@@ -294,15 +297,7 @@ export default function App() {
             </div>
           )}
 
-          {currentTab === 'iot' && (
-            <div>
-              <h1 className="dashboard-title">Giám Sát Cảm Biến IoT</h1>
-              <div className="glass-panel" style={{ padding: '48px', textAlign: 'center' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌡️</div>
-                <h2 style={{ color: '#fff', fontSize: '22px', fontWeight: 700 }}>Theo Dõi Dữ Liệu Nhiệt Độ, Độ Ẩm & pH Realtime</h2>
-              </div>
-            </div>
-          )}
+          {currentTab === 'iot' && <IotDashboard />}
         </main>
       </div>
     </div>
