@@ -46,6 +46,9 @@ public class User implements UserDetails {
     @Column(name = "locked_until")
     private LocalDateTime lockedUntil;
 
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @Fetch(FetchMode.SUBSELECT)
     @JoinTable(
@@ -55,11 +58,18 @@ public class User implements UserDetails {
     )
     private Set<Role> roles;
 
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = java.time.LocalDateTime.now();
+        }
+    }
+
     public User() {}
 
     public User(Long id, String email, String password, String fullName, String phone, UserStatus status,
                 String avatarUrl, String address, int failedLoginAttempts, LocalDateTime lockedUntil,
-                Set<Role> roles) {
+                Set<Role> roles, LocalDateTime createdAt) {
         this.id = id;
         this.email = email;
         this.password = password;
@@ -71,6 +81,7 @@ public class User implements UserDetails {
         this.failedLoginAttempts = failedLoginAttempts;
         this.lockedUntil = lockedUntil;
         this.roles = roles;
+        this.createdAt = createdAt;
     }
 
     public Long getId() {
@@ -135,6 +146,8 @@ public class User implements UserDetails {
     public void setFailedLoginAttempts(int failedLoginAttempts) { this.failedLoginAttempts = failedLoginAttempts; }
     public LocalDateTime getLockedUntil() { return lockedUntil; }
     public void setLockedUntil(LocalDateTime lockedUntil) { this.lockedUntil = lockedUntil; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
     public Set<Role> getRoles() {
         return roles;
@@ -201,6 +214,7 @@ public class User implements UserDetails {
         private int failedLoginAttempts;
         private LocalDateTime lockedUntil;
         private Set<Role> roles;
+        private LocalDateTime createdAt;
 
         UserBuilder() {}
 
@@ -259,9 +273,14 @@ public class User implements UserDetails {
             return this;
         }
 
+        public UserBuilder createdAt(LocalDateTime createdAt) {
+            this.createdAt = createdAt;
+            return this;
+        }
+
         public User build() {
             return new User(id, email, password, fullName, phone, status, avatarUrl,
-                    address, failedLoginAttempts, lockedUntil, roles);
+                    address, failedLoginAttempts, lockedUntil, roles, createdAt);
         }
     }
 }

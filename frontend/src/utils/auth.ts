@@ -8,6 +8,11 @@ export interface UserSession {
   email: string;
   fullName: string;
   role: 'FARM_MANAGER' | 'RETAILER' | 'ADMIN';
+  phone?: string;
+  address?: string;
+  avatarUrl?: string;
+  status?: string;
+  createdAt?: string;
   /** farmId của nông trại đầu tiên người dùng sở hữu (nếu là Farm Manager). */
   farmId?: number;
 }
