@@ -3,6 +3,7 @@ import { getAuthHeaders, isLoggedIn, getCurrentUser, saveSession, logout, API_BA
 import type { UserSession } from './utils/auth';
 import ServicePackages from './pages/FarmManager/ServicePackages';
 import AuthPage from './pages/Auth/AuthPage';
+import ProfilePage from './pages/FarmManager/ProfilePage';
 import RetailerProfilePage from './pages/Retailer/RetailerProfilePage';
 import RetailerBusinessPage from './pages/Retailer/RetailerBusinessPage';
 import NotificationBell from './components/NotificationBell';
@@ -317,7 +318,7 @@ export default function App() {
         </header>
 
         <main className="main-content animate-fade-in" style={{ marginTop: '60px' }}>
-          {currentTab === 'profile' && <ProfilePage onUserUpdated={(updated) => setUser(updated)} />}
+          {currentTab === 'profile' && <ProfilePage onUserUpdated={(updated: UserSession) => setUser(updated)} />}
           {currentTab === 'packages' && <ServicePackages />}
 
           {currentTab === 'dashboard' && (
