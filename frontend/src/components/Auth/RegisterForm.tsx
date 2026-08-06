@@ -87,17 +87,20 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess, onS
 
       if (response.ok) {
         const data = await response.json();
-        setSuccessMessage('Đăng ký tài khoản thành công! Mã xác thực đã được gửi tới email của bạn.');
+        if (data.verificationRequired) {
+          setSuccessMessage('Đăng ký thành công! Vui lòng kiểm tra email và mở liên kết xác nhận trước khi đăng nhập.');
+          return;
+        }
+        setSuccessMessage('Đăng ký tài khoản thành công! Đang chuyển đến cổng thông tin của bạn.');
         setTimeout(() => {
           onSuccess({
             token: data.accessToken || data.token,
             user: {
-              id: data.id || Date.now(),
+              id: data.userId ?? data.id ?? Date.now(),
               email: data.email || email,
               fullName: data.fullName || fullName,
               role,
             },
-            pendingVerification: true,
           });
         }, 1500);
       } else {

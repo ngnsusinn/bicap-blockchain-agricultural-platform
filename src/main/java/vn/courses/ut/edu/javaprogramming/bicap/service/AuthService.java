@@ -36,31 +36,41 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
+    private final VerificationEmailService verificationEmailService;
+    private final LoginAttemptService loginAttemptService;
 
     public AuthService(
             UserRepository userRepository,
             RoleRepository roleRepository,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
-            JwtTokenProvider jwtTokenProvider) {
+            JwtTokenProvider jwtTokenProvider,
+            VerificationEmailService verificationEmailService,
+            LoginAttemptService loginAttemptService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.verificationEmailService = verificationEmailService;
+        this.loginAttemptService = loginAttemptService;
     }
 
     public AuthResponse registerRetailer(RegisterRequest request) {
-        return registerUserWithRole(request, RETAILER_ROLE);
+        User user = createUserWithRole(request, RETAILER_ROLE, UserStatus.PENDING_VERIFICATION);
+        String verificationToken = jwtTokenProvider.generateEmailVerificationToken(user);
+        verificationEmailService.sendRetailerVerification(user.getEmail(), verificationToken);
+        return AuthResponse.pendingVerification(user);
     }
 
     public AuthResponse registerFarmManager(RegisterRequest request) {
         // H-7: the FARM role fallback was dead code (FARM is never seeded) and silently
         // hid misconfiguration. Resolve the intended role explicitly and fail fast.
-        return registerUserWithRole(request, FARM_MANAGER_ROLE);
+        User user = createUserWithRole(request, FARM_MANAGER_ROLE, UserStatus.ACTIVE);
+        return issueStandardTokens(user);
     }
 
-    private AuthResponse registerUserWithRole(RegisterRequest request, String roleName) {
+    private User createUserWithRole(RegisterRequest request, String roleName, UserStatus status) {
         String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
         String phone = request.getPhone().trim();
 
@@ -87,11 +97,14 @@ public class AuthService {
                 .phone(phone)
                 .fullName(request.getFullName().trim())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .status(UserStatus.ACTIVE)
+                .status(status)
                 .roles(Set.of(role))
                 .build();
 
-        User savedUser = userRepository.save(user);
+        return userRepository.save(user);
+    }
+
+    private AuthResponse issueStandardTokens(User savedUser) {
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 savedUser,
                 null,
@@ -131,9 +144,48 @@ public class AuthService {
         if (!isRetailer) {
             throw new UnauthorizedException("Account is not authorized for the Retailer portal");
         }
-        Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-        String accessToken = jwtTokenProvider.generateToken(authentication);
-        return AuthResponse.fromUser(accessToken, user);
+        String accessToken = jwtTokenProvider.generateRetailerAccessToken(user);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user);
+        return AuthResponse.fromUser(accessToken, refreshToken, user);
+    }
+
+    public void verifyRetailerEmail(String token) {
+        if (!jwtTokenProvider.isTokenType(token, "email_verification")) {
+            throw new BadRequestException("Verification token is invalid or expired");
+        }
+        String email = jwtTokenProvider.getUsernameFromJWT(token);
+        User user = userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Retailer account was not found"));
+        boolean isRetailer = user.getRoles().stream()
+                .anyMatch(role -> RETAILER_ROLE.equalsIgnoreCase(role.getName()));
+        if (!isRetailer) {
+            throw new BadRequestException("Verification token is not for a Retailer account");
+        }
+        if (user.getStatus() == UserStatus.ACTIVE) {
+            return;
+        }
+        if (user.getStatus() != UserStatus.PENDING_VERIFICATION) {
+            throw new BadRequestException("Retailer account cannot be verified");
+        }
+        user.setStatus(UserStatus.ACTIVE);
+        userRepository.save(user);
+    }
+
+    public AuthResponse refreshRetailerToken(String refreshToken) {
+        if (!jwtTokenProvider.isTokenType(refreshToken, "refresh")) {
+            throw new UnauthorizedException("Refresh token is invalid or expired");
+        }
+        String email = jwtTokenProvider.getUsernameFromJWT(refreshToken);
+        User user = userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new UnauthorizedException("Retailer account was not found"));
+        boolean isRetailer = user.getRoles().stream()
+                .anyMatch(role -> RETAILER_ROLE.equalsIgnoreCase(role.getName()));
+        if (!isRetailer || user.getStatus() != UserStatus.ACTIVE) {
+            throw new UnauthorizedException("Account is not authorized for the Retailer portal");
+        }
+        String accessToken = jwtTokenProvider.generateRetailerAccessToken(user);
+        String rotatedRefreshToken = jwtTokenProvider.generateRefreshToken(user);
+        return AuthResponse.fromUser(accessToken, rotatedRefreshToken, user);
     }
 
     @Transactional(readOnly = true)
@@ -151,27 +203,46 @@ public class AuthService {
 
     private User authenticateUser(LoginRequest request) {
         String identifier = request.getIdentifier().trim();
+        User account = userRepository.findByEmailIgnoreCaseOrPhone(identifier, identifier).orElse(null);
+        if (account != null) {
+            if (account.getStatus() == UserStatus.SUSPENDED) {
+                throw new UnauthorizedException("Account has been suspended");
+            }
+            if (account.getStatus() == UserStatus.PENDING_VERIFICATION) {
+                throw new UnauthorizedException("Account email has not been verified");
+            }
+            if (account.getLockedUntil() != null
+                    && account.getLockedUntil().isAfter(java.time.LocalDateTime.now())) {
+                throw new UnauthorizedException("Account is temporarily locked for 30 minutes");
+            }
+            if (account.getLockedUntil() != null) {
+                loginAttemptService.recordSuccess(account.getId());
+            }
+        }
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(identifier, request.getPassword())
             );
-            return (User) authentication.getPrincipal();
+            User authenticatedUser = (User) authentication.getPrincipal();
+            loginAttemptService.recordSuccess(authenticatedUser.getId());
+            return authenticatedUser;
         } catch (AuthenticationException exception) {
+            if (account != null) {
+                boolean lockTriggered = account.getFailedLoginAttempts() >= 4;
+                loginAttemptService.recordFailure(account.getId());
+                if (lockTriggered) {
+                    throw new UnauthorizedException("Account is temporarily locked for 30 minutes");
+                }
+            }
             throw new UnauthorizedException("Email, phone number, or password is incorrect");
         }
     }
 
     private AuthResponse authenticateAndBuildResponse(LoginRequest request) {
-        String identifier = request.getIdentifier().trim();
-        try {
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(identifier, request.getPassword())
-            );
-            User user = (User) authentication.getPrincipal();
-            String accessToken = jwtTokenProvider.generateToken(authentication);
-            return AuthResponse.fromUser(accessToken, user);
-        } catch (AuthenticationException exception) {
-            throw new UnauthorizedException("Email, phone number, or password is incorrect");
-        }
+        User user = authenticateUser(request);
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                user, null, user.getAuthorities());
+        String accessToken = jwtTokenProvider.generateToken(authentication);
+        return AuthResponse.fromUser(accessToken, user);
     }
 }

@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
@@ -36,11 +37,14 @@ public class User implements UserDetails {
     @Column(name = "avatar_url")
     private String avatarUrl;
 
-    @Column(name = "address")
+    @Column(length = 500)
     private String address;
 
-    @Column(name = "created_at", updatable = false)
-    private java.time.LocalDateTime createdAt;
+    @Column(name = "failed_login_attempts", nullable = false)
+    private int failedLoginAttempts;
+
+    @Column(name = "locked_until")
+    private LocalDateTime lockedUntil;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @Fetch(FetchMode.SUBSELECT)
@@ -60,7 +64,9 @@ public class User implements UserDetails {
 
     public User() {}
 
-    public User(Long id, String email, String password, String fullName, String phone, UserStatus status, String avatarUrl, Set<Role> roles) {
+    public User(Long id, String email, String password, String fullName, String phone, UserStatus status,
+                String avatarUrl, String address, int failedLoginAttempts, LocalDateTime lockedUntil,
+                Set<Role> roles) {
         this.id = id;
         this.email = email;
         this.password = password;
@@ -68,6 +74,9 @@ public class User implements UserDetails {
         this.phone = phone;
         this.status = status;
         this.avatarUrl = avatarUrl;
+        this.address = address;
+        this.failedLoginAttempts = failedLoginAttempts;
+        this.lockedUntil = lockedUntil;
         this.roles = roles;
     }
 
@@ -127,21 +136,12 @@ public class User implements UserDetails {
         this.avatarUrl = avatarUrl;
     }
 
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public java.time.LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(java.time.LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
+    public int getFailedLoginAttempts() { return failedLoginAttempts; }
+    public void setFailedLoginAttempts(int failedLoginAttempts) { this.failedLoginAttempts = failedLoginAttempts; }
+    public LocalDateTime getLockedUntil() { return lockedUntil; }
+    public void setLockedUntil(LocalDateTime lockedUntil) { this.lockedUntil = lockedUntil; }
 
     public Set<Role> getRoles() {
         return roles;
@@ -179,7 +179,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return lockedUntil == null || !lockedUntil.isAfter(LocalDateTime.now());
     }
 
     @Override
@@ -204,6 +204,9 @@ public class User implements UserDetails {
         private String phone;
         private UserStatus status;
         private String avatarUrl;
+        private String address;
+        private int failedLoginAttempts;
+        private LocalDateTime lockedUntil;
         private Set<Role> roles;
 
         UserBuilder() {}
@@ -243,13 +246,29 @@ public class User implements UserDetails {
             return this;
         }
 
+        public UserBuilder address(String address) {
+            this.address = address;
+            return this;
+        }
+
+        public UserBuilder failedLoginAttempts(int failedLoginAttempts) {
+            this.failedLoginAttempts = failedLoginAttempts;
+            return this;
+        }
+
+        public UserBuilder lockedUntil(LocalDateTime lockedUntil) {
+            this.lockedUntil = lockedUntil;
+            return this;
+        }
+
         public UserBuilder roles(Set<Role> roles) {
             this.roles = roles;
             return this;
         }
 
         public User build() {
-            return new User(id, email, password, fullName, phone, status, avatarUrl, roles);
+            return new User(id, email, password, fullName, phone, status, avatarUrl,
+                    address, failedLoginAttempts, lockedUntil, roles);
         }
     }
 }

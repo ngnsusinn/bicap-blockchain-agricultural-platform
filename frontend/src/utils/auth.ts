@@ -47,9 +47,10 @@ export function isLoggedIn(): boolean {
 /**
  * Lưu thông tin phiên làm việc sau khi Đăng nhập/Đăng ký thành công.
  */
-export function saveSession(token: string, user: UserSession): void {
+export function saveSession(token: string, user: UserSession, refreshToken?: string): void {
   localStorage.setItem('accessToken', token);
   localStorage.setItem('currentUser', JSON.stringify(user));
+  if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
 }
 
 /**
@@ -70,5 +71,6 @@ export function getCurrentUser(): UserSession | null {
  */
 export function logout(): void {
   localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
   localStorage.removeItem('currentUser');
 }

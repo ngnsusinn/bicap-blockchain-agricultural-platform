@@ -3,7 +3,10 @@ import { getAuthHeaders, isLoggedIn, getCurrentUser, saveSession, logout, API_BA
 import type { UserSession } from './utils/auth';
 import ServicePackages from './pages/FarmManager/ServicePackages';
 import AuthPage from './pages/Auth/AuthPage';
-import ProfilePage from './pages/FarmManager/ProfilePage';
+import RetailerProfilePage from './pages/Retailer/RetailerProfilePage';
+import RetailerBusinessPage from './pages/Retailer/RetailerBusinessPage';
+import NotificationBell from './components/NotificationBell';
+import IotDashboard from './pages/FarmManager/IotDashboard';
 
 /* ── Sidebar Component (Dành cho Farm Manager - BICAP-7 / BICAP-8) ── */
 interface SidebarProps {
@@ -136,12 +139,17 @@ export default function App() {
   const [user, setUser] = useState<UserSession | null>(getCurrentUser());
   const [currentTab, setCurrentTab] = useState('packages');
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+  const [retailerTab, setRetailerTab] = useState<'dashboard' | 'profile' | 'business'>('dashboard');
 
   // Xử lý sau khi Đăng nhập thành công từ AuthPage
-  const handleLoginSuccess = (token: string, userData: any) => {
-    saveSession(token, userData);
+  const handleLoginSuccess = (token: string, userData: any, refreshToken?: string) => {
+    saveSession(token, userData, refreshToken);
     setAuthenticated(true);
     setUser(userData);
+    if (userData?.role === 'RETAILER' && sessionStorage.getItem('retailerProfileRequired') === '1') {
+      setRetailerTab('profile');
+      sessionStorage.removeItem('retailerProfileRequired');
+    }
   };
 
   // Xử lý Đăng xuất
@@ -206,12 +214,12 @@ export default function App() {
   // Render Retailer Portal nếu người dùng là RETAILER (BICAP-36)
   if (user?.role === 'RETAILER') {
     return (
-      <div className="retailer-portal" style={{ minHeight: '100vh', background: '#0b0f19', color: '#fff', padding: '24px' }}>
+      <div className="retailer-portal">
         {/* Retailer Header */}
         <header style={headerStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ ...logoIconStyle, background: 'linear-gradient(135deg, #0284c7 0%, #06b6d4 100%)' }}>R</div>
-            <span style={logoTextStyle}>BICAP Retailer Marketplace (BICAP-36)</span>
+            <span style={logoTextStyle}>BICAP Retailer</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -224,15 +232,33 @@ export default function App() {
           </div>
         </header>
 
+        <nav className="retailer-nav" aria-label="Điều hướng hồ sơ Nhà bán lẻ">
+          <button className={retailerTab === 'dashboard' ? 'is-active' : ''} onClick={() => setRetailerTab('dashboard')}>Tổng quan</button>
+          <button className={retailerTab === 'profile' ? 'is-active' : ''} onClick={() => setRetailerTab('profile')}>Thông tin cá nhân</button>
+          <button className={retailerTab === 'business' ? 'is-active' : ''} onClick={() => setRetailerTab('business')}>Giấy phép kinh doanh</button>
+        </nav>
+
         {/* Retailer Content */}
-        <main style={{ maxWidth: '1200px', margin: '40px auto 0 auto' }}>
-          <div className="glass-panel" style={{ padding: '36px', borderRadius: '16px' }}>
+        <main className="retailer-main">
+          {retailerTab === 'profile' && (
+            <RetailerProfilePage
+              user={user}
+              onUserUpdated={(updated) => {
+                const updatedSession = { ...user, ...updated };
+                saveSession(localStorage.getItem('accessToken') || '', updatedSession, localStorage.getItem('refreshToken') || undefined);
+                setUser(updatedSession);
+              }}
+            />
+          )}
+          {retailerTab === 'business' && <RetailerBusinessPage />}
+          {retailerTab === 'dashboard' && (
+          <div className="glass-panel retailer-panel">
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛒</div>
             <h1 className="dashboard-title" style={{ background: 'linear-gradient(to right, #38bdf8, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               Sàn Giao Dịch Nông Sản Sạch - Nhà Bán Lẻ
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '15px', marginTop: '8px', lineHeight: 1.6 }}>
-              Chào mừng nhà bán lẻ <strong>{user.fullName}</strong> ({user.email}) đã đăng nhập thành công theo yêu cầu <strong>BICAP-36 (SRS-RT-001)</strong>.
+              Chào mừng nhà bán lẻ <strong>{user.fullName}</strong> ({user.email}) đã đăng nhập thành công.
             </p>
 
             {/* Quick stats for Retailer */}
@@ -256,6 +282,7 @@ export default function App() {
               </div>
             </div>
           </div>
+          )}
         </main>
       </div>
     );
@@ -279,6 +306,7 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <NotificationBell />
             <span style={{ fontSize: '13px', color: '#cbd5e1' }}>
               Xin chào, <strong>{user?.fullName}</strong> <span style={roleBadgeFarmStyle}>Farm Manager</span>
             </span>
@@ -326,15 +354,7 @@ export default function App() {
             </div>
           )}
 
-          {currentTab === 'iot' && (
-            <div>
-              <h1 className="dashboard-title">Giám Sát Cảm Biến IoT</h1>
-              <div className="glass-panel" style={{ padding: '48px', textAlign: 'center' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌡️</div>
-                <h2 style={{ color: '#fff', fontSize: '22px', fontWeight: 700 }}>Theo Dõi Dữ Liệu Nhiệt Độ, Độ Ẩm & pH Realtime</h2>
-              </div>
-            </div>
-          )}
+          {currentTab === 'iot' && <IotDashboard />}
         </main>
       </div>
     </div>
