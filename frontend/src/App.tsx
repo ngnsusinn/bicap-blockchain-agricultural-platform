@@ -8,6 +8,8 @@ import RetailerProfilePage from './pages/Retailer/RetailerProfilePage';
 import RetailerBusinessPage from './pages/Retailer/RetailerBusinessPage';
 import NotificationBell from './components/NotificationBell';
 import IotDashboard from './pages/FarmManager/IotDashboard';
+import FarmInfoPage from './pages/FarmManager/FarmInfoPage';
+import FarmSeasonsPage from './pages/FarmManager/FarmSeasonsPage';
 
 /* ── Sidebar Component (Dành cho Farm Manager - BICAP-7 / BICAP-8) ── */
 interface SidebarProps {
@@ -23,6 +25,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
     { id: 'profile', label: 'Cập nhật hồ sơ', icon: '👤', isProtected: false },
     { id: 'packages', label: 'Gói Dịch Vụ', icon: '📦', isProtected: false },
     { id: 'farm-info', label: 'Nông Trại Của Tôi', icon: '🌾', isProtected: false },
+    { id: 'seasons', label: 'Quản Lý Mùa Vụ', icon: '🌱', isProtected: false },
     { id: 'products', label: 'Sản Phẩm & QR Code', icon: '🔍', isProtected: true },
     { id: 'iot', label: 'Giám Sát IoT', icon: '🌡️', isProtected: true },
     { id: 'certificates', label: 'Chứng Nhận VietGAP', icon: '📜', isProtected: true },
@@ -303,7 +306,7 @@ export default function App() {
         {/* Top Header Bar */}
         <header style={{ ...headerStyle, marginLeft: 'var(--sidebar-width)' }}>
           <div style={{ fontSize: '14px', color: '#cbd5e1' }}>
-            Cổng Quản Lý Nông Trại <strong style={{ color: '#10b981' }}>(BICAP-7)</strong>
+            Cổng Quản Lý Nông Trại
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -320,6 +323,8 @@ export default function App() {
         <main className="main-content animate-fade-in" style={{ marginTop: '60px' }}>
           {currentTab === 'profile' && <ProfilePage onUserUpdated={(updated: UserSession) => setUser(updated)} />}
           {currentTab === 'packages' && <ServicePackages />}
+          {currentTab === 'farm-info' && <FarmInfoPage />}
+          {currentTab === 'seasons' && <FarmSeasonsPage />}
 
           {currentTab === 'dashboard' && (
             <div>
@@ -331,16 +336,6 @@ export default function App() {
                 <p style={{ color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '500px', marginInline: 'auto', fontSize: '14px', lineHeight: 1.6 }}>
                   Đã xác thực tài khoản Chủ trang trại thành công ({user?.email}).
                 </p>
-              </div>
-            </div>
-          )}
-
-          {currentTab === 'farm-info' && (
-            <div>
-              <h1 className="dashboard-title">Thông Tin Nông Trại</h1>
-              <div className="glass-panel" style={{ padding: '48px', textAlign: 'center' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌾</div>
-                <h2 style={{ color: '#fff', fontSize: '22px', fontWeight: 700 }}>Hồ Sơ & Vùng Canh Tác Trang Trại</h2>
               </div>
             </div>
           )}
