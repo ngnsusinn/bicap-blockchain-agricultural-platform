@@ -76,3 +76,31 @@ export interface FarmRegistration {
   certificationCount: number;
   certifications?: FarmCertification[];
 }
+
+// ── Smart Contract and Blockchain types ──
+export interface SmartContract {
+  id: number;
+  name: string;
+  address: string | null;
+  bytecode: string;
+  abi: string;
+  environment: string; // TESTNET, MAINNET
+  status: string; // PENDING, DEPLOYED, ACTIVE, INACTIVE, FAILED
+  version: string;
+  txHash: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface BlockchainTransaction {
+  id: number;
+  entityType: string; // SEASON, PROCESS, QR, EXPORT, CONTRACT
+  entityId: number;
+  txHash: string;
+  contractAddress: string | null;
+  status: string; // PENDING, CONFIRMED, FAILED
+  retryCount: number;
+  idempotencyKey: string;
+  createdAt: string;
+}
+

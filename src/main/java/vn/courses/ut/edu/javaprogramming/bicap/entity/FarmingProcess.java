@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+<<<<<<< HEAD
 /**
  * A single process step within a farming season (BICAP-15 / SRS-FM-009).
  * Maps to the `farming_processes` table.
@@ -13,6 +14,8 @@ import java.time.LocalDateTime;
  *   materials: [{"name":"Ure","amount":50,"unit":"kg"},...]
  *   images:    ["https://cdn.../img1.jpg","https://cdn.../img2.jpg"]
  */
+=======
+>>>>>>> origin/main
 @Entity
 @Table(name = "farming_processes")
 public class FarmingProcess {
@@ -25,6 +28,7 @@ public class FarmingProcess {
     private Long seasonId;
 
     @Column(name = "process_type", nullable = false, length = 100)
+<<<<<<< HEAD
     private String processType;
 
     @Column(nullable = false, length = 255)
@@ -35,10 +39,14 @@ public class FarmingProcess {
 
     @Column(name = "performed_by", length = 255)
     private String performedBy;
+=======
+    private String processType; // SOIL_PREP, SEEDING, FERTILIZATION, PEST_CONTROL, HARVESTING
+>>>>>>> origin/main
 
     @Column(name = "execution_date", nullable = false)
     private LocalDate executionDate;
 
+<<<<<<< HEAD
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ProcessStatus status = ProcessStatus.COMPLETED;
@@ -50,22 +58,41 @@ public class FarmingProcess {
     /** JSON string — danh sách URL ảnh minh chứng */
     @Column(columnDefinition = "JSON")
     private String images;
+=======
+    @Column(columnDefinition = "TEXT")
+    private String materials; // Stores JSON as string
+
+    @Column(columnDefinition = "TEXT")
+    private String images; // Stores JSON array of URLs as string
+>>>>>>> origin/main
 
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+<<<<<<< HEAD
     /** VeChainThor transaction hash — null until blockchain write succeeds (BICAP-15). */
+=======
+>>>>>>> origin/main
     @Column(name = "tx_hash", length = 66)
     private String txHash;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+<<<<<<< HEAD
     public FarmingProcess() {}
 
     public FarmingProcess(Long id, Long seasonId, String processType, LocalDate executionDate,
                           String materials, String images, String notes,
                           String txHash, LocalDateTime createdAt) {
+=======
+    public FarmingProcess() {
+    }
+
+    public FarmingProcess(Long id, Long seasonId, String processType, LocalDate executionDate,
+                          String materials, String images, String notes, String txHash,
+                          LocalDateTime createdAt) {
+>>>>>>> origin/main
         this.id = id;
         this.seasonId = seasonId;
         this.processType = processType;
@@ -82,6 +109,7 @@ public class FarmingProcess {
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
         }
+<<<<<<< HEAD
         if (this.status == null) {
             this.status = ProcessStatus.COMPLETED;
         }
@@ -143,5 +171,79 @@ public class FarmingProcess {
             return new FarmingProcess(id, seasonId, processType, executionDate,
                     materials, images, notes, txHash, createdAt);
         }
+=======
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getSeasonId() {
+        return seasonId;
+    }
+
+    public void setSeasonId(Long seasonId) {
+        this.seasonId = seasonId;
+    }
+
+    public String getProcessType() {
+        return processType;
+    }
+
+    public void setProcessType(String processType) {
+        this.processType = processType;
+    }
+
+    public LocalDate getExecutionDate() {
+        return executionDate;
+    }
+
+    public void setExecutionDate(LocalDate executionDate) {
+        this.executionDate = executionDate;
+    }
+
+    public String getMaterials() {
+        return materials;
+    }
+
+    public void setMaterials(String materials) {
+        this.materials = materials;
+    }
+
+    public String getImages() {
+        return images;
+    }
+
+    public void setImages(String images) {
+        this.images = images;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public String getTxHash() {
+        return txHash;
+    }
+
+    public void setTxHash(String txHash) {
+        this.txHash = txHash;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+>>>>>>> origin/main
     }
 }

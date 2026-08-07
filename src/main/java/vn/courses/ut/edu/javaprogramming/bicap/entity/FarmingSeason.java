@@ -4,11 +4,14 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+<<<<<<< HEAD
 /**
  * A farming season owned by a farm (BICAP-12/13/14 / SRS-FM-006/007/008).
  * Maps to the `farming_seasons` table.
  * tx_hash is populated after the season is written to VeChainThor Blockchain (BICAP-14).
  */
+=======
+>>>>>>> origin/main
 @Entity
 @Table(name = "farming_seasons")
 public class FarmingSeason {
@@ -23,9 +26,12 @@ public class FarmingSeason {
     @Column(nullable = false)
     private String name;
 
+<<<<<<< HEAD
     @Column(columnDefinition = "TEXT")
     private String description;
 
+=======
+>>>>>>> origin/main
     @Column(name = "product_type", nullable = false, length = 100)
     private String productType;
 
@@ -41,6 +47,7 @@ public class FarmingSeason {
     @Column(name = "end_date")
     private LocalDate endDate;
 
+<<<<<<< HEAD
     @Column(columnDefinition = "TEXT")
     private String notes;
 
@@ -49,17 +56,31 @@ public class FarmingSeason {
     private SeasonStatus status = SeasonStatus.IN_PROGRESS;
 
     /** VeChainThor transaction hash — null until blockchain write succeeds (BICAP-14). */
+=======
+    @Column(nullable = false, length = 20)
+    private String status = "IN_PROGRESS"; // IN_PROGRESS, HARVESTED, CANCELLED
+
+>>>>>>> origin/main
     @Column(name = "tx_hash", length = 66)
     private String txHash;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+<<<<<<< HEAD
     public FarmingSeason() {}
 
     public FarmingSeason(Long id, Long farmId, String name, String productType, String variety,
                          Double area, LocalDate startDate, LocalDate endDate,
                          SeasonStatus status, String txHash, LocalDateTime createdAt) {
+=======
+    public FarmingSeason() {
+    }
+
+    public FarmingSeason(Long id, Long farmId, String name, String productType, String variety,
+                         Double area, LocalDate startDate, LocalDate endDate, String status,
+                         String txHash, LocalDateTime createdAt) {
+>>>>>>> origin/main
         this.id = id;
         this.farmId = farmId;
         this.name = name;
@@ -79,6 +100,7 @@ public class FarmingSeason {
             this.createdAt = LocalDateTime.now();
         }
         if (this.status == null) {
+<<<<<<< HEAD
             this.status = SeasonStatus.IN_PROGRESS;
         }
     }
@@ -143,5 +165,97 @@ public class FarmingSeason {
             return new FarmingSeason(id, farmId, name, productType, variety, area,
                     startDate, endDate, status, txHash, createdAt);
         }
+=======
+            this.status = "IN_PROGRESS";
+        }
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getFarmId() {
+        return farmId;
+    }
+
+    public void setFarmId(Long farmId) {
+        this.farmId = farmId;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getProductType() {
+        return productType;
+    }
+
+    public void setProductType(String productType) {
+        this.productType = productType;
+    }
+
+    public String getVariety() {
+        return variety;
+    }
+
+    public void setVariety(String variety) {
+        this.variety = variety;
+    }
+
+    public Double getArea() {
+        return area;
+    }
+
+    public void setArea(Double area) {
+        this.area = area;
+    }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public void setEndDate(LocalDate endDate) {
+        this.endDate = endDate;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getTxHash() {
+        return txHash;
+    }
+
+    public void setTxHash(String txHash) {
+        this.txHash = txHash;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+>>>>>>> origin/main
     }
 }
