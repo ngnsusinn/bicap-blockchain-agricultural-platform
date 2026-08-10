@@ -3,13 +3,10 @@ package vn.courses.ut.edu.javaprogramming.bicap.service.impl;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.IotDataRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.IotData;
-import vn.courses.ut.edu.javaprogramming.bicap.entity.Notification;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.IotDataRepository;
-import vn.courses.ut.edu.javaprogramming.bicap.repository.NotificationRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.service.IotDataService;
 import vn.courses.ut.edu.javaprogramming.bicap.service.NotificationService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,17 +18,17 @@ import java.util.List;
 @Service
 public class IotDataServiceImpl implements IotDataService {
 
-    @Autowired
-    private IotDataRepository iotDataRepository;
+    private final IotDataRepository iotDataRepository;
+    private final FarmRepository farmRepository;
+    private final NotificationService notificationService;
 
-    @Autowired
-    private FarmRepository farmRepository;
-
-    @Autowired
-    private NotificationRepository notificationRepository;
-
-    @Autowired
-    private NotificationService notificationService;
+    public IotDataServiceImpl(IotDataRepository iotDataRepository,
+                              FarmRepository farmRepository,
+                              NotificationService notificationService) {
+        this.iotDataRepository = iotDataRepository;
+        this.farmRepository = farmRepository;
+        this.notificationService = notificationService;
+    }
 
     @Override
     @Transactional
@@ -58,19 +55,8 @@ public class IotDataServiceImpl implements IotDataService {
                 if (humidIssue) msg.append(String.format("Độ ẩm bất thường (%.1f%%). ", request.getHumidity()));
                 if (phIssue) msg.append(String.format("Độ pH bất thường (%.1f). ", request.getPh()));
 
-                Notification alert = new Notification();
-                alert.setUserId(farm.getUserId());
-                alert.setType("URGENT");
-                alert.setTitle("Cảnh báo khẩn cấp IoT");
-                alert.setContent(msg.toString());
-                alert.setChannel("IN_APP_PUSH");
-                alert.setIsRead(false);
-                alert.setCreatedAt(LocalDateTime.now());
-                
-                Notification savedAlert = notificationRepository.save(alert);
-                
-                // Trigger Real-time push via SSE
-                notificationService.sendRealTimeAlert(farm.getUserId(), savedAlert);
+                // Persist, push to the live SSE stream and email the farm owner.
+                notificationService.sendNotification(farm.getUserId(), "URGENT", "Cảnh báo khẩn cấp IoT", msg.toString(), true);
             }
         }
         return saved;
@@ -89,20 +75,10 @@ public class IotDataServiceImpl implements IotDataService {
                 double avgTemp = dailyData.stream().mapToDouble(IotData::getTemperature).average().orElse(0.0);
                 double avgHumid = dailyData.stream().mapToDouble(IotData::getHumidity).average().orElse(0.0);
                 double avgPh = dailyData.stream().mapToDouble(IotData::getPh).average().orElse(0.0);
-                
-                Notification summary = new Notification();
-                summary.setUserId(farm.getUserId());
-                summary.setType("PERIODIC");
-                summary.setTitle("Báo cáo IoT tổng hợp ngày");
-                summary.setContent(String.format("Tổng kết ngày: Nhiệt độ TB %.1f°C, Độ ẩm TB %.1f%%, pH TB %.1f.", avgTemp, avgHumid, avgPh));
-                summary.setChannel("IN_APP");
-                summary.setIsRead(false);
-                summary.setCreatedAt(LocalDateTime.now());
-                
-                Notification savedSummary = notificationRepository.save(summary);
-                
-                // Push summary via SSE as well (optional, but good UX)
-                notificationService.sendRealTimeAlert(farm.getUserId(), savedSummary);
+
+                notificationService.sendNotification(farm.getUserId(), "PERIODIC", "Báo cáo IoT tổng hợp ngày",
+                        String.format("Tổng kết ngày: Nhiệt độ TB %.1f°C, Độ ẩm TB %.1f%%, pH TB %.1f.", avgTemp, avgHumid, avgPh),
+                        false);
             }
         }
     }

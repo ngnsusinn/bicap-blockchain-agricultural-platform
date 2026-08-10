@@ -2993,7 +2993,7 @@ HTTP Status Codes:
 | Guest (BICAP-69..71) | ⏳ | ⏳ | — | Chưa bắt đầu |
 | Payment (BICAP-78) | ✅ Sepay integration | ⏳ Payment UI | — | Đang triển khai |
 | Blockchain (BICAP-73,74) | ⏳ | ⏳ | ⏳ | Chưa bắt đầu |
-| Notification (BICAP-77) | ⏳ | ⏳ | — | Chưa bắt đầu |
+| Notification (BICAP-77) | ✅ Entity, Repository, Service, Controller, SSE, Email | ⏳ Notification UI | — | Đang triển khai |
 | IoT (BICAP-26) | ⏳ | ⏳ | — | Chưa bắt đầu |
 | Database (BICAP-79) | ✅ DDL đầy đủ | — | — | Hoàn thành |
 
