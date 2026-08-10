@@ -38,4 +38,17 @@ public class VerificationEmailService {
                 """.formatted(verificationUrl));
         mailSender.send(message);
     }
+
+    /**
+     * Sends a notification alert email (BICAP-77 / SRS-API-006) — used for critical
+     * events (IoT alerts, order/delivery milestones, farm approval feedback).
+     */
+    public void sendNotificationEmail(String recipient, String title, String content) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromAddress);
+        message.setTo(recipient);
+        message.setSubject("[BICAP] " + title);
+        message.setText(content);
+        mailSender.send(message);
+    }
 }

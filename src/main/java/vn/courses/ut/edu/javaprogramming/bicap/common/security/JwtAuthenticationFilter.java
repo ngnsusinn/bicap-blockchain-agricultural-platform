@@ -83,6 +83,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);
         }
+        // SSE: the browser EventSource API cannot set custom headers, so the JWT is
+        // accepted from the `?token=` query parameter — scoped strictly to the
+        // notification stream endpoint (the only consumer). Everywhere else a
+        // header-less request stays unauthenticated.
+        String uri = request.getRequestURI();
+        if (uri != null && uri.endsWith("/api/notifications/stream")) {
+            return request.getParameter("token");
+        }
         return null;
     }
 }
