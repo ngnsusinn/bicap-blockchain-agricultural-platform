@@ -21,7 +21,7 @@ if "%SPRING_DATASOURCE_URL%"=="" (
 )
 
 rem If using H2 URL ensure driver class matches (avoid mismatched MySQL driver)
-echo %SPRING_DATASOURCE_URL% | findstr /I "jdbc:h2:" >nul
+echo "%SPRING_DATASOURCE_URL%" | findstr /I "jdbc:h2:" >nul
 if %ERRORLEVEL%==0 (
     echo Detected H2 JDBC URL — forcing H2 driver
     set "SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.h2.Driver"

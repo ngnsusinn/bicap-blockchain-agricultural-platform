@@ -12,11 +12,17 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.PermissionRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.RoleRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.ServicePackageRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.SubscriptionRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.ServicePackage;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Subscription;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.SubscriptionStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -30,16 +36,21 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final FarmRepository farmRepository;
     private final FarmCertificationRepository farmCertificationRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ServicePackageRepository servicePackageRepository;
+    private final SubscriptionRepository subscriptionRepository;
 
     public DatabaseSeeder(PermissionRepository permissionRepository, RoleRepository roleRepository, UserRepository userRepository,
                           FarmRepository farmRepository, FarmCertificationRepository farmCertificationRepository,
-                          PasswordEncoder passwordEncoder) {
+                          PasswordEncoder passwordEncoder, ServicePackageRepository servicePackageRepository,
+                          SubscriptionRepository subscriptionRepository) {
         this.permissionRepository = permissionRepository;
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
         this.farmRepository = farmRepository;
         this.farmCertificationRepository = farmCertificationRepository;
         this.passwordEncoder = passwordEncoder;
+        this.servicePackageRepository = servicePackageRepository;
+        this.subscriptionRepository = subscriptionRepository;
     }
 
     @Override
@@ -85,7 +96,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                 "Hợp tác xã sản xuất rau củ quả công nghệ cao trên vùng đất cao nguyên, có nhà màng và hệ thống tưới tự động.",
                 "Bắp cải, Súp lơ, Cà chua, Dâu tây",
                 "Giấy chứng nhận VietGAP", "https://bicap.vn/docs/lamdong-vietgap.pdf", LocalDate.now().plusYears(2));
-        seedFarm(farmOwner1.getId(), "Trang Trại Hữu Cơ Sông Hồng", "Xã Đan Phượng, Hà Nội",
+        Farm farm3 = seedFarm(farmOwner1.getId(), "Trang Trại Hữu Cơ Sông Hồng", "Xã Đan Phượng, Hà Nội",
                 8.0, 21.122300, 105.681300, FarmStatus.APPROVED,
                 "Trang trại nông nghiệp hữu cơ ngoại thành Hà Nội, chuyên canh tác không hóa chất theo chứng nhận Organic.",
                 "Lúa hữu cơ, Rau hữu cơ, Gà thả vườn",
@@ -95,6 +106,9 @@ public class DatabaseSeeder implements CommandLineRunner {
                 "Vườn cây ăn trái miền Tây, tập trung sản xuất trái cây sạch xuất khẩu sang thị trường châu Âu.",
                 "Xoài cát Hòa Lộc, Chôm chôm, Sầu riêng",
                 "Giấy phép kinh doanh số 0123456789", "https://bicap.vn/docs/tiengiang-license.pdf", LocalDate.now().plusYears(1));
+
+        // 5. Seed Subscription for Farm 3
+        seedSubscription(farm3.getId());
     }
 
     private Permission seedPermission(String code, String description) {
@@ -149,7 +163,7 @@ public class DatabaseSeeder implements CommandLineRunner {
      * so re-running the seeder never duplicates farms nor leaves stale demo data —
      * a farmer may own several farms, so owner-based dedup is intentionally avoided.
      */
-    private void seedFarm(Long ownerUserId, String name, String address, double area,
+    private Farm seedFarm(Long ownerUserId, String name, String address, double area,
                           double gpsLat, double gpsLng, FarmStatus status,
                           String description, String productTypes,
                           String certType, String certFileUrl, LocalDate certExpiry) {
@@ -185,6 +199,30 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .fileUrl(certFileUrl)
                     .expiryDate(certExpiry)
                     .build());
+        }
+        return farm;
+    }
+
+    private void seedSubscription(Long farmId) {
+        ServicePackage sp = servicePackageRepository.findAll().stream().findFirst().orElseGet(() -> {
+            ServicePackage newSp = new ServicePackage();
+            newSp.setName("Gói Dịch Vụ Cơ Bản");
+            newSp.setDescription("Gói cơ bản cho mọi trang trại");
+            newSp.setPrice(new BigDecimal("100000"));
+            newSp.setDurationDays(365);
+            newSp.setStatus("ACTIVE");
+            return servicePackageRepository.save(newSp);
+        });
+
+        boolean exists = subscriptionRepository.findByFarmIdAndStatus(farmId, SubscriptionStatus.ACTIVE).isPresent();
+        if (!exists) {
+            Subscription sub = new Subscription();
+            sub.setFarmId(farmId);
+            sub.setPackageId(sp.getId());
+            sub.setStartDate(LocalDate.now());
+            sub.setEndDate(LocalDate.now().plusDays(365));
+            sub.setStatus(SubscriptionStatus.ACTIVE);
+            subscriptionRepository.save(sub);
         }
     }
 }
