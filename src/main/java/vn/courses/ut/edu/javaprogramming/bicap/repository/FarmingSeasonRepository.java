@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface FarmingSeasonRepository extends JpaRepository<FarmingSeason, Long> {
     List<FarmingSeason> findByFarmId(Long farmId);
+    org.springframework.data.domain.Page<FarmingSeason> findByFarmId(Long farmId, org.springframework.data.domain.Pageable pageable);
+    org.springframework.data.domain.Page<FarmingSeason> findByFarmIdAndStatus(Long farmId, String status, org.springframework.data.domain.Pageable pageable);
 }
