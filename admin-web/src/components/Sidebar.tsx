@@ -9,7 +9,7 @@ const MENU_ITEMS: Record<PortalType, { id: string; label: string; icon: string; 
     { id: 'farms', label: 'Farm Approval', icon: '🚜' },
     { id: 'farmmgmt', label: 'Farm Management', icon: '🏞️' },
     { id: 'contracts', label: 'Smart Contracts', icon: '⛓️' },
-    { id: 'products', label: 'Traceability & QR', icon: '🔍', disabled: true },
+    { id: 'products', label: 'Giám Sát Sản Phẩm', icon: '📦' },
     { id: 'iot', label: 'IoT Sensoring', icon: '🌡️', disabled: true },
     { id: 'settings', label: 'System Settings', icon: '⚙️', disabled: true },
   ],

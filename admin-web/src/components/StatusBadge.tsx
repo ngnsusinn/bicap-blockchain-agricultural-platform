@@ -8,6 +8,9 @@ export const STATUS_META: Record<string, { label: string; color: string; bg: str
   REJECTED: { label: 'Bị từ chối', color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
   SUSPENDED: { label: 'Tạm ngưng', color: '#fb923c', bg: 'rgba(251,146,60,0.12)' },
   INACTIVE: { label: 'Ngừng hoạt động', color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' },
+  // Product statuses (BICAP-5 / SRS-ADM-004)
+  ACTIVE: { label: 'Đang hoạt động', color: '#34d399', bg: 'rgba(52,211,153,0.12)' },
+  PENDING_REVIEW: { label: 'Chờ xem xét', color: '#fbbf24', bg: 'rgba(251,191,36,0.12)' },
 };
 
 export const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
