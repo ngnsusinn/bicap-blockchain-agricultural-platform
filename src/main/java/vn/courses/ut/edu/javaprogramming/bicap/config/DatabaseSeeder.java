@@ -1,5 +1,6 @@
 package vn.courses.ut.edu.javaprogramming.bicap.config;
 
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Category;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmCertification;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmStatus;
@@ -7,6 +8,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.Permission;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Role;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.CategoryRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmCertificationRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.PermissionRepository;
@@ -35,19 +37,22 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final FarmRepository farmRepository;
     private final FarmCertificationRepository farmCertificationRepository;
+    private final CategoryRepository categoryRepository;
     private final PasswordEncoder passwordEncoder;
     private final ServicePackageRepository servicePackageRepository;
     private final SubscriptionRepository subscriptionRepository;
 
     public DatabaseSeeder(PermissionRepository permissionRepository, RoleRepository roleRepository, UserRepository userRepository,
                           FarmRepository farmRepository, FarmCertificationRepository farmCertificationRepository,
-                          PasswordEncoder passwordEncoder, ServicePackageRepository servicePackageRepository,
+                          CategoryRepository categoryRepository, PasswordEncoder passwordEncoder,
+                          ServicePackageRepository servicePackageRepository,
                           SubscriptionRepository subscriptionRepository) {
         this.permissionRepository = permissionRepository;
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
         this.farmRepository = farmRepository;
         this.farmCertificationRepository = farmCertificationRepository;
+        this.categoryRepository = categoryRepository;
         this.passwordEncoder = passwordEncoder;
         this.servicePackageRepository = servicePackageRepository;
         this.subscriptionRepository = subscriptionRepository;
@@ -107,7 +112,16 @@ public class DatabaseSeeder implements CommandLineRunner {
                 "Xoài cát Hòa Lộc, Chôm chôm, Sầu riêng",
                 "Giấy phép kinh doanh số 0123456789", "https://bicap.vn/docs/tiengiang-license.pdf", LocalDate.now().plusYears(1));
 
-        // 5. Seed Subscription for Farm 3
+        // 5. Seed default Product Categories (BICAP-5 — product monitoring catalog)
+        seedCategory("Rau ăn lá", "Các loại rau ăn lá, rau gia vị", "🥬");
+        seedCategory("Củ quả", "Các loại củ, quả", "🥔");
+        seedCategory("Trái cây", "Các loại trái cây", "🍎");
+        seedCategory("Lúa gạo", "Lúa, gạo, các loại ngũ cốc", "🌾");
+        seedCategory("Thủy hải sản", "Cá, tôm, các loại thủy sản", "🐟");
+        seedCategory("Thịt - Trứng - Sữa", "Thịt gia súc, gia cầm, trứng, sữa", "🥩");
+        seedCategory("Khác", "Các sản phẩm nông nghiệp khác", "📦");
+
+        // 6. Seed Subscription for Farm 3
         seedSubscription(farm3.getId());
     }
 
@@ -117,6 +131,22 @@ public class DatabaseSeeder implements CommandLineRunner {
                         Permission.builder()
                                 .code(code)
                                 .description(description)
+                                .build()
+                ));
+    }
+
+    /**
+     * Seeds one product category per unique {@code name}. Existing categories are left
+     * untouched (only created when missing), matching the seedPermission behavior so a
+     * live catalog edited by an operator is never reverted on reboot.
+     */
+    private void seedCategory(String name, String description, String icon) {
+        categoryRepository.findByName(name)
+                .orElseGet(() -> categoryRepository.save(
+                        Category.builder()
+                                .name(name)
+                                .description(description)
+                                .icon(icon)
                                 .build()
                 ));
     }

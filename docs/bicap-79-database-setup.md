@@ -278,6 +278,18 @@ CREATE TABLE IF NOT EXISTS `farming_processes` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- -----------------------------------------------------
+-- Table: categories
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `categories` (
+  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(100) NOT NULL UNIQUE,
+  `description` VARCHAR(500) NULL,
+  `icon` VARCHAR(10) NULL COMMENT 'emoji icon for display',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- -----------------------------------------------------
 -- Table: qrcodes
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `qrcodes` (
@@ -295,15 +307,16 @@ CREATE TABLE IF NOT EXISTS `qrcodes` (
 CREATE TABLE IF NOT EXISTS `products` (
   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
   `season_id` BIGINT NOT NULL,
-  `category_id` BIGINT NOT NULL, -- References Category (e.g. Fruit, Vegetable, Grain)
+  `category_id` BIGINT NOT NULL, -- References categories (e.g. Rau, Củ quả, Trái cây)
   `name` VARCHAR(255) NOT NULL,
   `description` TEXT NULL,
   `price` DECIMAL(12,2) NOT NULL,
   `quantity` DOUBLE NOT NULL,
   `qr_code_id` BIGINT NULL,
-  `status` VARCHAR(20) NOT NULL DEFAULT 'AVAILABLE', -- AVAILABLE, OUT_OF_STOCK, INACTIVE
+  `status` VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE, INACTIVE, PENDING_REVIEW (BICAP-5 / SRS-ADM-004)
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT `fk_products_season` FOREIGN KEY (`season_id`) REFERENCES `farming_seasons` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_products_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`),
   CONSTRAINT `fk_products_qrcode` FOREIGN KEY (`qr_code_id`) REFERENCES `qrcodes` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

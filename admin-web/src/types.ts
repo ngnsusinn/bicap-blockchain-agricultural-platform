@@ -104,3 +104,57 @@ export interface BlockchainTransaction {
   createdAt: string;
 }
 
+// ── Product monitoring types (BICAP-5) ──
+export type ProductStatusType = 'ACTIVE' | 'INACTIVE' | 'PENDING_REVIEW';
+
+export interface Category {
+  id: number;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  productCount: number;
+  createdAt: string;
+}
+
+export interface ProductItem {
+  id: number;
+  name: string;
+  description: string | null;
+  price: number;
+  quantity: number;
+  categoryId: number;
+  categoryName: string | null;
+  seasonId: number;
+  seasonName: string | null;
+  farmId: number | null;
+  farmName: string | null;
+  qrCodeId: number | null;
+  status: ProductStatusType;
+  createdAt: string;
+}
+
+export interface ProductDetail extends ProductItem {
+  seasonStartDate: string | null;
+  seasonEndDate: string | null;
+  seasonProductType: string | null;
+  seasonVariety: string | null;
+  farmAddress: string | null;
+  ownerName: string | null;
+  ownerEmail: string | null;
+}
+
+export interface CategoryStat {
+  categoryId: number;
+  categoryName: string | null;
+  count: number;
+}
+
+export interface ProductStats {
+  totalProducts: number;
+  activeProducts: number;
+  inactiveProducts: number;
+  pendingReviewProducts: number;
+  newProductsThisWeek: number;
+  byCategory: CategoryStat[];
+}
+
