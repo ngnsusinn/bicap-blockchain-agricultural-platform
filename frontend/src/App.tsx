@@ -6,6 +6,8 @@ import AuthPage from './pages/Auth/AuthPage';
 import ProfilePage from './pages/FarmManager/ProfilePage';
 import RetailerProfilePage from './pages/Retailer/RetailerProfilePage';
 import RetailerBusinessPage from './pages/Retailer/RetailerBusinessPage';
+import SeasonExports from './pages/FarmManager/SeasonExports';
+import TracePage from './pages/TracePage';
 import NotificationBell from './components/NotificationBell';
 import IotDashboard from './pages/FarmManager/IotDashboard';
 
@@ -23,6 +25,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
     { id: 'profile', label: 'Cập nhật hồ sơ', icon: '👤', isProtected: false },
     { id: 'packages', label: 'Gói Dịch Vụ', icon: '📦', isProtected: false },
     { id: 'farm-info', label: 'Nông Trại Của Tôi', icon: '🌾', isProtected: false },
+    { id: 'exports', label: 'Xuất Kho & QR', icon: '🏷️', isProtected: true },
     { id: 'products', label: 'Sản Phẩm & QR Code', icon: '🔍', isProtected: true },
     { id: 'iot', label: 'Giám Sát IoT', icon: '🌡️', isProtected: true },
     { id: 'certificates', label: 'Chứng Nhận VietGAP', icon: '📜', isProtected: true },
@@ -136,6 +139,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
 
 /* ── Main App Component ── */
 export default function App() {
+  const traceMatch = window.location.pathname.match(/^\/trace\/([a-zA-Z0-9]+)$/);
   const [authenticated, setAuthenticated] = useState<boolean>(isLoggedIn());
   const [user, setUser] = useState<UserSession | null>(getCurrentUser());
   const [currentTab, setCurrentTab] = useState('packages');
@@ -206,6 +210,8 @@ export default function App() {
     resolveFarmId();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authenticated, user?.role, currentTab]);
+
+  if (traceMatch) return <TracePage hash={traceMatch[1]} />;
 
   // Render AuthPage nếu chưa đăng nhập (Hỗ trợ cả BICAP-7 và BICAP-36)
   if (!authenticated) {
@@ -320,6 +326,7 @@ export default function App() {
         <main className="main-content animate-fade-in" style={{ marginTop: '60px' }}>
           {currentTab === 'profile' && <ProfilePage onUserUpdated={(updated: UserSession) => setUser(updated)} />}
           {currentTab === 'packages' && <ServicePackages />}
+          {currentTab === 'exports' && <SeasonExports farmId={user?.farmId} />}
 
           {currentTab === 'dashboard' && (
             <div>
