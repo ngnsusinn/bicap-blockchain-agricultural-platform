@@ -7,6 +7,8 @@ import { AdminTable } from './components/AdminTable';
 import { AdminModal } from './components/AdminModal';
 import { FarmApprovalPage } from './components/FarmApprovalPage';
 import { FarmManagementPage } from './components/FarmManagementPage';
+import { SmartContractPage } from './components/SmartContractPage';
+import { ProductMonitoringPage } from './components/ProductMonitoringPage';
 import { Toast } from './components/Toast';
 import type { ToastMessage } from './components/Toast';
 
@@ -253,6 +255,14 @@ export default function App() {
 
           {currentPortal === 'admin' && currentTab === 'farmmgmt' && (
             <FarmManagementPage currentSession={currentSession!} onToast={showToast} />
+          )}
+
+          {currentPortal === 'admin' && currentTab === 'contracts' && (
+            <SmartContractPage currentSession={currentSession!} onToast={showToast} />
+          )}
+
+          {currentPortal === 'admin' && currentTab === 'products' && (
+            <ProductMonitoringPage currentSession={currentSession!} onToast={showToast} />
           )}
 
           {/* ── FARM DASHBOARD ── */}

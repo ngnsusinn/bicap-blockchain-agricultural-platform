@@ -76,3 +76,85 @@ export interface FarmRegistration {
   certificationCount: number;
   certifications?: FarmCertification[];
 }
+
+// ── Smart Contract and Blockchain types ──
+export interface SmartContract {
+  id: number;
+  name: string;
+  address: string | null;
+  bytecode: string;
+  abi: string;
+  environment: string; // TESTNET, MAINNET
+  status: string; // PENDING, DEPLOYED, ACTIVE, INACTIVE, FAILED
+  version: string;
+  txHash: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface BlockchainTransaction {
+  id: number;
+  entityType: string; // SEASON, PROCESS, QR, EXPORT, CONTRACT
+  entityId: number;
+  txHash: string;
+  contractAddress: string | null;
+  status: string; // PENDING, CONFIRMED, FAILED
+  retryCount: number;
+  idempotencyKey: string;
+  createdAt: string;
+}
+
+// ── Product monitoring types (BICAP-5) ──
+export type ProductStatusType = 'ACTIVE' | 'INACTIVE' | 'PENDING_REVIEW';
+
+export interface Category {
+  id: number;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  productCount: number;
+  createdAt: string;
+}
+
+export interface ProductItem {
+  id: number;
+  name: string;
+  description: string | null;
+  price: number;
+  quantity: number;
+  categoryId: number;
+  categoryName: string | null;
+  seasonId: number;
+  seasonName: string | null;
+  farmId: number | null;
+  farmName: string | null;
+  qrCodeId: number | null;
+  status: ProductStatusType;
+  createdAt: string;
+}
+
+export interface ProductDetail extends ProductItem {
+  seasonStartDate: string | null;
+  seasonEndDate: string | null;
+  seasonProductType: string | null;
+  seasonVariety: string | null;
+  farmAddress: string | null;
+  ownerName: string | null;
+  ownerEmail: string | null;
+}
+
+export interface CategoryStat {
+  categoryId: number;
+  categoryName: string | null;
+  count: number;
+}
+
+export interface ProductStats {
+  totalProducts: number;
+  activeProducts: number;
+  inactiveProducts: number;
+  pendingReviewProducts: number;
+  newProductsThisWeek: number;
+  byCategory: CategoryStat[];
+}
+

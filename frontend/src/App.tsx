@@ -3,21 +3,26 @@ import { getAuthHeaders, isLoggedIn, getCurrentUser, saveSession, logout, API_BA
 import type { UserSession } from './utils/auth';
 import ServicePackages from './pages/FarmManager/ServicePackages';
 import AuthPage from './pages/Auth/AuthPage';
+import ProfilePage from './pages/FarmManager/ProfilePage';
 import RetailerProfilePage from './pages/Retailer/RetailerProfilePage';
 import RetailerBusinessPage from './pages/Retailer/RetailerBusinessPage';
 import SeasonExports from './pages/FarmManager/SeasonExports';
 import TracePage from './pages/TracePage';
+import NotificationBell from './components/NotificationBell';
+import IotDashboard from './pages/FarmManager/IotDashboard';
 
-/* ── Sidebar Component (Dành cho Farm Manager - BICAP-7) ── */
+/* ── Sidebar Component (Dành cho Farm Manager - BICAP-7 / BICAP-8) ── */
 interface SidebarProps {
   currentTab: string;
   onTabChange: (tab: string) => void;
   hasActiveSubscription: boolean;
+  user?: UserSession | null;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSubscription }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSubscription, user }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊', isProtected: false },
+    { id: 'profile', label: 'Cập nhật hồ sơ', icon: '👤', isProtected: false },
     { id: 'packages', label: 'Gói Dịch Vụ', icon: '📦', isProtected: false },
     { id: 'farm-info', label: 'Nông Trại Của Tôi', icon: '🌾', isProtected: false },
     { id: 'exports', label: 'Xuất Kho & QR', icon: '🏷️', isProtected: true },
@@ -66,11 +71,64 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
         })}
       </nav>
       <div style={footerStyle}>
-        <div style={farmBadgeStyle}>
-          <span style={{ fontSize: '14px' }}>🌱</span>
-          <div>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>Farm Manager Portal</div>
-            <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>BICAP-7 Active</div>
+        <div style={{ ...farmBadgeStyle, flexDirection: 'column', gap: '8px', padding: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
+            {/* Account Avatar */}
+            <div
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '50%',
+                overflow: 'hidden',
+                background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '14px',
+                flexShrink: 0,
+              }}
+            >
+              {user?.avatarUrl ? (
+                <img src={user.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                user?.fullName?.charAt(0)?.toUpperCase() || '👤'
+              )}
+            </div>
+
+            {/* Account Info */}
+            <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {user?.fullName || 'Farm Manager'}
+              </div>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {user?.email || 'farm@bicap.com'}
+              </div>
+            </div>
+
+            {/* Edit Button next to Account Avatar (BICAP-8) */}
+            <button
+              onClick={() => onTabChange('profile')}
+              title="Cập nhật thông tin cá nhân (BICAP-8)"
+              style={{
+                background: 'rgba(16, 185, 129, 0.15)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                color: '#34d399',
+                borderRadius: '6px',
+                padding: '4px 8px',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'all 0.2s ease',
+                flexShrink: 0,
+              }}
+            >
+              ✏️ Edit
+            </button>
           </div>
         </div>
         <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '12px' }}>BICAP Platform v0.1</p>
@@ -244,6 +302,7 @@ export default function App() {
         currentTab={currentTab}
         onTabChange={setCurrentTab}
         hasActiveSubscription={hasActiveSubscription}
+        user={user}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -254,6 +313,7 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <NotificationBell />
             <span style={{ fontSize: '13px', color: '#cbd5e1' }}>
               Xin chào, <strong>{user?.fullName}</strong> <span style={roleBadgeFarmStyle}>Farm Manager</span>
             </span>
@@ -264,6 +324,7 @@ export default function App() {
         </header>
 
         <main className="main-content animate-fade-in" style={{ marginTop: '60px' }}>
+          {currentTab === 'profile' && <ProfilePage onUserUpdated={(updated: UserSession) => setUser(updated)} />}
           {currentTab === 'packages' && <ServicePackages />}
           {currentTab === 'exports' && <SeasonExports farmId={user?.farmId} />}
 
@@ -301,15 +362,7 @@ export default function App() {
             </div>
           )}
 
-          {currentTab === 'iot' && (
-            <div>
-              <h1 className="dashboard-title">Giám Sát Cảm Biến IoT</h1>
-              <div className="glass-panel" style={{ padding: '48px', textAlign: 'center' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌡️</div>
-                <h2 style={{ color: '#fff', fontSize: '22px', fontWeight: 700 }}>Theo Dõi Dữ Liệu Nhiệt Độ, Độ Ẩm & pH Realtime</h2>
-              </div>
-            </div>
-          )}
+          {currentTab === 'iot' && <IotDashboard />}
         </main>
       </div>
     </div>

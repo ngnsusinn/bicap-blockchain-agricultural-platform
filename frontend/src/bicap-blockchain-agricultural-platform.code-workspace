@@ -1,0 +1,28 @@
+{
+    "folders": [
+		{
+			"path": "../../../../bicap-blockchain-agricultural-platform"
+		},
+		{
+			"path": "../.."
+		}
+	],
+    "settings": {
+        "sqltools.connections": [
+            {
+                "mysqlOptions": {
+                    "authProtocol": "default",
+                    "enableSsl": "Disabled"
+                },
+                "ssh": "Disabled",
+                "previewLimit": 50,
+                "server": "free02.123host.vn",
+                "port": 3306,
+                "driver": "MySQL",
+                "name": "bicap cloud",
+                "database": "roacqgfa_bicap",
+                "username": "roacqgfa_bicap"
+            }
+        ]
+    }
+}
