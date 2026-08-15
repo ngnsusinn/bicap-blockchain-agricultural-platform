@@ -8,6 +8,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.multipart.MultipartFile;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.MarketplaceProductRegisterRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.ProductListingResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.*;
@@ -140,7 +141,8 @@ class TradingFloorServiceTest {
 
     @Test
     void registerProduct_requiresAtLeastOneImage() {
-        when(exports.findById(10L)).thenReturn(Optional.of(readyExport(10L, 2L, 9L, "100")));
+        // lenient: image check runs before the export lookup, so this stub is never consumed
+        lenient().when(exports.findById(10L)).thenReturn(Optional.of(readyExport(10L, 2L, 9L, "100")));
 
         assertThrows(BadRequestException.class, () -> service.registerProduct(2L, request(10L, "50"), List.of()));
         verifyNoInteractions(products);
@@ -148,8 +150,9 @@ class TradingFloorServiceTest {
 
     @Test
     void registerProduct_rejectsMoreThanTenImages() {
-        when(exports.findById(10L)).thenReturn(Optional.of(readyExport(10L, 2L, 9L, "100")));
-        List<MockMultipartFile> many = new ArrayList<>();
+        // lenient: image check runs before the export lookup, so this stub is never consumed
+        lenient().when(exports.findById(10L)).thenReturn(Optional.of(readyExport(10L, 2L, 9L, "100")));
+        List<MultipartFile> many = new ArrayList<>();
         for (int i = 0; i < 11; i++) many.add(image());
 
         assertThrows(BadRequestException.class, () -> service.registerProduct(2L, request(10L, "50"), many));
