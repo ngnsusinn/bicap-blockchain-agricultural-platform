@@ -332,9 +332,12 @@ CREATE TABLE IF NOT EXISTS `orders` (
   `retailer_id` BIGINT NOT NULL, -- References users(id) with RETAILER role
   `quantity` DOUBLE NOT NULL,
   `price` DECIMAL(12,2) NOT NULL, -- Snapshotted unit price
-  `status` VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, CONFIRMED, PAID, SHIPPING, COMPLETED, CANCELLED
+  `status` VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, ACCEPTED, REJECTED, DEPOSIT_PAID, SHIPPING, DELIVERED, COMPLETED, CANCELLED
   `delivery_addr` VARCHAR(500) NOT NULL,
-  `deposit_rate` DOUBLE NOT NULL DEFAULT 0.0,
+  `deposit_rate` DOUBLE NOT NULL DEFAULT 0.3, -- Deposit ratio (30%)
+  `deposit_code` VARCHAR(30) NULL UNIQUE, -- Transfer memo for deposit verification
+  `deposit_amount` DECIMAL(12,2) NULL, -- Expected deposit amount
+  `reject_reason` VARCHAR(1000) NULL, -- Reason when Farm Manager rejects (BICAP-20 / SRS-FM-014)
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT `fk_orders_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`),
   CONSTRAINT `fk_orders_retailer` FOREIGN KEY (`retailer_id`) REFERENCES `users` (`id`)

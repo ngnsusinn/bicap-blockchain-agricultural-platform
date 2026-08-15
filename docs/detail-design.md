@@ -1405,6 +1405,7 @@ vn.courses.ut.edu.javaprogramming.bicap/
 | `status` | VARCHAR(20) | NOT NULL, DEFAULT 'PENDING' | Xem Order State Machine |
 | `delivery_addr` | VARCHAR(500) | NOT NULL | Địa chỉ giao hàng |
 | `deposit_rate` | DOUBLE | NOT NULL, DEFAULT 0.3 | Tỷ lệ đặt cọc (30%) |
+| `reject_reason` | VARCHAR(1000) | NULL | Lý do từ chối khi Farm Manager từ chối (BICAP-20 / SRS-FM-014) |
 | `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Ngày tạo |
 
 #### Bảng 17: `payments`
