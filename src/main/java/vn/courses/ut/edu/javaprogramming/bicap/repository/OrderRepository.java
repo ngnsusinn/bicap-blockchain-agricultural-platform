@@ -27,4 +27,18 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
            "AND (:status IS NULL OR o.status = :status) " +
            "ORDER BY o.createdAt DESC, o.id DESC")
     List<Order> findFarmManagerOrders(@Param("userId") Long userId, @Param("status") String status);
+
+    /**
+     * Orders that a single retailer has placed against products grown on farms owned by
+     * {@code userId} (BICAP-21 / SRS-FM-015) — the retailer's transaction history for one
+     * Farm Manager. Empty when the retailer has never transacted with the user's farms.
+     */
+    @Query("SELECT o FROM Order o " +
+           "JOIN Product p ON o.productId = p.id " +
+           "JOIN FarmingSeason s ON p.seasonId = s.id " +
+           "JOIN Farm f ON s.farmId = f.id " +
+           "WHERE f.userId = :userId AND o.retailerId = :retailerId " +
+           "ORDER BY o.createdAt DESC, o.id DESC")
+    List<Order> findFarmManagerRetailerOrders(@Param("userId") Long userId,
+                                              @Param("retailerId") Long retailerId);
 }

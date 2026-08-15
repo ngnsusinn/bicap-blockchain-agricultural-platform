@@ -2413,6 +2413,18 @@ HTTP Status Codes:
 | POST | `/api/orders/{id}/confirm-delivery` | Yes | RETAILER | Xác nhận đã nhận hàng (BICAP-51) |
 | POST | `/api/orders/{id}/delivery-images` | Yes | RETAILER | Upload ảnh nhận hàng (BICAP-52) |
 
+### 6.6.a. Retailer Partner API — Farm Manager portal (BICAP-21)
+
+Xem thông tin Nhà bán lẻ đã ký hợp đồng với nông trại của Farm Manager. Một Retailer
+được xem là "đã ký hợp đồng" khi có ≥ 1 đơn hàng trên sản phẩm của nông trại do user
+sở hữu (liên kết Order → Product → FarmingSeason → Farm). Mọi truy vấn đều được phạm
+vi về farm của user đang đăng nhập.
+
+| Method | Endpoint | Auth | Roles | Description |
+|--------|----------|------|-------|-------------|
+| GET | `/api/retailers` | Yes | FARM_MANAGER | Danh sách đối tác kèm chỉ số giao dịch (số đơn, tổng giá trị, lần đầu/cuối) |
+| GET | `/api/retailers/{id}` | Yes | FARM_MANAGER | Chi tiết đối tác: thông tin kinh doanh + lịch sử giao dịch |
+
 ### 6.7. Shipping API
 
 | Method | Endpoint | Auth | Roles | Description |
