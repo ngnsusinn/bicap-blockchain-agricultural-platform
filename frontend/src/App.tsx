@@ -7,6 +7,7 @@ import ProfilePage from './pages/FarmManager/ProfilePage';
 import RetailerProfilePage from './pages/Retailer/RetailerProfilePage';
 import RetailerBusinessPage from './pages/Retailer/RetailerBusinessPage';
 import SeasonExports from './pages/FarmManager/SeasonExports';
+import TradingFloor from './pages/FarmManager/TradingFloor';
 import TracePage from './pages/TracePage';
 import NotificationBell from './components/NotificationBell';
 import IotDashboard from './pages/FarmManager/IotDashboard';
@@ -26,6 +27,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
     { id: 'packages', label: 'Gói Dịch Vụ', icon: '📦', isProtected: false },
     { id: 'farm-info', label: 'Nông Trại Của Tôi', icon: '🌾', isProtected: false },
     { id: 'exports', label: 'Xuất Kho & QR', icon: '🏷️', isProtected: true },
+    { id: 'trading-floor', label: 'Sàn Giao Dịch', icon: '🛒', isProtected: true },
     { id: 'products', label: 'Sản Phẩm & QR Code', icon: '🔍', isProtected: true },
     { id: 'iot', label: 'Giám Sát IoT', icon: '🌡️', isProtected: true },
     { id: 'certificates', label: 'Chứng Nhận VietGAP', icon: '📜', isProtected: true },
@@ -327,6 +329,7 @@ export default function App() {
           {currentTab === 'profile' && <ProfilePage onUserUpdated={(updated: UserSession) => setUser(updated)} />}
           {currentTab === 'packages' && <ServicePackages />}
           {currentTab === 'exports' && <SeasonExports farmId={user?.farmId} />}
+          {currentTab === 'trading-floor' && <TradingFloor farmId={user?.farmId} />}
 
           {currentTab === 'dashboard' && (
             <div>
