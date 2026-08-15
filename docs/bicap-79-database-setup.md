@@ -307,15 +307,18 @@ CREATE TABLE IF NOT EXISTS `qrcodes` (
 CREATE TABLE IF NOT EXISTS `products` (
   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
   `season_id` BIGINT NOT NULL,
+  `export_id` BIGINT NULL, -- Nguồn lô hàng xuất kho khi đăng sản phẩm lên sàn (BICAP-18 / SRS-FM-012)
   `category_id` BIGINT NOT NULL, -- References categories (e.g. Rau, Củ quả, Trái cây)
   `name` VARCHAR(255) NOT NULL,
   `description` TEXT NULL,
+  `images` TEXT NULL, -- JSON array of product image URLs (BICAP-18 / SRS-FM-012: 1-10 ảnh)
   `price` DECIMAL(12,2) NOT NULL,
   `quantity` DOUBLE NOT NULL,
   `qr_code_id` BIGINT NULL,
   `status` VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE, INACTIVE, PENDING_REVIEW (BICAP-5 / SRS-ADM-004)
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT `fk_products_season` FOREIGN KEY (`season_id`) REFERENCES `farming_seasons` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_products_export` FOREIGN KEY (`export_id`) REFERENCES `season_exports` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_products_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`),
   CONSTRAINT `fk_products_qrcode` FOREIGN KEY (`qr_code_id`) REFERENCES `qrcodes` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
