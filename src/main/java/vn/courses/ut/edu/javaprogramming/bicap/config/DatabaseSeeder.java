@@ -19,6 +19,10 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.SubscriptionRepository
 import vn.courses.ut.edu.javaprogramming.bicap.entity.ServicePackage;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Subscription;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.SubscriptionStatus;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmingSeason;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Product;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.ProductRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -41,12 +45,16 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final ServicePackageRepository servicePackageRepository;
     private final SubscriptionRepository subscriptionRepository;
+    private final FarmingSeasonRepository farmingSeasonRepository;
+    private final ProductRepository productRepository;
 
     public DatabaseSeeder(PermissionRepository permissionRepository, RoleRepository roleRepository, UserRepository userRepository,
                           FarmRepository farmRepository, FarmCertificationRepository farmCertificationRepository,
                           CategoryRepository categoryRepository, PasswordEncoder passwordEncoder,
                           ServicePackageRepository servicePackageRepository,
-                          SubscriptionRepository subscriptionRepository) {
+                          SubscriptionRepository subscriptionRepository,
+                          FarmingSeasonRepository farmingSeasonRepository,
+                          ProductRepository productRepository) {
         this.permissionRepository = permissionRepository;
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
@@ -56,6 +64,8 @@ public class DatabaseSeeder implements CommandLineRunner {
         this.passwordEncoder = passwordEncoder;
         this.servicePackageRepository = servicePackageRepository;
         this.subscriptionRepository = subscriptionRepository;
+        this.farmingSeasonRepository = farmingSeasonRepository;
+        this.productRepository = productRepository;
     }
 
     @Override
@@ -123,6 +133,20 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         // 6. Seed Subscription for Farm 3
         seedSubscription(farm3.getId());
+
+        // 7. Seed FarmingSeason + Product ACTIVE (BICAP-75 test data)
+        //    Dùng Farm 3 (APPROVED) vì chỉ farm APPROVED mới có thể bán hàng
+        FarmingSeason season = seedFarmingSeason(farm3.getId(),
+                "Vu Rau Xanh 2026", "Rau an la", "Cai xanh huu co",
+                5.0, java.time.LocalDate.of(2026, 1, 10));
+        Category rauCategory = categoryRepository.findByName("Rau an la")
+                .orElse(categoryRepository.findAll().stream().findFirst().orElse(null));
+        if (rauCategory != null && season != null) {
+            seedProduct(season.getId(), rauCategory.getId(),
+                    "Cai xanh huu co BICAP",
+                    "Cai xanh trong theo chuan huu co, khong su dung thuoc bao ve thuc vat. Nguon goc ro rang, co chung nhan VietGAP.",
+                    15000.0, 500.0);
+        }
     }
 
     private Permission seedPermission(String code, String description) {
@@ -236,8 +260,8 @@ public class DatabaseSeeder implements CommandLineRunner {
     private void seedSubscription(Long farmId) {
         ServicePackage sp = servicePackageRepository.findAll().stream().findFirst().orElseGet(() -> {
             ServicePackage newSp = new ServicePackage();
-            newSp.setName("Gói Dịch Vụ Cơ Bản");
-            newSp.setDescription("Gói cơ bản cho mọi trang trại");
+            newSp.setName("Goi Dich Vu Co Ban");
+            newSp.setDescription("Goi co ban cho moi trang trai");
             newSp.setPrice(new BigDecimal("100000"));
             newSp.setDurationDays(365);
             newSp.setStatus("ACTIVE");
@@ -253,6 +277,49 @@ public class DatabaseSeeder implements CommandLineRunner {
             sub.setEndDate(LocalDate.now().plusDays(365));
             sub.setStatus(SubscriptionStatus.ACTIVE);
             subscriptionRepository.save(sub);
+        }
+    }
+
+    /**
+     * Seeds one FarmingSeason per unique (farmId + name).
+     * Dung cho BICAP-75 test data: tao season de co product.
+     */
+    private FarmingSeason seedFarmingSeason(Long farmId, String name, String productType,
+                                             String variety, Double area, java.time.LocalDate startDate) {
+        return farmingSeasonRepository.findAll().stream()
+                .filter(s -> farmId.equals(s.getFarmId()) && name.equals(s.getName()))
+                .findFirst()
+                .orElseGet(() -> {
+                    FarmingSeason s = new FarmingSeason();
+                    s.setFarmId(farmId);
+                    s.setName(name);
+                    s.setProductType(productType);
+                    s.setVariety(variety);
+                    s.setArea(area);
+                    s.setStartDate(startDate);
+                    s.setStatus("HARVESTED"); // san sang len san
+                    return farmingSeasonRepository.save(s);
+                });
+    }
+
+    /**
+     * Seeds one Product ACTIVE per unique (seasonId + name).
+     * Dung cho BICAP-75 test data: Retailer co the dat mua ngay.
+     */
+    private void seedProduct(Long seasonId, Long categoryId, String name,
+                             String description, double price, double quantity) {
+        boolean exists = productRepository.findAll().stream()
+                .anyMatch(p -> seasonId.equals(p.getSeasonId()) && name.equals(p.getName()));
+        if (!exists) {
+            Product p = new Product();
+            p.setSeasonId(seasonId);
+            p.setCategoryId(categoryId);
+            p.setName(name);
+            p.setDescription(description);
+            p.setPrice(new BigDecimal(String.valueOf(price)));
+            p.setQuantity(quantity);
+            p.setStatus("ACTIVE");
+            productRepository.save(p);
         }
     }
 }

@@ -3,9 +3,11 @@ package vn.courses.ut.edu.javaprogramming.bicap.controller;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.CancelOrderRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.CreateDepositRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.DepositResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.OrderResponse;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.PlaceOrderRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.RejectOrderRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.service.OrderService;
 
@@ -60,5 +62,35 @@ public class OrderController {
             @RequestHeader("X-Actor-Email") String actorEmail,
             @Valid @RequestBody CreateDepositRequest request) {
         return ResponseEntity.ok(orderService.createDeposit(request, actorEmail));
+    }
+    // ── BICAP-75: Retailer đặt mua, hủy đơn, hoàn thành; Farm Manager giao hàng ──
+    /** Retailer đặt mua nông sản mới → tạo đơn với status PENDING. */
+    @PostMapping
+    public ResponseEntity<OrderResponse> placeOrder(
+            @Valid @RequestBody PlaceOrderRequest request) {
+        return ResponseEntity.ok(orderService.placeOrder(request));
+    }
+    /** Retailer xem danh sách đơn hàng của chính mình, lọc theo trạng thái. */
+    @GetMapping("/my")
+    public ResponseEntity<List<OrderResponse>> getMyOrders(
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(orderService.getRetailerOrders(status));
+    }
+    /** Retailer hủy đơn (chỉ khi PENDING hoặc ACCEPTED). */
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<OrderResponse> cancelOrder(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) CancelOrderRequest request) {
+        return ResponseEntity.ok(orderService.cancelOrder(id, request));
+    }
+    /** Farm Manager xác nhận đã giao hàng (DEPOSIT_PAID → DELIVERED). */
+    @PutMapping("/{id}/deliver")
+    public ResponseEntity<OrderResponse> confirmDelivery(@PathVariable Long id) {
+        return ResponseEntity.ok(orderService.confirmDelivery(id));
+    }
+    /** Retailer xác nhận đã nhận hàng (DELIVERED → COMPLETED). */
+    @PutMapping("/{id}/complete")
+    public ResponseEntity<OrderResponse> completeOrder(@PathVariable Long id) {
+        return ResponseEntity.ok(orderService.completeOrder(id));
     }
 }
