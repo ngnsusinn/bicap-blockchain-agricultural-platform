@@ -48,6 +48,11 @@ public class OrderResponse {
     private BigDecimal depositAmount;
     private String depositCode;
 
+    // BICAP-75: extended lifecycle fields
+    private String cancelledReason;
+    private LocalDateTime deliveredAt;
+    private LocalDateTime completedAt;
+
     public OrderResponse() {}
 
     public OrderResponse(Long id, String status, String rejectReason, LocalDateTime createdAt,
@@ -55,7 +60,8 @@ public class OrderResponse {
                          Double productQuantity, Long retailerId, String retailerName, String retailerEmail,
                          String retailerPhone, Long farmId, String farmName, Long seasonId, String seasonName,
                          Double quantity, BigDecimal price, BigDecimal totalAmount, String deliveryAddr,
-                         Double depositRate, BigDecimal depositAmount, String depositCode) {
+                         Double depositRate, BigDecimal depositAmount, String depositCode,
+                         String cancelledReason, LocalDateTime deliveredAt, LocalDateTime completedAt) {
         this.id = id;
         this.status = status;
         this.rejectReason = rejectReason;
@@ -80,6 +86,9 @@ public class OrderResponse {
         this.depositRate = depositRate;
         this.depositAmount = depositAmount;
         this.depositCode = depositCode;
+        this.cancelledReason = cancelledReason;
+        this.deliveredAt = deliveredAt;
+        this.completedAt = completedAt;
     }
 
     /** Builds the response from pre-loaded entities (product/season/farm/retailer may be null-safe). */
@@ -112,7 +121,10 @@ public class OrderResponse {
                 order.getDeliveryAddr(),
                 order.getDepositRate(),
                 order.getDepositAmount(),
-                order.getDepositCode()
+                order.getDepositCode(),
+                order.getCancelledReason(),
+                order.getDeliveredAt(),
+                order.getCompletedAt()
         );
     }
 
@@ -164,4 +176,10 @@ public class OrderResponse {
     public void setDepositAmount(BigDecimal depositAmount) { this.depositAmount = depositAmount; }
     public String getDepositCode() { return depositCode; }
     public void setDepositCode(String depositCode) { this.depositCode = depositCode; }
+    public String getCancelledReason() { return cancelledReason; }
+    public void setCancelledReason(String cancelledReason) { this.cancelledReason = cancelledReason; }
+    public LocalDateTime getDeliveredAt() { return deliveredAt; }
+    public void setDeliveredAt(LocalDateTime deliveredAt) { this.deliveredAt = deliveredAt; }
+    public LocalDateTime getCompletedAt() { return completedAt; }
+    public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
 }

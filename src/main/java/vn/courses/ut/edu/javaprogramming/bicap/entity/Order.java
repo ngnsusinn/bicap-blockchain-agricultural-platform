@@ -11,11 +11,14 @@ import java.time.LocalDateTime;
 })
 public class Order {
 
-    /** Order states used by the deposit/payment workflow (kept as String column, values centralized here). */
-    public static final String STATUS_PENDING = "PENDING";
-    public static final String STATUS_ACCEPTED = "ACCEPTED";
-    public static final String STATUS_REJECTED = "REJECTED";
+    /** Order states used by the full order lifecycle (BICAP-75). */
+    public static final String STATUS_PENDING      = "PENDING";
+    public static final String STATUS_ACCEPTED     = "ACCEPTED";
+    public static final String STATUS_REJECTED     = "REJECTED";
     public static final String STATUS_DEPOSIT_PAID = "DEPOSIT_PAID";
+    public static final String STATUS_CANCELLED    = "CANCELLED";
+    public static final String STATUS_DELIVERED    = "DELIVERED";
+    public static final String STATUS_COMPLETED    = "COMPLETED";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -49,6 +52,18 @@ public class Order {
     @Column(name = "reject_reason", length = 1000)
     private String rejectReason;
 
+    /** Reason recorded when the Retailer cancels the order (BICAP-75). */
+    @Column(name = "cancelled_reason", length = 1000)
+    private String cancelledReason;
+
+    /** Timestamp when Farm Manager confirms delivery (BICAP-75). */
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+
+    /** Timestamp when Retailer confirms receipt of goods (BICAP-75). */
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -57,7 +72,8 @@ public class Order {
 
     public Order(Long id, Long productId, Long retailerId, Double quantity, BigDecimal price, String status,
                  String deliveryAddr, Double depositRate, String depositCode, BigDecimal depositAmount,
-                 String rejectReason, LocalDateTime createdAt) {
+                 String rejectReason, String cancelledReason, LocalDateTime deliveredAt,
+                 LocalDateTime completedAt, LocalDateTime createdAt) {
         this.id = id;
         this.productId = productId;
         this.retailerId = retailerId;
@@ -69,6 +85,9 @@ public class Order {
         this.depositCode = depositCode;
         this.depositAmount = depositAmount;
         this.rejectReason = rejectReason;
+        this.cancelledReason = cancelledReason;
+        this.deliveredAt = deliveredAt;
+        this.completedAt = completedAt;
         this.createdAt = createdAt;
     }
 
@@ -104,6 +123,12 @@ public class Order {
     public void setDepositAmount(BigDecimal depositAmount) { this.depositAmount = depositAmount; }
     public String getRejectReason() { return rejectReason; }
     public void setRejectReason(String rejectReason) { this.rejectReason = rejectReason; }
+    public String getCancelledReason() { return cancelledReason; }
+    public void setCancelledReason(String cancelledReason) { this.cancelledReason = cancelledReason; }
+    public LocalDateTime getDeliveredAt() { return deliveredAt; }
+    public void setDeliveredAt(LocalDateTime deliveredAt) { this.deliveredAt = deliveredAt; }
+    public LocalDateTime getCompletedAt() { return completedAt; }
+    public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

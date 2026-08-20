@@ -8,6 +8,8 @@ import vn.courses.ut.edu.javaprogramming.bicap.config.SepayConfig;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.CreateDepositRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.DepositResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.OrderResponse;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.CancelOrderRequest;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.PlaceOrderRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmingSeason;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Order;
@@ -42,7 +44,12 @@ public class OrderService {
     private static final Set<String> DEPOSITABLE_STATUSES =
             Set.of(Order.STATUS_PENDING, Order.STATUS_ACCEPTED);
 
+    /** Các trạng thái Retailer được phép hủy đơn (BICAP-75). */
+    private static final Set<String> CANCELLABLE_STATUSES =
+            Set.of(Order.STATUS_PENDING, Order.STATUS_ACCEPTED);
+
     private static final Set<String> FARM_MANAGER_ROLES = Set.of("FARM_MANAGER");
+    private static final Set<String> RETAILER_ROLES     = Set.of("RETAILER");
 
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
@@ -238,9 +245,208 @@ public class OrderService {
         return buildOrderResponse(ctx.withOrder(saved));
     }
 
+    // ── BICAP-75: Đặt mua, Hủy đơn, Giao hàng, Hoàn thành ──
+
+    /**
+     * Retailer đặt mua nông sản — tạo Order mới với status PENDING.
+     * Snapshot giá tại thời điểm đặt từ Product hiện tại.
+     * Gửi thông báo Farm Manager của nông trại chứa sản phẩm.
+     */
+    public OrderResponse placeOrder(PlaceOrderRequest request) {
+        User actor = requireRetailer();
+
+        Product product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + request.getProductId()));
+
+        // Chỉ cho phép đặt mua sản phẩm đang ACTIVE
+        if (!"ACTIVE".equals(product.getStatus())) {
+            throw new BadRequestException("Product is not available for purchase");
+        }
+
+        Order order = new Order();
+        order.setProductId(product.getId());
+        order.setRetailerId(actor.getId());
+        order.setQuantity(request.getQuantity());
+        order.setPrice(product.getPrice()); // snapshot giá
+        order.setDeliveryAddr(request.getDeliveryAddr());
+        order.setStatus(Order.STATUS_PENDING);
+        order.setDepositRate(0.3);
+
+        Order saved = orderRepository.save(order);
+
+        // Thông báo Farm Manager (tìm qua season→farm)
+        FarmingSeason season = product.getSeasonId() != null
+                ? seasonRepository.findById(product.getSeasonId()).orElse(null) : null;
+        if (season != null && season.getFarmId() != null) {
+            farmRepository.findById(season.getFarmId()).ifPresent(farm ->
+                notificationService.sendNotification(farm.getUserId(), "INFO",
+                        "Yêu cầu mua mới",
+                        "Nhà bán lẻ " + actor.getFullName() + " đã đặt mua " + request.getQuantity()
+                                + " đơn vị \"" + product.getName() + "\". Vui lòng xem xét và xử lý.",
+                        false)
+            );
+        }
+
+        Farm farm = season != null && season.getFarmId() != null
+                ? farmRepository.findById(season.getFarmId()).orElse(null) : null;
+        return OrderResponse.from(saved, product, season, farm, actor);
+    }
+
+    /**
+     * Retailer hủy đơn hàng (PENDING hoặc ACCEPTED → CANCELLED).
+     * Không thể hủy khi đã đặt cọc (DEPOSIT_PAID) hoặc sau đó.
+     */
+    public OrderResponse cancelOrder(Long id, CancelOrderRequest request) {
+        User actor = requireRetailer();
+
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
+
+        if (!actor.getId().equals(order.getRetailerId())) {
+            throw new ForbiddenException("This order does not belong to the current user");
+        }
+        if (!CANCELLABLE_STATUSES.contains(order.getStatus())) {
+            throw new BadRequestException(
+                    "Order cannot be cancelled in its current state (current: " + order.getStatus() + ")");
+        }
+
+        order.setStatus(Order.STATUS_CANCELLED);
+        if (request != null && request.getReason() != null && !request.getReason().isBlank()) {
+            order.setCancelledReason(request.getReason().trim());
+        }
+        Order saved = orderRepository.save(order);
+
+        // Thông báo Farm Manager
+        Product product = order.getProductId() != null
+                ? productRepository.findById(order.getProductId()).orElse(null) : null;
+        FarmingSeason season = product != null && product.getSeasonId() != null
+                ? seasonRepository.findById(product.getSeasonId()).orElse(null) : null;
+        if (season != null && season.getFarmId() != null) {
+            farmRepository.findById(season.getFarmId()).ifPresent(farm ->
+                notificationService.sendNotification(farm.getUserId(), "WARNING",
+                        "Đơn hàng bị hủy",
+                        "Nhà bán lẻ " + actor.getFullName() + " đã hủy đơn hàng #" + id
+                                + (order.getCancelledReason() != null ? ". Lý do: " + order.getCancelledReason() : "."),
+                        false)
+            );
+        }
+
+        Farm farm = season != null && season.getFarmId() != null
+                ? farmRepository.findById(season.getFarmId()).orElse(null) : null;
+        User retailer = userRepository.findById(actor.getId()).orElse(actor);
+        return OrderResponse.from(saved, product, season, farm, retailer);
+    }
+
+    /**
+     * Farm Manager xác nhận đã giao hàng (DEPOSIT_PAID → DELIVERED).
+     * Gửi thông báo Retailer để xác nhận đã nhận.
+     */
+    public OrderResponse confirmDelivery(Long id) {
+        User actor = requireFarmManager();
+        OrderContext ctx = loadOwnedOrder(id, actor.getId());
+        Order order = ctx.order;
+
+        if (!Order.STATUS_DEPOSIT_PAID.equals(order.getStatus())) {
+            throw new BadRequestException(
+                    "Only DEPOSIT_PAID orders can be marked as delivered (current: " + order.getStatus() + ")");
+        }
+
+        order.setStatus(Order.STATUS_DELIVERED);
+        order.setDeliveredAt(java.time.LocalDateTime.now());
+        Order saved = orderRepository.save(order);
+
+        notificationService.sendNotification(order.getRetailerId(), "INFO",
+                "Đơn hàng đã được giao",
+                "Đơn hàng \"" + productName(ctx) + "\" (" + order.getQuantity()
+                        + " đơn vị) đã được giao. Vui lòng xác nhận đã nhận hàng.",
+                false);
+
+        return buildOrderResponse(ctx.withOrder(saved));
+    }
+
+    /**
+     * Retailer xác nhận đã nhận hàng (DELIVERED → COMPLETED).
+     * Chỉ chủ đơn mới được xác nhận.
+     */
+    public OrderResponse completeOrder(Long id) {
+        User actor = requireRetailer();
+
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
+
+        if (!actor.getId().equals(order.getRetailerId())) {
+            throw new ForbiddenException("This order does not belong to the current user");
+        }
+        if (!Order.STATUS_DELIVERED.equals(order.getStatus())) {
+            throw new BadRequestException(
+                    "Only DELIVERED orders can be completed (current: " + order.getStatus() + ")");
+        }
+
+        order.setStatus(Order.STATUS_COMPLETED);
+        order.setCompletedAt(java.time.LocalDateTime.now());
+        Order saved = orderRepository.save(order);
+
+        // Thông báo Farm Manager
+        Product product = order.getProductId() != null
+                ? productRepository.findById(order.getProductId()).orElse(null) : null;
+        FarmingSeason season = product != null && product.getSeasonId() != null
+                ? seasonRepository.findById(product.getSeasonId()).orElse(null) : null;
+        if (season != null && season.getFarmId() != null) {
+            farmRepository.findById(season.getFarmId()).ifPresent(farm ->
+                notificationService.sendNotification(farm.getUserId(), "SUCCESS",
+                        "Đơn hàng hoàn thành",
+                        "Nhà bán lẻ " + actor.getFullName() + " đã xác nhận nhận hàng. Đơn hàng #" + id + " đã hoàn thành.",
+                        false)
+            );
+        }
+
+        Farm farm = season != null && season.getFarmId() != null
+                ? farmRepository.findById(season.getFarmId()).orElse(null) : null;
+        User retailer = userRepository.findById(actor.getId()).orElse(actor);
+        return OrderResponse.from(saved, product, season, farm, retailer);
+    }
+
+    /**
+     * Retailer xem danh sách đơn hàng của mình, lọc theo trạng thái (BICAP-75).
+     */
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getRetailerOrders(String status) {
+        User actor = requireRetailer();
+        String normalized = (status == null || status.isBlank()) ? null : status.trim().toUpperCase();
+        List<Order> orders = orderRepository.findRetailerOrders(actor.getId(), normalized);
+        if (orders.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Product> products = productRepository.findAllById(
+                        orders.stream().map(Order::getProductId).filter(Objects::nonNull).distinct().toList())
+                .stream().collect(Collectors.toMap(Product::getId, p -> p));
+        Map<Long, FarmingSeason> seasons = seasonRepository.findAllById(
+                        products.values().stream().map(Product::getSeasonId).filter(Objects::nonNull).distinct().toList())
+                .stream().collect(Collectors.toMap(FarmingSeason::getId, s -> s));
+        Map<Long, Farm> farms = farmRepository.findAllById(
+                        seasons.values().stream().map(FarmingSeason::getFarmId).filter(Objects::nonNull).distinct().toList())
+                .stream().collect(Collectors.toMap(Farm::getId, f -> f));
+
+        return orders.stream()
+                .map(o -> {
+                    Product p = o.getProductId() != null ? products.get(o.getProductId()) : null;
+                    FarmingSeason s = p != null ? seasons.get(p.getSeasonId()) : null;
+                    Farm f = s != null ? farms.get(s.getFarmId()) : null;
+                    return OrderResponse.from(o, p, s, f, actor);
+                })
+                .toList();
+    }
+
     private User requireFarmManager() {
         User actor = CurrentUser.get();
         ActorAuthorizer.requireRoles(actor, FARM_MANAGER_ROLES);
+        return actor;
+    }
+
+    private User requireRetailer() {
+        User actor = CurrentUser.get();
+        ActorAuthorizer.requireRoles(actor, RETAILER_ROLES);
         return actor;
     }
 

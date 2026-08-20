@@ -41,4 +41,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
            "ORDER BY o.createdAt DESC, o.id DESC")
     List<Order> findFarmManagerRetailerOrders(@Param("userId") Long userId,
                                               @Param("retailerId") Long retailerId);
+
+    /**
+     * Orders placed by a single retailer (BICAP-75 — Retailer xem đơn hàng của mình).
+     * Passing a {@code null} status returns all statuses.
+     */
+    @Query("SELECT o FROM Order o " +
+           "WHERE o.retailerId = :retailerId " +
+           "AND (:status IS NULL OR o.status = :status) " +
+           "ORDER BY o.createdAt DESC, o.id DESC")
+    List<Order> findRetailerOrders(@Param("retailerId") Long retailerId, @Param("status") String status);
 }
