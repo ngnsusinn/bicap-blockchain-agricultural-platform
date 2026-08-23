@@ -14,6 +14,11 @@ import TracePage from './pages/TracePage';
 import NotificationBell from './components/NotificationBell';
 import IotDashboard from './pages/FarmManager/IotDashboard';
 
+// === THÊM MỚI (NV1): 3 Màn hình Guest (BICAP 69 - 71) ===
+import GuestNotifications from './pages/Guest/GuestNotifications';
+import GuestProductSearch from './pages/Guest/GuestProductSearch';
+import GuestEducation from './pages/Guest/GuestEducation';
+
 /* ── Sidebar Component (Dành cho Farm Manager - BICAP-7 / BICAP-8) ── */
 interface SidebarProps {
   currentTab: string;
@@ -35,6 +40,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
     { id: 'products', label: 'Sản Phẩm & QR Code', icon: '🔍', isProtected: true },
     { id: 'iot', label: 'Giám Sát IoT', icon: '🌡️', isProtected: true },
     { id: 'certificates', label: 'Chứng Nhận VietGAP', icon: '📜', isProtected: true },
+    // === THÊM MỚI (NV1): Thêm mục menu để test 3 trang Guest trực tiếp trên Sidebar ===
+    { id: 'guest-notifications', label: '[Guest] Thông Báo (69)', icon: '🔔', isProtected: false },
+    { id: 'guest-search', label: '[Guest] Tìm Kiếm (70)', icon: '🔍', isProtected: false },
+    { id: 'guest-education', label: '[Guest] Bài Viết/Video (71)', icon: '📚', isProtected: false },
     { id: 'settings', label: 'Cài Đặt', icon: '⚙️', isProtected: false },
   ];
 
@@ -146,6 +155,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
 /* ── Main App Component ── */
 export default function App() {
   const traceMatch = window.location.pathname.match(/^\/trace\/([a-zA-Z0-9]+)$/);
+  const pathName = window.location.pathname;
+
   const [authenticated, setAuthenticated] = useState<boolean>(isLoggedIn());
   const [user, setUser] = useState<UserSession | null>(getCurrentUser());
   const [currentTab, setCurrentTab] = useState('packages');
@@ -170,8 +181,7 @@ export default function App() {
     setUser(null);
   };
 
-  // Check subscription status nếu là Farm Manager — dùng endpoint "my" thay vì farmId=1
-  // (M-2: không còn mã cứng farm #1; farmId được lấy từ danh sách nông trại của user).
+  // Check subscription status nếu là Farm Manager
   useEffect(() => {
     if (!authenticated || user?.role !== 'FARM_MANAGER') return;
 
@@ -193,8 +203,6 @@ export default function App() {
       }
     };
 
-    // Resolve the user's farmId from their own farm records (M-2), so downstream
-    // pages (ServicePackages) no longer need a hardcoded value.
     const resolveFarmId = async () => {
       if (user?.farmId) return;
       try {
@@ -208,18 +216,23 @@ export default function App() {
           }
         }
       } catch (e) {
-        // Non-fatal: farmId is resolved lazily by ServicePackages too.
+        // Non-fatal
       }
     };
 
     checkSubscription();
     resolveFarmId();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authenticated, user?.role, currentTab]);
 
+  // 1. Kiểm tra Route Tra cứu QR
   if (traceMatch) return <TracePage hash={traceMatch[1]} />;
 
-  // Render AuthPage nếu chưa đăng nhập (Hỗ trợ cả BICAP-7 và BICAP-36)
+  // 2. === THÊM MỚI (NV1): Cho phép truy cập công khai các đường dẫn Guest trực tiếp qua URL ===
+  if (pathName === '/guest/notifications') return <GuestNotifications />;
+  if (pathName === '/guest/search') return <GuestProductSearch />;
+  if (pathName === '/guest/education') return <GuestEducation />;
+
+  // Render AuthPage nếu chưa đăng nhập
   if (!authenticated) {
     return <AuthPage onLoginSuccess={handleLoginSuccess} />;
   }
@@ -228,7 +241,6 @@ export default function App() {
   if (user?.role === 'RETAILER') {
     return (
       <div className="retailer-portal">
-        {/* Retailer Header */}
         <header style={headerStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ ...logoIconStyle, background: 'linear-gradient(135deg, #0284c7 0%, #06b6d4 100%)' }}>R</div>
@@ -251,7 +263,6 @@ export default function App() {
           <button className={retailerTab === 'business' ? 'is-active' : ''} onClick={() => setRetailerTab('business')}>Giấy phép kinh doanh</button>
         </nav>
 
-        {/* Retailer Content */}
         <main className="retailer-main">
           {retailerTab === 'profile' && (
             <RetailerProfilePage
@@ -265,36 +276,35 @@ export default function App() {
           )}
           {retailerTab === 'business' && <RetailerBusinessPage />}
           {retailerTab === 'dashboard' && (
-          <div className="glass-panel retailer-panel">
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛒</div>
-            <h1 className="dashboard-title" style={{ background: 'linear-gradient(to right, #38bdf8, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Sàn Giao Dịch Nông Sản Sạch - Nhà Bán Lẻ
-            </h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '15px', marginTop: '8px', lineHeight: 1.6 }}>
-              Chào mừng nhà bán lẻ <strong>{user.fullName}</strong> ({user.email}) đã đăng nhập thành công.
-            </p>
+            <div className="glass-panel retailer-panel">
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛒</div>
+              <h1 className="dashboard-title" style={{ background: 'linear-gradient(to right, #38bdf8, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                Sàn Giao Dịch Nông Sản Sạch - Nhà Bán Lẻ
+              </h1>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '15px', marginTop: '8px', lineHeight: 1.6 }}>
+                Chào mừng nhà bán lẻ <strong>{user.fullName}</strong> ({user.email}) đã đăng nhập thành công.
+              </p>
 
-            {/* Quick stats for Retailer */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginTop: '32px' }}>
-              <div style={statCardStyle}>
-                <div style={{ fontSize: '24px' }}>🔍</div>
-                <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Tìm kiếm Nông sản</h3>
-                <p style={{ fontSize: '12px', color: '#94a3b8' }}>Duyệt danh mục sản phẩm đạt chứng nhận VietGAP/GlobalGAP.</p>
-              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginTop: '32px' }}>
+                <div style={statCardStyle}>
+                  <div style={{ fontSize: '24px' }}>🔍</div>
+                  <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Tìm kiếm Nông sản</h3>
+                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>Duyệt danh mục sản phẩm đạt chứng nhận VietGAP/GlobalGAP.</p>
+                </div>
 
-              <div style={statCardStyle}>
-                <div style={{ fontSize: '24px' }}>📦</div>
-                <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Đơn hàng của tôi</h3>
-                <p style={{ fontSize: '12px', color: '#94a3b8' }}>Quản lý các hợp đồng mua bán nông sản trực tiếp từ trang trại.</p>
-              </div>
+                <div style={statCardStyle}>
+                  <div style={{ fontSize: '24px' }}>📦</div>
+                  <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Đơn hàng của tôi</h3>
+                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>Quản lý các hợp đồng mua bán nông sản trực tiếp từ trang trại.</p>
+                </div>
 
-              <div style={statCardStyle}>
-                <div style={{ fontSize: '24px' }}>🚚</div>
-                <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Theo dõi Vận chuyển</h3>
-                <p style={{ fontSize: '12px', color: '#94a3b8' }}>Tracking thời gian thực tiến trình giao nhận lô hàng.</p>
+                <div style={statCardStyle}>
+                  <div style={{ fontSize: '24px' }}>🚚</div>
+                  <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Theo dõi Vận chuyển</h3>
+                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>Tracking thời gian thực tiến trình giao nhận lô hàng.</p>
+                </div>
               </div>
             </div>
-          </div>
           )}
         </main>
       </div>
@@ -312,7 +322,6 @@ export default function App() {
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Top Header Bar */}
         <header style={{ ...headerStyle, marginLeft: 'var(--sidebar-width)' }}>
           <div style={{ fontSize: '14px', color: '#cbd5e1' }}>
             Cổng Quản Lý Nông Trại <strong style={{ color: '#10b981' }}>(BICAP-7)</strong>
@@ -336,6 +345,11 @@ export default function App() {
           {currentTab === 'trading-floor' && <TradingFloor farmId={user?.farmId} />}
           {currentTab === 'orders' && <Orders />}
           {currentTab === 'retailers' && <Retailers />}
+
+          {/* === THÊM MỚI (NV1): Render 3 màn hình Guest khi bấm từ Sidebar === */}
+          {currentTab === 'guest-notifications' && <GuestNotifications />}
+          {currentTab === 'guest-search' && <GuestProductSearch />}
+          {currentTab === 'guest-education' && <GuestEducation />}
 
           {currentTab === 'dashboard' && (
             <div>
@@ -429,6 +443,7 @@ const navStyle: React.CSSProperties = {
   flexDirection: 'column',
   gap: '4px',
   flex: 1,
+  overflowY: 'auto',
 };
 
 const navItemStyle: React.CSSProperties = {
