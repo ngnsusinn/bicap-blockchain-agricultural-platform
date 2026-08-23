@@ -13,6 +13,7 @@ import Retailers from './pages/FarmManager/Retailers';
 import TracePage from './pages/TracePage';
 import NotificationBell from './components/NotificationBell';
 import IotDashboard from './pages/FarmManager/IotDashboard';
+import GuestNotifications from './pages/Guest/GuestNotifications';
 
 /* ── Sidebar Component (Dành cho Farm Manager - BICAP-7 / BICAP-8) ── */
 interface SidebarProps {
@@ -25,6 +26,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSubscription, user }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊', isProtected: false },
+    { id: 'guest-notifications', label: 'Thông Báo (BICAP-69)', icon: '🔔', isProtected: false },
     { id: 'profile', label: 'Cập nhật hồ sơ', icon: '👤', isProtected: false },
     { id: 'packages', label: 'Gói Dịch Vụ', icon: '📦', isProtected: false },
     { id: 'farm-info', label: 'Nông Trại Của Tôi', icon: '🌾', isProtected: false },
@@ -148,7 +150,7 @@ export default function App() {
   const traceMatch = window.location.pathname.match(/^\/trace\/([a-zA-Z0-9]+)$/);
   const [authenticated, setAuthenticated] = useState<boolean>(isLoggedIn());
   const [user, setUser] = useState<UserSession | null>(getCurrentUser());
-  const [currentTab, setCurrentTab] = useState('packages');
+  const [currentTab, setCurrentTab] = useState('guest-notifications');
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [retailerTab, setRetailerTab] = useState<'dashboard' | 'profile' | 'business'>('dashboard');
 
@@ -330,6 +332,7 @@ export default function App() {
         </header>
 
         <main className="main-content animate-fade-in" style={{ marginTop: '60px' }}>
+          {currentTab === 'guest-notifications' && <GuestNotifications />}
           {currentTab === 'profile' && <ProfilePage onUserUpdated={(updated: UserSession) => setUser(updated)} />}
           {currentTab === 'packages' && <ServicePackages />}
           {currentTab === 'exports' && <SeasonExports farmId={user?.farmId} />}
