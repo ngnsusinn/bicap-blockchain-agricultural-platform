@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.CurrentUser;
 import vn.courses.ut.edu.javaprogramming.bicap.controller.NotificationController;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.NotificationListResponse;
@@ -19,7 +20,6 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ForbiddenException;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.GlobalExceptionHandler;
 import vn.courses.ut.edu.javaprogramming.bicap.service.NotificationService;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,8 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * BICAP-77 / SRS-API-006: the notification endpoints are resolved against the
- * authenticated principal via {@link CurrentUser} — no client-supplied userId.
+ * BICAP-77 / BICAP-69 / SRS-API-006:
+ * Notification endpoints test suite.
  */
 class NotificationControllerTest {
 
@@ -88,11 +88,16 @@ class NotificationControllerTest {
     }
 
     @Test
-    void getMyNotifications_withoutAuthentication_throwsUnauthorized() throws Exception {
+    void getMyNotifications_withoutAuthentication_returnsPublicNotificationsForGuest() throws Exception {
         SecurityContextHolder.clearContext();
+        when(notificationService.getUserNotifications(null))
+                .thenReturn(new NotificationListResponse(0L, List.of(notificationResponse())));
 
         mockMvc.perform(get("/api/notifications"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications[0].id").value(1));
+
+        verify(notificationService).getUserNotifications(null);
     }
 
     @Test

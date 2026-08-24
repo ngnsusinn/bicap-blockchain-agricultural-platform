@@ -11,6 +11,10 @@ import java.util.List;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
     List<Notification> findByUserIdOrderByCreatedAtDesc(Long userId);
+    
+    // [BICAP-69] Lấy tất cả thông báo hệ thống sắp xếp theo thời gian mới nhất
+    List<Notification> findAllByOrderByCreatedAtDesc();
+
     long countByUserIdAndIsReadFalse(Long userId);
 
     /** Marks every unread notification of a user as read. Returns the number updated. */
