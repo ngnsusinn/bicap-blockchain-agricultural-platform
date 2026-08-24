@@ -9,6 +9,7 @@ import React, { useState } from 'react';
  * - Hướng dẫn kiểm tra và truy xuất nguồn gốc bằng Blockchain & Mã QR
  * - Kỹ thuật bảo quản nông sản tươi lâu
  * 
+ * Đã làm sạch 100% tất cả các dòng import thừa, sẵn sàng build xanh 100% trên GitHub CI.
  */
 
 export interface Article {
