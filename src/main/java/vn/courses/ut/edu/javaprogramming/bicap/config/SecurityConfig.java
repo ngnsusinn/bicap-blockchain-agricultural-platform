@@ -65,7 +65,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/trace/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
-
+                        .requestMatchers(HttpMethod.GET, "/api/notifications").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/service-packages/**").permitAll()
 
                         // Liveness/health only — required for container healthchecks, no
