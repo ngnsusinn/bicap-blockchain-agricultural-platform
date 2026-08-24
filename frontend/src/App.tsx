@@ -26,7 +26,6 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSubscription, user }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊', isProtected: false },
-    { id: 'guest-products', label: 'Tìm Kiếm Sản Phẩm (BICAP-70)', icon: '🔍', isProtected: false },
     { id: 'profile', label: 'Cập nhật hồ sơ', icon: '👤', isProtected: false },
     { id: 'packages', label: 'Gói Dịch Vụ', icon: '📦', isProtected: false },
     { id: 'farm-info', label: 'Nông Trại Của Tôi', icon: '🌾', isProtected: false },
@@ -37,6 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
     { id: 'products', label: 'Sản Phẩm & QR Code', icon: '🔍', isProtected: true },
     { id: 'iot', label: 'Giám Sát IoT', icon: '🌡️', isProtected: true },
     { id: 'certificates', label: 'Chứng Nhận VietGAP', icon: '📜', isProtected: true },
+    { id: 'guest-products', label: 'Tìm Kiếm Sản Phẩm (BICAP-70)', icon: '🔍', isProtected: false },
     { id: 'settings', label: 'Cài Đặt', icon: '⚙️', isProtected: false },
   ];
 
@@ -150,7 +150,7 @@ export default function App() {
   const traceMatch = window.location.pathname.match(/^\/trace\/([a-zA-Z0-9]+)$/);
   const [authenticated, setAuthenticated] = useState<boolean>(isLoggedIn());
   const [user, setUser] = useState<UserSession | null>(getCurrentUser());
-  const [currentTab, setCurrentTab] = useState('guest-products');
+  const [currentTab, setCurrentTab] = useState('packages');
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [retailerTab, setRetailerTab] = useState<'dashboard' | 'profile' | 'business'>('dashboard');
 
@@ -332,13 +332,13 @@ export default function App() {
         </header>
 
         <main className="main-content animate-fade-in" style={{ marginTop: '60px' }}>
-          {currentTab === 'guest-products' && <GuestProductSearch />}
           {currentTab === 'profile' && <ProfilePage onUserUpdated={(updated: UserSession) => setUser(updated)} />}
           {currentTab === 'packages' && <ServicePackages />}
           {currentTab === 'exports' && <SeasonExports farmId={user?.farmId} />}
           {currentTab === 'trading-floor' && <TradingFloor farmId={user?.farmId} />}
           {currentTab === 'orders' && <Orders />}
           {currentTab === 'retailers' && <Retailers />}
+          {currentTab === 'guest-products' && <GuestProductSearch />}
 
           {currentTab === 'dashboard' && (
             <div>
