@@ -1,5 +1,7 @@
 package vn.courses.ut.edu.javaprogramming.bicap.controller;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.CurrentUser;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.NotificationListResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.NotificationResponse;
@@ -16,13 +18,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Map;
 
-/**
- * In-app notification API (BICAP-77 / SRS-API-006).
- *
- * <p>All endpoints resolve the target user from the authenticated principal
- * ({@link CurrentUser}), so a user can only ever see or mutate their own notifications.
- * CORS is handled globally by {@link vn.courses.ut.edu.javaprogramming.bicap.config.CorsConfig}.
- */
 @RestController
 @RequestMapping("/api/notifications")
 public class NotificationController {
@@ -35,8 +30,15 @@ public class NotificationController {
 
     @GetMapping
     public ResponseEntity<NotificationListResponse> getMyNotifications() {
-        User user = CurrentUser.get();
-        return ResponseEntity.ok(notificationService.getUserNotifications(user.getId()));
+        // Lấy thông tin xác thực an toàn từ SecurityContextHolder
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long userId = null;
+
+        if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof User user) {
+            userId = user.getId();
+        }
+
+        return ResponseEntity.ok(notificationService.getUserNotifications(userId));
     }
 
     @GetMapping("/unread-count")
@@ -58,10 +60,6 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * Real-time SSE stream. EventSource (browser) cannot send an Authorization header,
-     * so the JWT is accepted via {@code ?token=...} (handled by JwtAuthenticationFilter).
-     */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream() {
         User user = CurrentUser.get();

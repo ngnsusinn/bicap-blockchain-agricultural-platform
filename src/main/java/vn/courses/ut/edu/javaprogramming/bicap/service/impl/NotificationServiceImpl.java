@@ -56,7 +56,19 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional(readOnly = true)
     public NotificationListResponse getUserNotifications(Long userId) {
-        List<Notification> notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        List<Notification> notifications;
+
+        // [BICAP-69] Hỗ trợ Guest chưa đăng nhập: lấy tất cả thông báo hệ thống mới nhất
+        if (userId == null) {
+            notifications = notificationRepository.findAllByOrderByCreatedAtDesc();
+            List<NotificationResponse> responses = notifications.stream()
+                    .map(NotificationResponse::from)
+                    .toList();
+            return new NotificationListResponse(0, responses);
+        }
+
+        // Logic cũ khi đã đăng nhập (Farm Manager, Retailer, Admin...)
+        notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
         List<NotificationResponse> responses = notifications.stream()
                 .map(NotificationResponse::from)
                 .toList();
