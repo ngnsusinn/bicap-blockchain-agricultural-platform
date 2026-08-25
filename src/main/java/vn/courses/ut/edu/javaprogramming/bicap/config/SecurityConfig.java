@@ -68,6 +68,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/notifications").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/service-packages/**").permitAll()
 
+                        // Thêm quyền truy cập GET cho Guest (BICAP-70)
+                        .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/admin/products/**").permitAll()
+
                         // Liveness/health only — required for container healthchecks, no
                         // sensitive data exposed.
                         .requestMatchers("/actuator/health").permitAll()

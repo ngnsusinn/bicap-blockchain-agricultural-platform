@@ -39,7 +39,7 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<Page<ProductResponse>> getProducts(
-            @RequestHeader("X-Actor-Email") String actorEmail,
+            @RequestHeader(value = "X-Actor-Email", required = false) String actorEmail,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String search,

@@ -14,6 +14,7 @@ import TracePage from './pages/TracePage';
 import NotificationBell from './components/NotificationBell';
 import IotDashboard from './pages/FarmManager/IotDashboard';
 import GuestEducation from './pages/Guest/GuestEducation';
+import GuestProductSearch from './pages/Guest/GuestProductSearch';
 import GuestNotifications from './pages/Guest/GuestNotifications';
 
 /* ── Sidebar Component (Dành cho Farm Manager - BICAP-7 / BICAP-8) ── */
@@ -39,6 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
     { id: 'iot', label: 'Giám Sát IoT', icon: '🌡️', isProtected: true },
     { id: 'certificates', label: 'Chứng Nhận VietGAP', icon: '📜', isProtected: true },
     { id: 'guest-education', label: 'Nội Dung Giáo Dục (BICAP-71)', icon: '📚', isProtected: false },
+    { id: 'guest-products', label: 'Tìm Kiếm Sản Phẩm (BICAP-70)', icon: '🔍', isProtected: false },
     { id: 'settings', label: 'Cài Đặt', icon: '⚙️', isProtected: false },
   ];
 
@@ -390,6 +392,7 @@ export default function App() {
           {currentTab === 'orders' && <Orders />}
           {currentTab === 'retailers' && <Retailers />}
           {currentTab === 'guest-education' && <GuestEducation />}
+          {currentTab === 'guest-products' && <GuestProductSearch />}
 
           {currentTab === 'dashboard' && (
             <div>
