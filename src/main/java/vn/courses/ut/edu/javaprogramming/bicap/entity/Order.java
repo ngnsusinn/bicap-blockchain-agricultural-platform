@@ -3,6 +3,7 @@ package vn.courses.ut.edu.javaprogramming.bicap.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "orders", indexes = {
@@ -36,6 +37,15 @@ public class Order {
 
     @Column(name = "delivery_addr")
     private String deliveryAddr;
+
+    @Column(name = "desired_delivery_date")
+    private LocalDate desiredDeliveryDate;
+
+    @Column(length = 2000)
+    private String notes;
+
+    @Column(name = "accepted_at")
+    private LocalDateTime acceptedAt;
 
     @Column(name = "deposit_rate")
     private Double depositRate = 0.3;
@@ -115,6 +125,12 @@ public class Order {
     public void setStatus(String status) { this.status = status; }
     public String getDeliveryAddr() { return deliveryAddr; }
     public void setDeliveryAddr(String deliveryAddr) { this.deliveryAddr = deliveryAddr; }
+    public LocalDate getDesiredDeliveryDate() { return desiredDeliveryDate; }
+    public void setDesiredDeliveryDate(LocalDate desiredDeliveryDate) { this.desiredDeliveryDate = desiredDeliveryDate; }
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+    public LocalDateTime getAcceptedAt() { return acceptedAt; }
+    public void setAcceptedAt(LocalDateTime acceptedAt) { this.acceptedAt = acceptedAt; }
     public Double getDepositRate() { return depositRate; }
     public void setDepositRate(Double depositRate) { this.depositRate = depositRate; }
     public String getDepositCode() { return depositCode; }
