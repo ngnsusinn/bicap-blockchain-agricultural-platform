@@ -6,6 +6,9 @@ import AuthPage from './pages/Auth/AuthPage';
 import ProfilePage from './pages/FarmManager/ProfilePage';
 import RetailerProfilePage from './pages/Retailer/RetailerProfilePage';
 import RetailerBusinessPage from './pages/Retailer/RetailerBusinessPage';
+import MarketplacePage from './pages/Retailer/MarketplacePage';
+import RetailerOrdersPage from './pages/Retailer/RetailerOrdersPage';
+import QrScannerPage from './pages/Retailer/QrScannerPage';
 import SeasonExports from './pages/FarmManager/SeasonExports';
 import TradingFloor from './pages/FarmManager/TradingFloor';
 import Orders from './pages/FarmManager/Orders';
@@ -152,7 +155,7 @@ export default function App() {
   const [user, setUser] = useState<UserSession | null>(getCurrentUser());
   const [currentTab, setCurrentTab] = useState('guest-notifications');
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
-  const [retailerTab, setRetailerTab] = useState<'dashboard' | 'profile' | 'business'>('dashboard');
+  const [retailerTab, setRetailerTab] = useState<'dashboard' | 'marketplace' | 'trace' | 'orders' | 'profile' | 'business'>('dashboard');
   
   // Quản lý chế độ xem khách (Guest) khi chưa đăng nhập
   const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
@@ -300,6 +303,9 @@ export default function App() {
 
         <nav className="retailer-nav" aria-label="Điều hướng hồ sơ Nhà bán lẻ">
           <button className={retailerTab === 'dashboard' ? 'is-active' : ''} onClick={() => setRetailerTab('dashboard')}>Tổng quan</button>
+          <button className={retailerTab === 'marketplace' ? 'is-active' : ''} onClick={() => setRetailerTab('marketplace')}>Sàn nông sản</button>
+          <button className={retailerTab === 'trace' ? 'is-active' : ''} onClick={() => setRetailerTab('trace')}>Quét QR</button>
+          <button className={retailerTab === 'orders' ? 'is-active' : ''} onClick={() => setRetailerTab('orders')}>Đơn mua</button>
           <button className={retailerTab === 'profile' ? 'is-active' : ''} onClick={() => setRetailerTab('profile')}>Thông tin cá nhân</button>
           <button className={retailerTab === 'business' ? 'is-active' : ''} onClick={() => setRetailerTab('business')}>Giấy phép kinh doanh</button>
         </nav>
@@ -316,6 +322,9 @@ export default function App() {
             />
           )}
           {retailerTab === 'business' && <RetailerBusinessPage />}
+          {retailerTab === 'marketplace' && <MarketplacePage />}
+          {retailerTab === 'trace' && <QrScannerPage />}
+          {retailerTab === 'orders' && <RetailerOrdersPage />}
           {retailerTab === 'dashboard' && (
             <div className="glass-panel retailer-panel">
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛒</div>

@@ -9,6 +9,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -52,6 +53,10 @@ public class OrderResponse {
     private String cancelledReason;
     private LocalDateTime deliveredAt;
     private LocalDateTime completedAt;
+    private LocalDate desiredDeliveryDate;
+    private String notes;
+    private LocalDateTime acceptedAt;
+    private LocalDateTime depositExpiresAt;
 
     public OrderResponse() {}
 
@@ -97,7 +102,7 @@ public class OrderResponse {
         BigDecimal totalAmount = order.getPrice() != null && order.getQuantity() != null
                 ? order.getPrice().multiply(BigDecimal.valueOf(order.getQuantity()))
                 : null;
-        return new OrderResponse(
+        OrderResponse response = new OrderResponse(
                 order.getId(),
                 order.getStatus(),
                 order.getRejectReason(),
@@ -126,6 +131,11 @@ public class OrderResponse {
                 order.getDeliveredAt(),
                 order.getCompletedAt()
         );
+        response.desiredDeliveryDate = order.getDesiredDeliveryDate();
+        response.notes = order.getNotes();
+        response.acceptedAt = order.getAcceptedAt();
+        response.depositExpiresAt = order.getAcceptedAt() == null ? null : order.getAcceptedAt().plusHours(24);
+        return response;
     }
 
     public Long getId() { return id; }
@@ -182,4 +192,12 @@ public class OrderResponse {
     public void setDeliveredAt(LocalDateTime deliveredAt) { this.deliveredAt = deliveredAt; }
     public LocalDateTime getCompletedAt() { return completedAt; }
     public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
+    public LocalDate getDesiredDeliveryDate() { return desiredDeliveryDate; }
+    public void setDesiredDeliveryDate(LocalDate desiredDeliveryDate) { this.desiredDeliveryDate = desiredDeliveryDate; }
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+    public LocalDateTime getAcceptedAt() { return acceptedAt; }
+    public void setAcceptedAt(LocalDateTime acceptedAt) { this.acceptedAt = acceptedAt; }
+    public LocalDateTime getDepositExpiresAt() { return depositExpiresAt; }
+    public void setDepositExpiresAt(LocalDateTime depositExpiresAt) { this.depositExpiresAt = depositExpiresAt; }
 }

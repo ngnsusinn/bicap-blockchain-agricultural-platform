@@ -59,9 +59,8 @@ public class OrderController {
 
     @PostMapping("/deposit")
     public ResponseEntity<DepositResponse> createDeposit(
-            @RequestHeader("X-Actor-Email") String actorEmail,
             @Valid @RequestBody CreateDepositRequest request) {
-        return ResponseEntity.ok(orderService.createDeposit(request, actorEmail));
+        return ResponseEntity.ok(orderService.createDeposit(request));
     }
     // ── BICAP-75: Retailer đặt mua, hủy đơn, hoàn thành; Farm Manager giao hàng ──
     /** Retailer đặt mua nông sản mới → tạo đơn với status PENDING. */
