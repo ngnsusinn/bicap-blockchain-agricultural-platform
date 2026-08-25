@@ -199,6 +199,32 @@ public class AuthService {
         return AuthResponse.fromUser(accessToken, user);
     }
 
+    @Transactional(readOnly = true)
+    public AuthResponse loginShippingMgr(LoginRequest request) {
+        User user = authenticateUser(request);
+        boolean isShippingMgr = user.getRoles().stream()
+                .anyMatch(r -> r.getName().equalsIgnoreCase("SHIPPING_MGR"));
+        if (!isShippingMgr) {
+            throw new UnauthorizedException("Account is not authorized for Shipping Manager portal");
+        }
+        Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+        String accessToken = jwtTokenProvider.generateToken(authentication);
+        return AuthResponse.fromUser(accessToken, user);
+    }
+
+    @Transactional(readOnly = true)
+    public AuthResponse loginDriver(LoginRequest request) {
+        User user = authenticateUser(request);
+        boolean isDriver = user.getRoles().stream()
+                .anyMatch(r -> r.getName().equalsIgnoreCase("SHIP_DRIVER"));
+        if (!isDriver) {
+            throw new UnauthorizedException("Account is not authorized for Driver portal");
+        }
+        Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+        String accessToken = jwtTokenProvider.generateToken(authentication);
+        return AuthResponse.fromUser(accessToken, user);
+    }
+
     private User authenticateUser(LoginRequest request) {
         String identifier = request.getIdentifier().trim();
         User account = userRepository.findByEmailIgnoreCaseOrPhone(identifier, identifier).orElse(null);
