@@ -10,9 +10,12 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
+
+    Optional<Product> findByExportId(Long exportId);
 
     /**
      * Search term is matched literally: callers must escape {@code !}, {@code %} and

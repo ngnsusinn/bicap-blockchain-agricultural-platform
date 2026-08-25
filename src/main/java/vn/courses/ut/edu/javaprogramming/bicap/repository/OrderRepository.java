@@ -8,11 +8,13 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.Order;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByRetailerId(Long retailerId);
     Optional<Order> findByDepositCode(String depositCode);
+    List<Order> findByStatusAndAcceptedAtBefore(String status, LocalDateTime deadline);
 
     /**
      * Orders placed against products grown on farms owned by {@code userId} (BICAP-20).

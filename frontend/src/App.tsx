@@ -6,6 +6,9 @@ import AuthPage from './pages/Auth/AuthPage';
 import ProfilePage from './pages/FarmManager/ProfilePage';
 import RetailerProfilePage from './pages/Retailer/RetailerProfilePage';
 import RetailerBusinessPage from './pages/Retailer/RetailerBusinessPage';
+import MarketplacePage from './pages/Retailer/MarketplacePage';
+import RetailerOrdersPage from './pages/Retailer/RetailerOrdersPage';
+import QrScannerPage from './pages/Retailer/QrScannerPage';
 import SeasonExports from './pages/FarmManager/SeasonExports';
 import TradingFloor from './pages/FarmManager/TradingFloor';
 import Orders from './pages/FarmManager/Orders';
@@ -13,6 +16,9 @@ import Retailers from './pages/FarmManager/Retailers';
 import TracePage from './pages/TracePage';
 import NotificationBell from './components/NotificationBell';
 import IotDashboard from './pages/FarmManager/IotDashboard';
+import GuestEducation from './pages/Guest/GuestEducation';
+import GuestProductSearch from './pages/Guest/GuestProductSearch';
+import GuestNotifications from './pages/Guest/GuestNotifications';
 
 /* ── Sidebar Component (Dành cho Farm Manager - BICAP-7 / BICAP-8) ── */
 interface SidebarProps {
@@ -25,6 +31,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSubscription, user }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊', isProtected: false },
+    { id: 'guest-notifications', label: 'Thông Báo (BICAP-69)', icon: '🔔', isProtected: false },
     { id: 'profile', label: 'Cập nhật hồ sơ', icon: '👤', isProtected: false },
     { id: 'packages', label: 'Gói Dịch Vụ', icon: '📦', isProtected: false },
     { id: 'farm-info', label: 'Nông Trại Của Tôi', icon: '🌾', isProtected: false },
@@ -35,6 +42,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
     { id: 'products', label: 'Sản Phẩm & QR Code', icon: '🔍', isProtected: true },
     { id: 'iot', label: 'Giám Sát IoT', icon: '🌡️', isProtected: true },
     { id: 'certificates', label: 'Chứng Nhận VietGAP', icon: '📜', isProtected: true },
+    { id: 'guest-education', label: 'Nội Dung Giáo Dục (BICAP-71)', icon: '📚', isProtected: false },
+    { id: 'guest-products', label: 'Tìm Kiếm Sản Phẩm (BICAP-70)', icon: '🔍', isProtected: false },
     { id: 'settings', label: 'Cài Đặt', icon: '⚙️', isProtected: false },
   ];
 
@@ -148,9 +157,12 @@ export default function App() {
   const traceMatch = window.location.pathname.match(/^\/trace\/([a-zA-Z0-9]+)$/);
   const [authenticated, setAuthenticated] = useState<boolean>(isLoggedIn());
   const [user, setUser] = useState<UserSession | null>(getCurrentUser());
-  const [currentTab, setCurrentTab] = useState('packages');
+  const [currentTab, setCurrentTab] = useState('guest-notifications');
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
-  const [retailerTab, setRetailerTab] = useState<'dashboard' | 'profile' | 'business'>('dashboard');
+  const [retailerTab, setRetailerTab] = useState<'dashboard' | 'marketplace' | 'trace' | 'orders' | 'profile' | 'business'>('dashboard');
+  
+  // Quản lý chế độ xem khách (Guest) khi chưa đăng nhập
+  const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
 
   // Xử lý sau khi Đăng nhập thành công từ AuthPage
   const handleLoginSuccess = (token: string, userData: any, refreshToken?: string) => {
@@ -168,10 +180,9 @@ export default function App() {
     logout();
     setAuthenticated(false);
     setUser(null);
+    setIsGuestMode(false);
   };
 
-  // Check subscription status nếu là Farm Manager — dùng endpoint "my" thay vì farmId=1
-  // (M-2: không còn mã cứng farm #1; farmId được lấy từ danh sách nông trại của user).
   useEffect(() => {
     if (!authenticated || user?.role !== 'FARM_MANAGER') return;
 
@@ -193,8 +204,6 @@ export default function App() {
       }
     };
 
-    // Resolve the user's farmId from their own farm records (M-2), so downstream
-    // pages (ServicePackages) no longer need a hardcoded value.
     const resolveFarmId = async () => {
       if (user?.farmId) return;
       try {
@@ -208,7 +217,7 @@ export default function App() {
           }
         }
       } catch (e) {
-        // Non-fatal: farmId is resolved lazily by ServicePackages too.
+        // Non-fatal
       }
     };
 
@@ -219,16 +228,67 @@ export default function App() {
 
   if (traceMatch) return <TracePage hash={traceMatch[1]} />;
 
-  // Render AuthPage nếu chưa đăng nhập (Hỗ trợ cả BICAP-7 và BICAP-36)
-  if (!authenticated) {
-    return <AuthPage onLoginSuccess={handleLoginSuccess} />;
+  // 1. Nếu chưa đăng nhập nhưng bấm "Xem thông báo chung (Guest)"
+  if (!authenticated && isGuestMode) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0b0f17', padding: '24px' }}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '900px', margin: '0 auto 24px auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={logoIconStyle}>B</div>
+            <span style={logoTextStyle}>BICAP Platform (Guest)</span>
+          </div>
+          <button 
+            onClick={() => setIsGuestMode(false)}
+            style={{ 
+              background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)', 
+              border: 'none', 
+              color: '#fff', 
+              padding: '8px 16px', 
+              borderRadius: '8px', 
+              fontWeight: 600, 
+              cursor: 'pointer' 
+            }}
+          >
+            🔐 Đăng nhập hệ thống
+          </button>
+        </header>
+
+        <GuestNotifications />
+      </div>
+    );
   }
 
-  // Render Retailer Portal nếu người dùng là RETAILER (BICAP-36)
+  // 2. Render AuthPage nếu chưa đăng nhập (kèm nút xem Guest ở góc phải)
+  if (!authenticated) {
+    return (
+      <div style={{ position: 'relative' }}>
+        <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000 }}>
+          <button
+            onClick={() => setIsGuestMode(true)}
+            style={{
+              background: 'rgba(16, 185, 129, 0.2)',
+              border: '1px solid #10b981',
+              color: '#34d399',
+              padding: '8px 16px',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: '13px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            }}
+          >
+            🔔 Xem thông báo chung (Guest)
+          </button>
+        </div>
+        <AuthPage onLoginSuccess={handleLoginSuccess} />
+      </div>
+    );
+  }
+
+  // 3. Render Retailer Portal nếu người dùng là RETAILER (BICAP-36)
   if (user?.role === 'RETAILER') {
     return (
       <div className="retailer-portal">
-        {/* Retailer Header */}
         <header style={headerStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ ...logoIconStyle, background: 'linear-gradient(135deg, #0284c7 0%, #06b6d4 100%)' }}>R</div>
@@ -247,11 +307,13 @@ export default function App() {
 
         <nav className="retailer-nav" aria-label="Điều hướng hồ sơ Nhà bán lẻ">
           <button className={retailerTab === 'dashboard' ? 'is-active' : ''} onClick={() => setRetailerTab('dashboard')}>Tổng quan</button>
+          <button className={retailerTab === 'marketplace' ? 'is-active' : ''} onClick={() => setRetailerTab('marketplace')}>Sàn nông sản</button>
+          <button className={retailerTab === 'trace' ? 'is-active' : ''} onClick={() => setRetailerTab('trace')}>Quét QR</button>
+          <button className={retailerTab === 'orders' ? 'is-active' : ''} onClick={() => setRetailerTab('orders')}>Đơn mua</button>
           <button className={retailerTab === 'profile' ? 'is-active' : ''} onClick={() => setRetailerTab('profile')}>Thông tin cá nhân</button>
           <button className={retailerTab === 'business' ? 'is-active' : ''} onClick={() => setRetailerTab('business')}>Giấy phép kinh doanh</button>
         </nav>
 
-        {/* Retailer Content */}
         <main className="retailer-main">
           {retailerTab === 'profile' && (
             <RetailerProfilePage
@@ -264,44 +326,46 @@ export default function App() {
             />
           )}
           {retailerTab === 'business' && <RetailerBusinessPage />}
+          {retailerTab === 'marketplace' && <MarketplacePage />}
+          {retailerTab === 'trace' && <QrScannerPage />}
+          {retailerTab === 'orders' && <RetailerOrdersPage />}
           {retailerTab === 'dashboard' && (
-          <div className="glass-panel retailer-panel">
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛒</div>
-            <h1 className="dashboard-title" style={{ background: 'linear-gradient(to right, #38bdf8, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Sàn Giao Dịch Nông Sản Sạch - Nhà Bán Lẻ
-            </h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '15px', marginTop: '8px', lineHeight: 1.6 }}>
-              Chào mừng nhà bán lẻ <strong>{user.fullName}</strong> ({user.email}) đã đăng nhập thành công.
-            </p>
+            <div className="glass-panel retailer-panel">
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛒</div>
+              <h1 className="dashboard-title" style={{ background: 'linear-gradient(to right, #38bdf8, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                Sàn Giao Dịch Nông Sản Sạch - Nhà Bán Lẻ
+              </h1>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '15px', marginTop: '8px', lineHeight: 1.6 }}>
+                Chào mừng nhà bán lẻ <strong>{user.fullName}</strong> ({user.email}) đã đăng nhập thành công.
+              </p>
 
-            {/* Quick stats for Retailer */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginTop: '32px' }}>
-              <div style={statCardStyle}>
-                <div style={{ fontSize: '24px' }}>🔍</div>
-                <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Tìm kiếm Nông sản</h3>
-                <p style={{ fontSize: '12px', color: '#94a3b8' }}>Duyệt danh mục sản phẩm đạt chứng nhận VietGAP/GlobalGAP.</p>
-              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginTop: '32px' }}>
+                <div style={statCardStyle}>
+                  <div style={{ fontSize: '24px' }}>🔍</div>
+                  <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Tìm kiếm Nông sản</h3>
+                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>Duyệt danh mục sản phẩm đạt chứng nhận VietGAP/GlobalGAP.</p>
+                </div>
 
-              <div style={statCardStyle}>
-                <div style={{ fontSize: '24px' }}>📦</div>
-                <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Đơn hàng của tôi</h3>
-                <p style={{ fontSize: '12px', color: '#94a3b8' }}>Quản lý các hợp đồng mua bán nông sản trực tiếp từ trang trại.</p>
-              </div>
+                <div style={statCardStyle}>
+                  <div style={{ fontSize: '24px' }}>📦</div>
+                  <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Đơn hàng của tôi</h3>
+                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>Quản lý các hợp đồng mua bán nông sản trực tiếp từ trang trại.</p>
+                </div>
 
-              <div style={statCardStyle}>
-                <div style={{ fontSize: '24px' }}>🚚</div>
-                <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Theo dõi Vận chuyển</h3>
-                <p style={{ fontSize: '12px', color: '#94a3b8' }}>Tracking thời gian thực tiến trình giao nhận lô hàng.</p>
+                <div style={statCardStyle}>
+                  <div style={{ fontSize: '24px' }}>🚚</div>
+                  <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Theo dõi Vận chuyển</h3>
+                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>Tracking thời gian thực tiến trình giao nhận lô hàng.</p>
+                </div>
               </div>
             </div>
-          </div>
           )}
         </main>
       </div>
     );
   }
 
-  // Render Farm Manager Portal (BICAP-7)
+  // 4. Render Farm Manager Portal (BICAP-7)
   return (
     <div className="app-container">
       <Sidebar
@@ -312,7 +376,6 @@ export default function App() {
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Top Header Bar */}
         <header style={{ ...headerStyle, marginLeft: 'var(--sidebar-width)' }}>
           <div style={{ fontSize: '14px', color: '#cbd5e1' }}>
             Cổng Quản Lý Nông Trại <strong style={{ color: '#10b981' }}>(BICAP-7)</strong>
@@ -330,12 +393,15 @@ export default function App() {
         </header>
 
         <main className="main-content animate-fade-in" style={{ marginTop: '60px' }}>
+          {currentTab === 'guest-notifications' && <GuestNotifications />}
           {currentTab === 'profile' && <ProfilePage onUserUpdated={(updated: UserSession) => setUser(updated)} />}
           {currentTab === 'packages' && <ServicePackages />}
           {currentTab === 'exports' && <SeasonExports farmId={user?.farmId} />}
           {currentTab === 'trading-floor' && <TradingFloor farmId={user?.farmId} />}
           {currentTab === 'orders' && <Orders />}
           {currentTab === 'retailers' && <Retailers />}
+          {currentTab === 'guest-education' && <GuestEducation />}
+          {currentTab === 'guest-products' && <GuestProductSearch />}
 
           {currentTab === 'dashboard' && (
             <div>

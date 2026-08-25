@@ -2,6 +2,7 @@ package vn.courses.ut.edu.javaprogramming.bicap.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.scheduling.annotation.Scheduled;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.ActorAuthorizer;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.CurrentUser;
 import vn.courses.ut.edu.javaprogramming.bicap.config.SepayConfig;
@@ -33,6 +34,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Service
 @Transactional
@@ -79,6 +82,14 @@ public class OrderService {
      */
     public DepositResponse createDeposit(CreateDepositRequest request, String actorEmail) {
         User actor = ActorAuthorizer.requireActor(userRepository, actorEmail);
+        return createDepositFor(request, actor);
+    }
+
+    public DepositResponse createDeposit(CreateDepositRequest request) {
+        return createDepositFor(request, requireRetailer());
+    }
+
+    private DepositResponse createDepositFor(CreateDepositRequest request, User actor) {
 
         Order order = orderRepository.findById(request.getOrderId())
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
@@ -89,6 +100,15 @@ public class OrderService {
 
         if (!DEPOSITABLE_STATUSES.contains(order.getStatus())) {
             throw new BadRequestException("Order is not in a valid state for deposit (current: " + order.getStatus() + ")");
+        }
+        if (!Order.STATUS_ACCEPTED.equals(order.getStatus())) {
+            throw new BadRequestException("Order must be accepted before deposit");
+        }
+        if (order.getAcceptedAt() != null && order.getAcceptedAt().plusHours(24).isBefore(LocalDateTime.now())) {
+            order.setStatus(Order.STATUS_CANCELLED);
+            order.setCancelledReason("Deposit payment window expired");
+            orderRepository.save(order);
+            throw new BadRequestException("The 24-hour deposit payment window has expired");
         }
 
         // Tỷ lệ đặt cọc (30% = 0.3) — computed in BigDecimal, rounded to 2 decimals (no double drift).
@@ -112,6 +132,18 @@ public class OrderService {
                 depositAmount,
                 depositCode
         );
+    }
+
+    /** BICAP-43 BR3: accepted orders are cancelled when the 24-hour deposit window expires. */
+    @Scheduled(fixedDelayString = "${bicap.orders.deposit-expiry-check-ms:60000}")
+    public void cancelExpiredDeposits() {
+        List<Order> expired = orderRepository.findByStatusAndAcceptedAtBefore(
+                Order.STATUS_ACCEPTED, LocalDateTime.now().minusHours(24));
+        expired.forEach(order -> {
+            order.setStatus(Order.STATUS_CANCELLED);
+            order.setCancelledReason("Deposit payment window expired");
+        });
+        if (!expired.isEmpty()) orderRepository.saveAll(expired);
     }
 
     /**
@@ -208,6 +240,7 @@ public class OrderService {
         }
 
         order.setStatus(Order.STATUS_ACCEPTED);
+        order.setAcceptedAt(LocalDateTime.now());
         Order saved = orderRepository.save(order);
 
         notificationService.sendNotification(order.getRetailerId(), "SUCCESS",
@@ -262,13 +295,27 @@ public class OrderService {
         if (!"ACTIVE".equals(product.getStatus())) {
             throw new BadRequestException("Product is not available for purchase");
         }
+        if (request.getQuantity() == null || request.getQuantity() <= 0 || product.getQuantity() == null
+                || request.getQuantity() > product.getQuantity()) {
+            throw new BadRequestException("Requested quantity exceeds available stock");
+        }
+        if (request.getProposedPrice() != null && request.getProposedPrice().signum() <= 0) {
+            throw new BadRequestException("Proposed price must be greater than 0");
+        }
+        if (request.getDesiredDeliveryDate() != null && !request.getDesiredDeliveryDate().isAfter(LocalDate.now())) {
+            throw new BadRequestException("Desired delivery date must be at least tomorrow");
+        }
 
         Order order = new Order();
         order.setProductId(product.getId());
         order.setRetailerId(actor.getId());
         order.setQuantity(request.getQuantity());
-        order.setPrice(product.getPrice()); // snapshot giá
+        // Null fallbacks keep compatibility for trusted internal callers; HTTP requests validate both fields.
+        order.setPrice(request.getProposedPrice() != null ? request.getProposedPrice() : product.getPrice());
         order.setDeliveryAddr(request.getDeliveryAddr());
+        order.setDesiredDeliveryDate(request.getDesiredDeliveryDate() != null
+                ? request.getDesiredDeliveryDate() : LocalDate.now().plusDays(1));
+        order.setNotes(request.getNotes() == null ? null : request.getNotes().trim());
         order.setStatus(Order.STATUS_PENDING);
         order.setDepositRate(0.3);
 
