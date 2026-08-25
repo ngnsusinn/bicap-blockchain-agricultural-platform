@@ -1405,6 +1405,7 @@ vn.courses.ut.edu.javaprogramming.bicap/
 | `status` | VARCHAR(20) | NOT NULL, DEFAULT 'PENDING' | Xem Order State Machine |
 | `delivery_addr` | VARCHAR(500) | NOT NULL | Địa chỉ giao hàng |
 | `deposit_rate` | DOUBLE | NOT NULL, DEFAULT 0.3 | Tỷ lệ đặt cọc (30%) |
+| `reject_reason` | VARCHAR(1000) | NULL | Lý do từ chối khi Farm Manager từ chối (BICAP-20 / SRS-FM-014) |
 | `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Ngày tạo |
 
 #### Bảng 17: `payments`
@@ -2411,6 +2412,18 @@ HTTP Status Codes:
 | GET | `/api/orders/{id}/payments` | Yes | Authenticated | Lịch sử thanh toán của đơn |
 | POST | `/api/orders/{id}/confirm-delivery` | Yes | RETAILER | Xác nhận đã nhận hàng (BICAP-51) |
 | POST | `/api/orders/{id}/delivery-images` | Yes | RETAILER | Upload ảnh nhận hàng (BICAP-52) |
+
+### 6.6.a. Retailer Partner API — Farm Manager portal (BICAP-21)
+
+Xem thông tin Nhà bán lẻ đã ký hợp đồng với nông trại của Farm Manager. Một Retailer
+được xem là "đã ký hợp đồng" khi có ≥ 1 đơn hàng trên sản phẩm của nông trại do user
+sở hữu (liên kết Order → Product → FarmingSeason → Farm). Mọi truy vấn đều được phạm
+vi về farm của user đang đăng nhập.
+
+| Method | Endpoint | Auth | Roles | Description |
+|--------|----------|------|-------|-------------|
+| GET | `/api/retailers` | Yes | FARM_MANAGER | Danh sách đối tác kèm chỉ số giao dịch (số đơn, tổng giá trị, lần đầu/cuối) |
+| GET | `/api/retailers/{id}` | Yes | FARM_MANAGER | Chi tiết đối tác: thông tin kinh doanh + lịch sử giao dịch |
 
 ### 6.7. Shipping API
 

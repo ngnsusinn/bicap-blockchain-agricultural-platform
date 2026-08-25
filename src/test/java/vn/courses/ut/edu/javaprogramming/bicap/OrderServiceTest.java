@@ -15,8 +15,12 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ForbiddenException;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.OrderRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.ProductRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.service.NotificationService;
 import vn.courses.ut.edu.javaprogramming.bicap.service.OrderService;
 
 import java.math.BigDecimal;
@@ -38,6 +42,14 @@ class OrderServiceTest {
     private OrderRepository orderRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private ProductRepository productRepository;
+    @Mock
+    private FarmingSeasonRepository seasonRepository;
+    @Mock
+    private FarmRepository farmRepository;
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private OrderService orderService;
@@ -57,7 +69,8 @@ class OrderServiceTest {
                 .fullName("Retailer").status(UserStatus.ACTIVE).roles(Set.of(retailerRole))
                 .build();
         // Rebuild with the real SepayConfig via constructor to keep the injected mocks.
-        orderService = new OrderService(orderRepository, userRepository, sepayConfig);
+        orderService = new OrderService(orderRepository, userRepository, sepayConfig,
+                productRepository, seasonRepository, farmRepository, notificationService);
     }
 
     private Order orderOwnedByRetailer() {

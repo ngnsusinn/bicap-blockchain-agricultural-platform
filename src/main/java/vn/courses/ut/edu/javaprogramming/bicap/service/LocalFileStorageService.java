@@ -25,14 +25,19 @@ public class LocalFileStorageService {
     }
 
     public String storeAvatar(Long userId, MultipartFile file) {
-        return store(userId, "avatars", file, IMAGE_TYPES, 5L * 1024 * 1024);
+        return store("retailers", userId, "avatars", file, IMAGE_TYPES, 5L * 1024 * 1024);
     }
 
     public String storeBusinessLicense(Long userId, MultipartFile file) {
-        return store(userId, "licenses", file, DOCUMENT_TYPES, 10L * 1024 * 1024);
+        return store("retailers", userId, "licenses", file, DOCUMENT_TYPES, 10L * 1024 * 1024);
     }
 
-    private String store(Long userId, String category, MultipartFile file,
+    /** Stores a product marketplace image under {@code uploads/farms/{userId}/products/} (BICAP-18). */
+    public String storeProductImage(Long userId, MultipartFile file) {
+        return store("farms", userId, "products", file, IMAGE_TYPES, 5L * 1024 * 1024);
+    }
+
+    private String store(String topLevel, Long userId, String category, MultipartFile file,
                          Set<String> allowedTypes, long maxBytes) {
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("Uploaded file is required");
@@ -52,7 +57,7 @@ public class LocalFileStorageService {
             default -> ".jpg";
         };
         String filename = UUID.randomUUID() + extension;
-        Path directory = root.resolve("retailers").resolve(userId.toString()).resolve(category).normalize();
+        Path directory = root.resolve(topLevel).resolve(userId.toString()).resolve(category).normalize();
         Path target = directory.resolve(filename).normalize();
         if (!target.startsWith(root)) {
             throw new BadRequestException("Invalid upload path");
@@ -60,7 +65,7 @@ public class LocalFileStorageService {
         try {
             Files.createDirectories(directory);
             Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-            return "/uploads/retailers/" + userId + "/" + category + "/" + filename;
+            return "/uploads/" + topLevel + "/" + userId + "/" + category + "/" + filename;
         } catch (IOException exception) {
             throw new BadRequestException("Could not store uploaded file");
         }
