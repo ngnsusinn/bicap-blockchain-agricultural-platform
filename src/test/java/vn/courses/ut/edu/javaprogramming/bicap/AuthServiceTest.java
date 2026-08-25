@@ -83,7 +83,7 @@ class AuthServiceTest {
     }
 
     @Test
-    void registerRetailerCreatesPendingRetailerAndSendsVerificationEmail() {
+    void registerRetailerCreatesActiveRetailerAndReturnsAccessToken() {
         when(userRepository.existsByPhone("0912345678")).thenReturn(false);
         when(roleRepository.findByName("RETAILER")).thenReturn(Optional.of(retailerRole));
         when(passwordEncoder.encode("Password@123")).thenReturn("$2a$hashed");
@@ -92,7 +92,7 @@ class AuthServiceTest {
             user.setId(10L);
             return user;
         });
-        when(jwtTokenProvider.generateEmailVerificationToken(any(User.class))).thenReturn("verification-token");
+        when(jwtTokenProvider.generateToken(any(Authentication.class))).thenReturn("access-token");
 
         AuthResponse response = authService.registerRetailer(registerRequest);
 
@@ -103,12 +103,12 @@ class AuthServiceTest {
         assertEquals("retailer@example.com", savedUser.getEmail());
         assertEquals("$2a$hashed", savedUser.getPassword());
         assertNotEquals(registerRequest.getPassword(), savedUser.getPassword());
-        assertEquals(UserStatus.PENDING_VERIFICATION, savedUser.getStatus());
+        assertEquals(UserStatus.ACTIVE, savedUser.getStatus());
         assertTrue(savedUser.getRoles().stream().anyMatch(role -> "RETAILER".equals(role.getName())));
-        assertEquals(null, response.getAccessToken());
-        assertTrue(response.isVerificationRequired());
+        assertEquals("access-token", response.getAccessToken());
+        assertTrue(!response.isVerificationRequired());
         assertTrue(response.getRoles().contains("RETAILER"));
-        verify(verificationEmailService).sendRetailerVerification("retailer@example.com", "verification-token");
+        verifyNoInteractions(verificationEmailService);
     }
 
     @Test

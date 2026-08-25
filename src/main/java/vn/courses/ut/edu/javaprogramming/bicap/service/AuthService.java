@@ -57,10 +57,8 @@ public class AuthService {
     }
 
     public AuthResponse registerRetailer(RegisterRequest request) {
-        User user = createUserWithRole(request, RETAILER_ROLE, UserStatus.PENDING_VERIFICATION);
-        String verificationToken = jwtTokenProvider.generateEmailVerificationToken(user);
-        verificationEmailService.sendRetailerVerification(user.getEmail(), verificationToken);
-        return AuthResponse.pendingVerification(user);
+        User user = createUserWithRole(request, RETAILER_ROLE, UserStatus.ACTIVE);
+        return issueStandardTokens(user);
     }
 
     public AuthResponse registerFarmManager(RegisterRequest request) {
