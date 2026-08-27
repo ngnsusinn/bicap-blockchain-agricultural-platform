@@ -5,12 +5,14 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmCertification;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmCertificationRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.ServicePackageRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.List;
 import java.util.Optional;
+import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -27,6 +29,9 @@ class DatabaseSeederTest {
 
     @Autowired
     private FarmCertificationRepository certificationRepository;
+
+    @Autowired
+    private ServicePackageRepository servicePackageRepository;
 
     @Test
     void allFourSeedFarms_shouldExist_withCorrectStatuses() {
@@ -64,5 +69,13 @@ class DatabaseSeederTest {
             List<FarmCertification> certs = certificationRepository.findByFarmId(farm.getId());
             assertFalse(certs.isEmpty(), "Farm " + farm.getName() + " should have a certification document");
         }
+    }
+
+    @Test
+    void servicePackages_shouldContainTheConfiguredBasicAndPremiumPlans() {
+        assertEquals(0, new BigDecimal("100000").compareTo(servicePackageRepository.findByName("BICAP - Cơ Bản")
+                .orElseThrow().getPrice()));
+        assertEquals(0, new BigDecimal("500000").compareTo(servicePackageRepository.findByName("BICAP - Premium")
+                .orElseThrow().getPrice()));
     }
 }

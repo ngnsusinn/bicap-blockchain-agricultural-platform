@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PaymentModal, { type PaymentData } from '../../components/PaymentModal';
-import { getAuthHeaders, isLoggedIn, getCurrentUser, API_BASE_URL } from '../../utils/auth';
+import { getAuthHeaders, isLoggedIn, API_BASE_URL } from '../../utils/auth';
 
 interface Package {
   id: number;
   name: string;
   description: string;
-  price: number;
-  durationDays: number;
-  features: string;
+  price?: number;
+  durationDays?: number;
+  features?: string | string[] | null;
   status: string;
 }
 
@@ -30,26 +30,6 @@ const ServicePackages: React.FC = () => {
   const [subscribing, setSubscribing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // M-2: farmId is no longer hardcoded to 1 — it comes from the authenticated
-  // user's session (derived from their own farm/subscription data in App.tsx),
-  // or resolved from the /api/farms/my endpoint below.
-  const [farmId, setFarmId] = useState<number | undefined>(getCurrentUser()?.farmId);
-
-  const resolveFarmId = useCallback(async () => {
-    if (farmId) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/farms/my`, { headers: getAuthHeaders() });
-      if (res.ok) {
-        const farms = await res.json();
-        if (Array.isArray(farms) && farms.length > 0) {
-          setFarmId(farms[0].id);
-        }
-      }
-    } catch (e) {
-      // Non-fatal: the purchase button will surface a clear error if no farmId is known.
-    }
-  }, [farmId]);
-
   const fetchData = useCallback(async () => {
     try {
       const pkgRes = await fetch(`${API_BASE_URL}/service-packages`);
@@ -70,7 +50,7 @@ const ServicePackages: React.FC = () => {
         setCurrentSubscription(activeSub || null);
       }
     } catch (err) {
-      setError('Failed to fetch data');
+      setError('Không thể tải dữ liệu gói dịch vụ.');
     } finally {
       setLoading(false);
     }
@@ -78,18 +58,12 @@ const ServicePackages: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    resolveFarmId();
-  }, [fetchData, resolveFarmId]);
+  }, [fetchData]);
 
   const handleSubscribe = async (pkg: Package) => {
     if (!isLoggedIn()) {
       setError('Vui lòng đăng nhập để mua gói dịch vụ');
       setTimeout(() => setError(null), 3000);
-      return;
-    }
-    if (!farmId) {
-      setError('Không xác định được nông trại của bạn. Vui lòng đăng ký nông trại trước.');
-      setTimeout(() => setError(null), 4000);
       return;
     }
     if (subscribing) return; // M-17: prevent double-click duplicate purchases.
@@ -98,7 +72,7 @@ const ServicePackages: React.FC = () => {
       const res = await fetch(`${API_BASE_URL}/subscriptions/purchase`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ packageId: pkg.id, farmId })
+        body: JSON.stringify({ packageId: pkg.id })
       });
       if (res.ok) {
         const data = await res.json();
@@ -106,11 +80,11 @@ const ServicePackages: React.FC = () => {
         setIsPaymentModalOpen(true);
       } else {
         const errData = await res.json().catch(() => ({}));
-        setError(errData.message || 'Failed to initiate purchase');
+        setError(errData.message || 'Không thể khởi tạo thanh toán cho gói dịch vụ.');
         setTimeout(() => setError(null), 3000);
       }
     } catch (err) {
-      setError('Network error');
+      setError('Không thể kết nối máy chủ. Vui lòng thử lại.');
       setTimeout(() => setError(null), 3000);
     } finally {
       setSubscribing(false);
@@ -189,18 +163,27 @@ const ServicePackages: React.FC = () => {
     overflow: 'hidden'
   });
 
-  const getFeatures = (featuresStr: string) => {
+  const getFeatures = (features: Package['features']): string[] => {
+    if (Array.isArray(features)) {
+      return features.filter((feature): feature is string => typeof feature === 'string' && feature.trim().length > 0);
+    }
+    if (!features || !features.trim()) {
+      return [];
+    }
     try {
-      return JSON.parse(featuresStr);
+      const parsed = JSON.parse(features);
+      return Array.isArray(parsed)
+        ? parsed.filter((feature): feature is string => typeof feature === 'string' && feature.trim().length > 0)
+        : [];
     } catch {
-      return featuresStr.split(',').map(s => s.trim());
+      return features.split(',').map(feature => feature.trim()).filter(Boolean);
     }
   };
 
   if (loading) {
     return (
       <div style={{...pageStyle, display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
-        <div style={{color: '#8b5cf6', fontSize: '24px', animation: 'pulse 1.5s infinite'}}>Loading packages...</div>
+        <div style={{color: '#8b5cf6', fontSize: '24px', animation: 'pulse 1.5s infinite'}}>Đang tải gói dịch vụ...</div>
       </div>
     );
   }
@@ -253,8 +236,8 @@ const ServicePackages: React.FC = () => {
         <div style={containerStyle}>
           
           <div style={headerStyle}>
-            <h1 style={titleStyle}>Service Packages</h1>
-            <p style={subtitleStyle}>Upgrade your farm management capabilities with our premium blockchain-powered tools.</p>
+            <h1 style={titleStyle}>Gói Dịch Vụ</h1>
+            <p style={subtitleStyle}>Chọn gói phù hợp để sử dụng các tính năng quản lý nông trại nâng cao.</p>
           </div>
 
           {error && (
@@ -266,13 +249,13 @@ const ServicePackages: React.FC = () => {
           {currentSubscription && currentSubscription.status === 'ACTIVE' && (
             <div style={bannerStyle}>
               <div>
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#fff' }}>Current Plan: <span style={{color: '#06b6d4'}}>{currentSubscription.packageName}</span></h3>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', color: '#fff' }}>Gói hiện tại: <span style={{color: '#06b6d4'}}>{currentSubscription.packageName}</span></h3>
                 <p style={{ margin: 0, color: '#a1a1aa', fontSize: '14px' }}>
-                  Valid from {new Date(currentSubscription.startDate).toLocaleDateString()} to {new Date(currentSubscription.endDate).toLocaleDateString()}
+                  Hiệu lực từ {new Date(currentSubscription.startDate).toLocaleDateString('vi-VN')} đến {new Date(currentSubscription.endDate).toLocaleDateString('vi-VN')}
                 </p>
               </div>
               <div style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#10b981', padding: '8px 16px', borderRadius: '20px', fontWeight: 600, fontSize: '14px' }}>
-                ACTIVE
+                ĐANG HOẠT ĐỘNG
               </div>
             </div>
           )}
@@ -292,9 +275,9 @@ const ServicePackages: React.FC = () => {
                   </div>
 
                   <div style={{ marginBottom: '32px' }}>
-                    <span style={{ fontSize: '40px', fontWeight: 800, color: '#fff' }}>{pkg.price.toLocaleString('vi-VN')}</span>
+                    <span style={{ fontSize: '40px', fontWeight: 800, color: '#fff' }}>{(pkg.price ?? 0).toLocaleString('vi-VN')}</span>
                     <span style={{ fontSize: '24px', color: '#8b5cf6', fontWeight: 600 }}> ₫</span>
-                    <div style={{ fontSize: '14px', color: '#a1a1aa', marginTop: '4px' }}>/ {pkg.durationDays} days</div>
+                    <div style={{ fontSize: '14px', color: '#a1a1aa', marginTop: '4px' }}>Thời hạn {pkg.durationDays ?? 0} ngày</div>
                   </div>
 
                   <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 40px 0', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -308,7 +291,7 @@ const ServicePackages: React.FC = () => {
 
                   {isCurrent ? (
                     <div style={{ background: 'rgba(255,255,255,0.05)', color: '#a1a1aa', textAlign: 'center', padding: '16px', borderRadius: '12px', fontWeight: 600, marginTop: 'auto' }}>
-                      Current Plan
+                      Gói hiện tại
                     </div>
                   ) : (
                     <button
@@ -317,12 +300,17 @@ const ServicePackages: React.FC = () => {
                       disabled={subscribing}
                       style={{ opacity: subscribing ? 0.6 : 1, cursor: subscribing ? 'not-allowed' : 'pointer' }}
                     >
-                      {subscribing ? 'Đang xử lý...' : 'Subscribe Now'}
+                      {subscribing ? 'Đang xử lý...' : 'Mua ngay'}
                     </button>
                   )}
                 </div>
               );
             })}
+            {packages.length === 0 && !error && (
+              <p style={{ color: '#a1a1aa', textAlign: 'center', gridColumn: '1 / -1' }}>
+                Hiện chưa có gói dịch vụ khả dụng.
+              </p>
+            )}
           </div>
         </div>
 

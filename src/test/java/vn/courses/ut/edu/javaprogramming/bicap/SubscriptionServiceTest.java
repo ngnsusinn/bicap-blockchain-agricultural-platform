@@ -26,6 +26,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.SubscriptionRepository
 import vn.courses.ut.edu.javaprogramming.bicap.service.SubscriptionService;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -90,7 +91,7 @@ class SubscriptionServiceTest {
     @Test
     void purchasePackage_createsPendingSubscription_forOwnedFarm() {
         when(servicePackageRepository.findById(1L)).thenReturn(Optional.of(servicePackage));
-        when(farmRepository.findById(1L)).thenReturn(Optional.of(farm));
+        when(farmRepository.findByUserId(10L)).thenReturn(java.util.List.of(farm));
         when(subscriptionRepository.findByFarmIdAndStatus(1L, SubscriptionStatus.PENDING_PAYMENT)).thenReturn(Optional.empty());
         when(subscriptionRepository.findByFarmIdAndStatus(1L, SubscriptionStatus.ACTIVE)).thenReturn(Optional.empty());
         when(subscriptionRepository.save(any(Subscription.class))).thenAnswer(inv -> {
@@ -100,7 +101,7 @@ class SubscriptionServiceTest {
         });
         when(subscriptionRepository.findByPaymentCode(any())).thenReturn(Optional.empty());
 
-        PurchasePackageResponse response = subscriptionService.purchasePackage(new PurchasePackageRequest(1L, 1L));
+        PurchasePackageResponse response = subscriptionService.purchasePackage(new PurchasePackageRequest(1L));
 
         assertEquals(7L, response.getSubscriptionId());
         assertTrue(response.getPaymentCode().startsWith("BICAP7"));
@@ -108,26 +109,48 @@ class SubscriptionServiceTest {
     }
 
     @Test
-    void purchasePackage_forAnotherUsersFarm_throwsForbidden() {
-        Farm otherFarm = Farm.builder().id(2L).userId(99L).name("Nông Trại Khác").address("Hà Nội").area(8.0).build();
+    void purchasePackage_withoutOwnedFarm_throwsBadRequest() {
         when(servicePackageRepository.findById(1L)).thenReturn(Optional.of(servicePackage));
-        when(farmRepository.findById(2L)).thenReturn(Optional.of(otherFarm));
+        when(farmRepository.findByUserId(10L)).thenReturn(java.util.List.of());
 
-        assertThrows(ForbiddenException.class,
-                () -> subscriptionService.purchasePackage(new PurchasePackageRequest(1L, 2L)));
+        assertThrows(vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException.class,
+                () -> subscriptionService.purchasePackage(new PurchasePackageRequest(1L)));
         verify(subscriptionRepository, never()).save(any());
     }
 
     @Test
     void purchasePackage_whenPendingPaymentExists_throwsConflict() {
         when(servicePackageRepository.findById(1L)).thenReturn(Optional.of(servicePackage));
-        when(farmRepository.findById(1L)).thenReturn(Optional.of(farm));
+        when(farmRepository.findByUserId(10L)).thenReturn(java.util.List.of(farm));
+        when(subscriptionRepository.findByFarmIdAndStatus(1L, SubscriptionStatus.ACTIVE)).thenReturn(Optional.empty());
         when(subscriptionRepository.findByFarmIdAndStatus(1L, SubscriptionStatus.PENDING_PAYMENT))
                 .thenReturn(Optional.of(Subscription.builder().build()));
 
         assertThrows(ConflictException.class,
-                () -> subscriptionService.purchasePackage(new PurchasePackageRequest(1L, 1L)));
+                () -> subscriptionService.purchasePackage(new PurchasePackageRequest(1L)));
         verify(subscriptionRepository, never()).save(any());
+    }
+
+    @Test
+    void purchasePackage_expiresOldActiveSubscription_beforeCreatingNewPayment() {
+        Subscription expiredByDate = Subscription.builder().id(6L).farmId(1L).packageId(1L)
+                .status(SubscriptionStatus.ACTIVE).endDate(LocalDate.now().minusDays(1)).build();
+        when(servicePackageRepository.findById(1L)).thenReturn(Optional.of(servicePackage));
+        when(farmRepository.findByUserId(10L)).thenReturn(java.util.List.of(farm));
+        when(subscriptionRepository.findByFarmIdAndStatus(1L, SubscriptionStatus.ACTIVE))
+                .thenReturn(Optional.of(expiredByDate));
+        when(subscriptionRepository.findByFarmIdAndStatus(1L, SubscriptionStatus.PENDING_PAYMENT)).thenReturn(Optional.empty());
+        when(subscriptionRepository.save(any(Subscription.class))).thenAnswer(invocation -> {
+            Subscription subscription = invocation.getArgument(0);
+            if (subscription.getId() == null) subscription.setId(7L);
+            return subscription;
+        });
+        when(subscriptionRepository.findByPaymentCode(any())).thenReturn(Optional.empty());
+
+        subscriptionService.purchasePackage(new PurchasePackageRequest(1L));
+
+        assertEquals(SubscriptionStatus.EXPIRED, expiredByDate.getStatus());
+        verify(subscriptionRepository, atLeastOnce()).save(expiredByDate);
     }
 
     @Test
@@ -136,7 +159,7 @@ class SubscriptionServiceTest {
         when(servicePackageRepository.findById(1L)).thenReturn(Optional.of(servicePackage));
 
         assertThrows(vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException.class,
-                () -> subscriptionService.purchasePackage(new PurchasePackageRequest(1L, 1L)));
+                () -> subscriptionService.purchasePackage(new PurchasePackageRequest(1L)));
     }
 
     @Test

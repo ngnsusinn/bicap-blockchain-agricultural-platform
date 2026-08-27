@@ -41,6 +41,8 @@ export default function ProfilePage({ onUserUpdated }: ProfilePageProps) {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   // Sample avatar presets for quick selection
   const avatarPresets = [
@@ -110,6 +112,10 @@ export default function ProfilePage({ onUserUpdated }: ProfilePageProps) {
       setMessage({ type: 'error', text: 'Họ và tên không được để trống.' });
       return;
     }
+    if (newPassword && newPassword !== confirmPassword) {
+      setMessage({ type: 'error', text: 'Xác nhận mật khẩu không khớp.' });
+      return;
+    }
 
     setSaving(true);
     try {
@@ -121,6 +127,8 @@ export default function ProfilePage({ onUserUpdated }: ProfilePageProps) {
           phone: phone.trim(),
           address: address.trim(),
           avatarUrl: avatarUrl.trim(),
+          newPassword: newPassword || undefined,
+          confirmPassword: confirmPassword || undefined,
         }),
       });
 
@@ -131,6 +139,8 @@ export default function ProfilePage({ onUserUpdated }: ProfilePageProps) {
         setPhone(updated.phone || '');
         setAddress(updated.address || '');
         setAvatarUrl(updated.avatarUrl || '');
+        setNewPassword('');
+        setConfirmPassword('');
 
         // Update local session
         const currentUser = getCurrentUser();
@@ -161,23 +171,7 @@ export default function ProfilePage({ onUserUpdated }: ProfilePageProps) {
         });
       }
     } catch (err) {
-      // Local fallback simulation if network unavailable
-      const currentUser = getCurrentUser();
-      const updatedSession: UserSession = {
-        ...currentUser,
-        id: profile.id || 1,
-        email: profile.email || 'farm@bicap.com',
-        fullName: fullName.trim(),
-        role: 'FARM_MANAGER',
-        phone: phone.trim(),
-        address: address.trim(),
-        avatarUrl: avatarUrl.trim(),
-      };
-      saveSession(localStorage.getItem('accessToken') || '', updatedSession);
-      if (onUserUpdated) {
-        onUserUpdated(updatedSession);
-      }
-      setMessage({ type: 'success', text: 'Đã lưu thông tin hồ sơ thành công!' });
+      setMessage({ type: 'error', text: 'Không thể kết nối máy chủ để cập nhật hồ sơ.' });
     } finally {
       setSaving(false);
     }
@@ -188,6 +182,8 @@ export default function ProfilePage({ onUserUpdated }: ProfilePageProps) {
     setPhone(profile.phone || '');
     setAddress(profile.address || '');
     setAvatarUrl(profile.avatarUrl || '');
+    setNewPassword('');
+    setConfirmPassword('');
     setMessage(null);
   };
 
@@ -212,7 +208,7 @@ export default function ProfilePage({ onUserUpdated }: ProfilePageProps) {
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
       <div style={{ marginBottom: '24px' }}>
-        <h1 className="dashboard-title" style={{ fontSize: '26px' }}>Cập Nhật Hồ Sơ Cá Nhân</h1>
+        <h1 className="dashboard-title" style={{ fontSize: '26px' }}>Cập Nhật Hồ Sơ</h1>
         <p className="dashboard-subtitle">
           Quản lý và cập nhật thông tin tài khoản Chủ trang trại (BICAP-8).
         </p>
@@ -344,6 +340,8 @@ export default function ProfilePage({ onUserUpdated }: ProfilePageProps) {
               </label>
               <input
                 type="tel"
+                required
+                pattern="0[35789][0-9]{8}"
                 placeholder="0912345678"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
@@ -364,13 +362,12 @@ export default function ProfilePage({ onUserUpdated }: ProfilePageProps) {
           </div>
         </div>
 
-        {/* Read-Only Fields Section */}
+        {/* System fields */}
         <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px', marginBottom: '32px', opacity: 0.9 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
             <h2 style={{ ...sectionHeaderStyle, margin: 0 }}>
-              <span>🔒</span> Thông tin hệ thống (Chỉ đọc - Read-only)
+              <span>🔒</span> Thông tin hệ thống
             </h2>
-            <span style={readOnlyBadgeStyle}>🔒 Không được chỉnh sửa</span>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
@@ -383,11 +380,11 @@ export default function ProfilePage({ onUserUpdated }: ProfilePageProps) {
             </div>
 
             <div>
-              <label style={labelStyle}>Mật khẩu</label>
-              <div style={{ position: 'relative' }}>
-                <input type="password" value="••••••••••••" disabled style={readOnlyInputStyle} />
-                <span style={lockIconStyle}>🔒</span>
-              </div>
+              <label style={labelStyle}>Mật khẩu mới</label>
+              <input type="password" minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Để trống nếu không đổi" style={inputStyle} />
+              <label style={{ ...labelStyle, marginTop: '10px' }}>Xác nhận mật khẩu mới</label>
+              <input type="password" minLength={8} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Nhập lại mật khẩu mới" style={inputStyle} />
+              <small style={{ color: 'var(--text-muted)' }}>Ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.</small>
             </div>
 
             <div>
@@ -471,7 +468,6 @@ const sectionHeaderStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: '8px',
 };
-
 const labelStyle: React.CSSProperties = {
   display: 'block',
   fontSize: '13px',
@@ -514,12 +510,3 @@ const lockIconStyle: React.CSSProperties = {
   opacity: 0.6,
 };
 
-const readOnlyBadgeStyle: React.CSSProperties = {
-  fontSize: '11px',
-  background: 'rgba(239, 68, 68, 0.1)',
-  color: '#f87171',
-  padding: '4px 10px',
-  borderRadius: '20px',
-  border: '1px solid rgba(239, 68, 68, 0.2)',
-  fontWeight: 500,
-};

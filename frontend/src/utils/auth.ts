@@ -7,7 +7,7 @@ export interface UserSession {
   id: number;
   email: string;
   fullName: string;
-  role: 'FARM_MANAGER' | 'RETAILER' | 'ADMIN';
+  role: 'FARM_MANAGER' | 'RETAILER' | 'ADMIN' | 'SHIPPING_MGR' | 'SHIP_DRIVER';
   phone?: string;
   address?: string;
   avatarUrl?: string;
@@ -35,6 +35,18 @@ export function getAuthHeaders(): Record<string, string> {
   return {
     'Content-Type': 'application/json',
   };
+}
+
+/**
+ * Lấy Authorization header cho upload file (FormData).
+ * Không bao gồm Content-Type để browser tự set multipart/form-data với boundary.
+ */
+export function getAuthHeadersForUpload(): Record<string, string> {
+  const token = localStorage.getItem('accessToken');
+  if (token) {
+    return { 'Authorization': `Bearer ${token}` };
+  }
+  return {};
 }
 
 /**

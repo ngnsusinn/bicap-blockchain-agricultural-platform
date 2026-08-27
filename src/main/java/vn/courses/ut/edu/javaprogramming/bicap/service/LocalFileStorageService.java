@@ -32,6 +32,14 @@ public class LocalFileStorageService {
         return store("retailers", userId, "licenses", file, DOCUMENT_TYPES, 10L * 1024 * 1024);
     }
 
+    public String storeFarmBusinessLicense(Long userId, MultipartFile file) {
+        return store("farms", userId, "licenses", file, DOCUMENT_TYPES, 10L * 1024 * 1024);
+    }
+
+    public String storeFarmCertification(Long userId, MultipartFile file) {
+        return store("farms", userId, "certifications", file, DOCUMENT_TYPES, 10L * 1024 * 1024);
+    }
+
     /** Stores a product marketplace image under {@code uploads/farms/{userId}/products/} (BICAP-18). */
     public String storeProductImage(Long userId, MultipartFile file) {
         return store("farms", userId, "products", file, IMAGE_TYPES, 5L * 1024 * 1024);

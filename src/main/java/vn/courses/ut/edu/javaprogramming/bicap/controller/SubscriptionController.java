@@ -3,6 +3,7 @@ package vn.courses.ut.edu.javaprogramming.bicap.controller;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.PaymentStatusResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.PurchasePackageRequest;
@@ -23,12 +24,14 @@ public class SubscriptionController {
     }
 
     @PostMapping("/purchase")
+    @PreAuthorize("hasRole('FARM_MANAGER')")
     public ResponseEntity<PurchasePackageResponse> purchasePackage(@Valid @RequestBody PurchasePackageRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(subscriptionService.purchasePackage(request));
     }
 
     /** Subscriptions of the farms owned by the authenticated user (no client-supplied farmId). */
     @GetMapping("/my")
+    @PreAuthorize("hasRole('FARM_MANAGER')")
     public ResponseEntity<List<SubscriptionResponse>> getMySubscriptions() {
         return ResponseEntity.ok(subscriptionService.getMySubscriptions());
     }

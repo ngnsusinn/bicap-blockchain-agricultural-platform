@@ -7,8 +7,10 @@ import vn.courses.ut.edu.javaprogramming.bicap.dto.UserProfileResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundException;
+import vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 
@@ -20,10 +22,12 @@ public class UserProfileService {
 
     private final UserRepository userRepository;
     private final FarmRepository farmRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserProfileService(UserRepository userRepository, FarmRepository farmRepository) {
+    public UserProfileService(UserRepository userRepository, FarmRepository farmRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.farmRepository = farmRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -93,6 +97,15 @@ public class UserProfileService {
 
         if (request.getAvatarUrl() != null) {
             user.setAvatarUrl(request.getAvatarUrl().trim());
+        }
+
+        if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
+            if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+                throw new BadRequestException("Xác nhận mật khẩu không khớp");
+            }
+            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        } else if (request.getConfirmPassword() != null && !request.getConfirmPassword().isBlank()) {
+            throw new BadRequestException("Vui lòng nhập mật khẩu mới");
         }
 
         User savedUser = userRepository.save(user);

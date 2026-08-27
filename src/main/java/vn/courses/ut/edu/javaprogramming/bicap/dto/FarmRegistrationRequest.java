@@ -15,14 +15,21 @@ public class FarmRegistrationRequest {
     @DecimalMin(value = "0.01", message = "Area must be positive")
     private Double area;
 
+    @DecimalMin(value = "-90.0", message = "GPS latitude must be between -90 and 90")
+    @DecimalMax(value = "90.0", message = "GPS latitude must be between -90 and 90")
     private Double gpsLat;
+
+    @DecimalMin(value = "-180.0", message = "GPS longitude must be between -180 and 180")
+    @DecimalMax(value = "180.0", message = "GPS longitude must be between -180 and 180")
     private Double gpsLng;
 
     @Size(max = 2000, message = "Description must not exceed 2000 characters")
     private String description;
 
     @Size(max = 500, message = "Product types must not exceed 500 characters")
+    @NotBlank(message = "Product types are required")
     private String productTypes;
+
 
     public FarmRegistrationRequest() {}
 

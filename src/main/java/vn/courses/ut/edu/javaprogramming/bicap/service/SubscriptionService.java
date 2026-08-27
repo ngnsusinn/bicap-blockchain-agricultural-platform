@@ -65,19 +65,18 @@ public class SubscriptionService {
             throw new BadRequestException("Service package is not active");
         }
 
-        // Ownership (M-5): only the farm owner (or an admin) may purchase for a farm.
-        Long farmId = request.getFarmId();
-        Farm farm = farmRepository.findById(farmId)
-                .orElseThrow(() -> new ResourceNotFoundException("Farm not found with id: " + farmId));
         User actor = CurrentUser.get();
-        if (!CurrentUser.isAdminView(actor) && !farm.getUserId().equals(actor.getId())) {
-            throw new ForbiddenException("You do not have access to this farm");
-        }
+        Farm farm = farmRepository.findByUserId(actor.getId()).stream().findFirst()
+                .orElseThrow(() -> new BadRequestException("Farm Manager must register a farm before purchasing a package"));
+        Long farmId = farm.getId();
+        Subscription activeSubscription = subscriptionRepository.findByFarmIdAndStatus(farmId, SubscriptionStatus.ACTIVE)
+                .orElse(null);
+        expireSubscriptionIfNeeded(activeSubscription);
 
         if (subscriptionRepository.findByFarmIdAndStatus(farmId, SubscriptionStatus.PENDING_PAYMENT).isPresent()) {
             throw new ConflictException("Farm already has a pending payment — complete it before purchasing again");
         }
-        if (subscriptionRepository.findByFarmIdAndStatus(farmId, SubscriptionStatus.ACTIVE).isPresent()) {
+        if (activeSubscription != null && activeSubscription.getStatus() == SubscriptionStatus.ACTIVE) {
             throw new ConflictException("Farm already has an active subscription");
         }
 
@@ -117,6 +116,7 @@ public class SubscriptionService {
         List<Subscription> subscriptions = farms.stream()
                 .flatMap(f -> subscriptionRepository.findByFarmId(f.getId()).stream())
                 .collect(Collectors.toList());
+        subscriptions.forEach(this::expireSubscriptionIfNeeded);
         return toResponses(subscriptions);
     }
 
@@ -202,6 +202,17 @@ public class SubscriptionService {
             }
         }
         throw new IllegalStateException("Could not generate a unique payment code");
+    }
+
+    /** Keeps the persisted subscription state aligned with its configured validity period. */
+    private void expireSubscriptionIfNeeded(Subscription subscription) {
+        if (subscription != null
+                && subscription.getStatus() == SubscriptionStatus.ACTIVE
+                && subscription.getEndDate() != null
+                && subscription.getEndDate().isBefore(LocalDate.now())) {
+            subscription.setStatus(SubscriptionStatus.EXPIRED);
+            subscriptionRepository.save(subscription);
+        }
     }
 
     /** Throws unless the actor is an admin-view role or owns the given farm. */

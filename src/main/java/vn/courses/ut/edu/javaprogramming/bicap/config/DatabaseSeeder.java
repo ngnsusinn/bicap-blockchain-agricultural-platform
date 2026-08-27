@@ -131,8 +131,10 @@ public class DatabaseSeeder implements CommandLineRunner {
         seedCategory("Thịt - Trứng - Sữa", "Thịt gia súc, gia cầm, trứng, sữa", "🥩");
         seedCategory("Khác", "Các sản phẩm nông nghiệp khác", "📦");
 
-        // 6. Seed Subscription for Farm 3
-        seedSubscription(farm3.getId());
+        // 6. Seed service packages and a sample subscription for Farm 3.
+        ServicePackage basicPackage = seedServicePackage("BICAP - Cơ Bản", new BigDecimal("100000"));
+        seedServicePackage("BICAP - Premium", new BigDecimal("500000"));
+        seedSubscription(farm3.getId(), basicPackage);
 
         // 7. Seed FarmingSeason + Product ACTIVE (BICAP-75 test data)
         //    Dùng Farm 3 (APPROVED) vì chỉ farm APPROVED mới có thể bán hàng
@@ -257,22 +259,30 @@ public class DatabaseSeeder implements CommandLineRunner {
         return farm;
     }
 
-    private void seedSubscription(Long farmId) {
-        ServicePackage sp = servicePackageRepository.findAll().stream().findFirst().orElseGet(() -> {
-            ServicePackage newSp = new ServicePackage();
-            newSp.setName("Goi Dich Vu Co Ban");
-            newSp.setDescription("Goi co ban cho moi trang trai");
-            newSp.setPrice(new BigDecimal("100000"));
-            newSp.setDurationDays(365);
-            newSp.setStatus("ACTIVE");
-            return servicePackageRepository.save(newSp);
-        });
+    private ServicePackage seedServicePackage(String name, BigDecimal price) {
+        ServicePackage servicePackage = servicePackageRepository.findByName(name)
+                .orElseGet(() -> {
+                    // Migrate the previous seed name instead of creating a duplicate basic package.
+                    if ("BICAP - Cơ Bản".equals(name)) {
+                        return servicePackageRepository.findByName("Goi Dich Vu Co Ban")
+                                .orElseGet(ServicePackage::new);
+                    }
+                    return new ServicePackage();
+                });
+        servicePackage.setName(name);
+        servicePackage.setPrice(price);
+        servicePackage.setDurationDays(365);
+        servicePackage.setStatus("ACTIVE");
+        return servicePackageRepository.save(servicePackage);
+    }
+
+    private void seedSubscription(Long farmId, ServicePackage servicePackage) {
 
         boolean exists = subscriptionRepository.findByFarmIdAndStatus(farmId, SubscriptionStatus.ACTIVE).isPresent();
         if (!exists) {
             Subscription sub = new Subscription();
             sub.setFarmId(farmId);
-            sub.setPackageId(sp.getId());
+            sub.setPackageId(servicePackage.getId());
             sub.setStartDate(LocalDate.now());
             sub.setEndDate(LocalDate.now().plusDays(365));
             sub.setStatus(SubscriptionStatus.ACTIVE);

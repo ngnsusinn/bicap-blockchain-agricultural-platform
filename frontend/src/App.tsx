@@ -4,6 +4,7 @@ import type { UserSession } from './utils/auth';
 import ServicePackages from './pages/FarmManager/ServicePackages';
 import AuthPage from './pages/Auth/AuthPage';
 import ProfilePage from './pages/FarmManager/ProfilePage';
+import FarmInfoPage from './pages/FarmManager/FarmInfoPage';
 import RetailerProfilePage from './pages/Retailer/RetailerProfilePage';
 import RetailerBusinessPage from './pages/Retailer/RetailerBusinessPage';
 import SeasonExports from './pages/FarmManager/SeasonExports';
@@ -14,6 +15,7 @@ import TracePage from './pages/TracePage';
 import NotificationBell from './components/NotificationBell';
 import IotDashboard from './pages/FarmManager/IotDashboard';
 import GuestNotifications from './pages/Guest/GuestNotifications';
+import ShippingPage from './pages/ShippingManager/ShippingPage';
 
 /* ── Sidebar Component (Dành cho Farm Manager - BICAP-7 / BICAP-8) ── */
 interface SidebarProps {
@@ -27,7 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊', isProtected: false },
     { id: 'guest-notifications', label: 'Thông Báo (BICAP-69)', icon: '🔔', isProtected: false },
-    { id: 'profile', label: 'Cập nhật hồ sơ', icon: '👤', isProtected: false },
+    { id: 'profile', label: 'Cập Nhật Hồ Sơ', icon: '👤', isProtected: false },
     { id: 'packages', label: 'Gói Dịch Vụ', icon: '📦', isProtected: false },
     { id: 'farm-info', label: 'Nông Trại Của Tôi', icon: '🌾', isProtected: false },
     { id: 'exports', label: 'Xuất Kho & QR', icon: '🏷️', isProtected: true },
@@ -278,7 +280,36 @@ export default function App() {
     );
   }
 
-  // 3. Render Retailer Portal nếu người dùng là RETAILER (BICAP-36)
+  // 3. Render Shipping Manager Portal
+  if (user?.role === 'SHIPPING_MGR' || user?.role === 'SHIP_DRIVER') {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0b0f17' }}>
+        <header style={{ ...headerStyle, position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ ...logoIconStyle, background: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)' }}>S</div>
+            <span style={logoTextStyle}>BICAP Shipping</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <span style={{ fontSize: '13px', color: '#cbd5e1' }}>
+              Xin chào, <strong>{user.fullName}</strong>{' '}
+              <span style={{
+                fontSize: 11, background: 'rgba(245,158,11,.2)', color: '#fcd34d',
+                padding: '2px 8px', borderRadius: 12, border: '1px solid rgba(245,158,11,.3)', marginLeft: 6,
+              }}>
+                {user.role === 'SHIPPING_MGR' ? 'Shipping Manager' : 'Tài xế'}
+              </span>
+            </span>
+            <button onClick={handleLogout} style={logoutButtonStyle}>🚪 Đăng xuất</button>
+          </div>
+        </header>
+        <main style={{ paddingTop: 80, padding: '80px 32px 32px 32px', maxWidth: 1200, margin: '0 auto' }}>
+          <ShippingPage />
+        </main>
+      </div>
+    );
+  }
+
+  // 4. Render Retailer Portal nếu người dùng là RETAILER (BICAP-36)
   if (user?.role === 'RETAILER') {
     return (
       <div className="retailer-portal">
@@ -352,7 +383,7 @@ export default function App() {
     );
   }
 
-  // 4. Render Farm Manager Portal (BICAP-7)
+  // 5. Render Farm Manager Portal (BICAP-7)
   return (
     <div className="app-container">
       <Sidebar
@@ -402,15 +433,7 @@ export default function App() {
             </div>
           )}
 
-          {currentTab === 'farm-info' && (
-            <div>
-              <h1 className="dashboard-title">Thông Tin Nông Trại</h1>
-              <div className="glass-panel" style={{ padding: '48px', textAlign: 'center' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌾</div>
-                <h2 style={{ color: '#fff', fontSize: '22px', fontWeight: 700 }}>Hồ Sơ & Vùng Canh Tác Trang Trại</h2>
-              </div>
-            </div>
-          )}
+          {currentTab === 'farm-info' && <FarmInfoPage />}
 
           {currentTab === 'products' && (
             <div>

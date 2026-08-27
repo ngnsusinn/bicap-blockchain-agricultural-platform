@@ -1,6 +1,7 @@
 package vn.courses.ut.edu.javaprogramming.bicap.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -15,6 +16,8 @@ public class UpdateProfileRequest {
     private String fullName;
 
     @Size(max = 15, message = "Số điện thoại không vượt quá 15 ký tự")
+    @NotBlank(message = "Phone number is required")
+    @Pattern(regexp = "^0[35789][0-9]{8}$", message = "Phone number must use Vietnamese format")
     private String phone;
 
     @Size(max = 500, message = "Địa chỉ không vượt quá 500 ký tự")
@@ -22,6 +25,13 @@ public class UpdateProfileRequest {
 
     @Size(max = 500, message = "URL ảnh đại diện không vượt quá 500 ký tự")
     private String avatarUrl;
+
+    @Size(min = 8, max = 128, message = "Mật khẩu mới phải có từ 8 đến 128 ký tự")
+    @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).+$",
+            message = "Mật khẩu mới phải gồm chữ hoa, chữ thường, số và ký tự đặc biệt")
+    private String newPassword;
+
+    private String confirmPassword;
 
     public UpdateProfileRequest() {}
 
@@ -43,4 +53,8 @@ public class UpdateProfileRequest {
 
     public String getAvatarUrl() { return avatarUrl; }
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+    public String getNewPassword() { return newPassword; }
+    public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
+    public String getConfirmPassword() { return confirmPassword; }
+    public void setConfirmPassword(String confirmPassword) { this.confirmPassword = confirmPassword; }
 }
