@@ -75,4 +75,15 @@ public class AuthController {
     public ResponseEntity<AuthResponse> loginAdmin(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.loginAdmin(request));
     }
+
+    // ── Shipping Endpoints (BICAP-76) ──
+    @PostMapping("/shipping/login")
+    public ResponseEntity<AuthResponse> loginShippingMgr(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.loginShippingMgr(request));
+    }
+
+    @PostMapping("/driver/login")
+    public ResponseEntity<AuthResponse> loginDriver(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.loginDriver(request));
+    }
 }

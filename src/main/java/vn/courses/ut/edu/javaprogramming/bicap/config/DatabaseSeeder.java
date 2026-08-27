@@ -1,6 +1,7 @@
 package vn.courses.ut.edu.javaprogramming.bicap.config;
 
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Category;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Driver;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmCertification;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmStatus;
@@ -23,6 +24,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmingSeason;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Product;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ProductRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.DriverRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -47,6 +49,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final SubscriptionRepository subscriptionRepository;
     private final FarmingSeasonRepository farmingSeasonRepository;
     private final ProductRepository productRepository;
+    private final DriverRepository driverRepository;
 
     public DatabaseSeeder(PermissionRepository permissionRepository, RoleRepository roleRepository, UserRepository userRepository,
                           FarmRepository farmRepository, FarmCertificationRepository farmCertificationRepository,
@@ -54,7 +57,8 @@ public class DatabaseSeeder implements CommandLineRunner {
                           ServicePackageRepository servicePackageRepository,
                           SubscriptionRepository subscriptionRepository,
                           FarmingSeasonRepository farmingSeasonRepository,
-                          ProductRepository productRepository) {
+                          ProductRepository productRepository,
+                          DriverRepository driverRepository) {
         this.permissionRepository = permissionRepository;
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
@@ -66,6 +70,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         this.subscriptionRepository = subscriptionRepository;
         this.farmingSeasonRepository = farmingSeasonRepository;
         this.productRepository = productRepository;
+        this.driverRepository = driverRepository;
     }
 
     @Override
@@ -87,8 +92,8 @@ public class DatabaseSeeder implements CommandLineRunner {
         // Seed Functional Roles
         Role farmManagerRole = seedRole("FARM_MANAGER", "Farm Manager for managing farms, seasons, and exports", Set.of());
         Role retailerRole = seedRole("RETAILER", "Retailer for purchasing products and tracking orders", Set.of());
-        seedRole("SHIPPING_MGR", "Shipping Manager for coordinating deliveries", Set.of());
-        seedRole("SHIP_DRIVER", "Shipping Driver for executing shipments", Set.of());
+        Role shippingMgrRole = seedRole("SHIPPING_MGR", "Shipping Manager for coordinating deliveries", Set.of());
+        Role shipDriverRole = seedRole("SHIP_DRIVER", "Shipping Driver for executing shipments", Set.of());
         seedRole("GUEST", "Guest user for browsing products and educational content", Set.of());
 
         // 3. Seed Users
@@ -99,6 +104,11 @@ public class DatabaseSeeder implements CommandLineRunner {
         User farmOwner2 = seedUser("farm@bicap.vn", "Farmpassword@2026", "Chủ Trang Trại BICAP VN", "0922334456", farmManagerRole);
         seedUser("retailer@bicap.com", "Retailpassword@2026", "Nhà Bán Lẻ BICAP", "0933445566", retailerRole);
         seedUser("retail@bicap.com", "Retailpassword@2026", "Nhà Bán Lẻ BICAP Short", "0933445567", retailerRole);
+
+        // Seed Shipping test users (BICAP-76)
+        seedUser("shipping_mgr@bicap.com", "Shipping@2026", "Shipping Manager Test", "0988000001", shippingMgrRole);
+        User driverUser = seedUser("driver@bicap.com", "Driver@2026", "Shipping Driver Test", "0988000002", shipDriverRole);
+        seedDriverProfile(driverUser, "012345678901", "B2-000001");
 
         // 4. Seed Sample Farm Registrations (BICAP-3 — admin approval queue; BICAP-4 — management list)
         seedFarm(farmOwner1.getId(), "Trang Trại Xanh Đồng Nai", "Xã Long An, Huyện Long Thành, Đồng Nai",
@@ -321,5 +331,23 @@ public class DatabaseSeeder implements CommandLineRunner {
             p.setStatus("ACTIVE");
             productRepository.save(p);
         }
+    }
+
+    /**
+     * Seeds a Driver profile linked to the given User.
+     * Only creates the driver record if one does not already exist for this user (BICAP-76).
+     */
+    private void seedDriverProfile(User user, String citizenId, String licenseNumber) {
+        if (user == null) return;
+        if (driverRepository.existsByUserId(user.getId())) return;
+        if (driverRepository.existsByCitizenId(citizenId)) return;
+        if (driverRepository.existsByLicenseNumber(licenseNumber)) return;
+
+        Driver driver = new Driver();
+        driver.setUserId(user.getId());
+        driver.setCitizenId(citizenId);
+        driver.setLicenseNumber(licenseNumber);
+        driver.setStatus(Driver.STATUS_IDLE);
+        driverRepository.save(driver);
     }
 }
