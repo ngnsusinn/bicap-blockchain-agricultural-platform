@@ -57,10 +57,8 @@ public class AuthService {
     }
 
     public AuthResponse registerRetailer(RegisterRequest request) {
-        User user = createUserWithRole(request, RETAILER_ROLE, UserStatus.PENDING_VERIFICATION);
-        String verificationToken = jwtTokenProvider.generateEmailVerificationToken(user);
-        verificationEmailService.sendRetailerVerification(user.getEmail(), verificationToken);
-        return AuthResponse.pendingVerification(user);
+        User user = createUserWithRole(request, RETAILER_ROLE, UserStatus.ACTIVE);
+        return issueStandardTokens(user);
     }
 
     public AuthResponse registerFarmManager(RegisterRequest request) {
@@ -195,6 +193,32 @@ public class AuthService {
                 .anyMatch(r -> r.getName().equalsIgnoreCase("ADMIN") || r.getName().equalsIgnoreCase("SUPER_ADMIN") || r.getName().equalsIgnoreCase("MODERATOR"));
         if (!isAdmin) {
             throw new UnauthorizedException("Account is not authorized for Admin portal");
+        }
+        Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+        String accessToken = jwtTokenProvider.generateToken(authentication);
+        return AuthResponse.fromUser(accessToken, user);
+    }
+
+    @Transactional(readOnly = true)
+    public AuthResponse loginShippingMgr(LoginRequest request) {
+        User user = authenticateUser(request);
+        boolean isShippingMgr = user.getRoles().stream()
+                .anyMatch(r -> r.getName().equalsIgnoreCase("SHIPPING_MGR"));
+        if (!isShippingMgr) {
+            throw new UnauthorizedException("Account is not authorized for Shipping Manager portal");
+        }
+        Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+        String accessToken = jwtTokenProvider.generateToken(authentication);
+        return AuthResponse.fromUser(accessToken, user);
+    }
+
+    @Transactional(readOnly = true)
+    public AuthResponse loginDriver(LoginRequest request) {
+        User user = authenticateUser(request);
+        boolean isDriver = user.getRoles().stream()
+                .anyMatch(r -> r.getName().equalsIgnoreCase("SHIP_DRIVER"));
+        if (!isDriver) {
+            throw new UnauthorizedException("Account is not authorized for Driver portal");
         }
         Authentication authentication = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
         String accessToken = jwtTokenProvider.generateToken(authentication);

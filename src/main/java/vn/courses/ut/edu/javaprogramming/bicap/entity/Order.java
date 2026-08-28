@@ -12,13 +12,14 @@ import java.time.LocalDate;
 })
 public class Order {
 
-    /** Order states used by the full order lifecycle (BICAP-75). */
+    /** Order states used by the full order lifecycle (BICAP-75 / BICAP-76). */
     public static final String STATUS_PENDING      = "PENDING";
     public static final String STATUS_ACCEPTED     = "ACCEPTED";
     public static final String STATUS_REJECTED     = "REJECTED";
     public static final String STATUS_DEPOSIT_PAID = "DEPOSIT_PAID";
     public static final String STATUS_CANCEL_REQUESTED = "CANCEL_REQUESTED";
     public static final String STATUS_IN_TRANSIT   = "IN_TRANSIT";
+    public static final String STATUS_SHIPPING     = "SHIPPING";
     public static final String STATUS_CANCELLED    = "CANCELLED";
     public static final String STATUS_DELIVERED    = "DELIVERED";
     public static final String STATUS_COMPLETED    = "COMPLETED";

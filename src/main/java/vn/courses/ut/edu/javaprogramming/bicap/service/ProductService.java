@@ -73,7 +73,15 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Page<ProductResponse> getProducts(String status, Long categoryId, String search,
                                              Pageable pageable, String actorEmail) {
-        checkView(actorEmail);
+        if (actorEmail != null && !actorEmail.isBlank()) {
+            checkView(actorEmail);
+        } else {
+            // Đối với Guest xem công khai, mặc định lọc sản phẩm ACTIVE nếu không chỉ định status
+            if (status == null || status.isBlank()) {
+                status = ProductStatus.ACTIVE.name();
+            }
+        }
+
         Page<Product> products = productRepository.findProductsFiltered(
                 status, categoryId, SearchUtils.escapeLike(search), pageable);
 
@@ -83,7 +91,6 @@ public class ProductService {
         }
 
         // Batch-load lookup entities for the whole page to avoid N+1 queries
-        // (one category/season/farm query per product would otherwise run for each row).
         Map<Long, Category> categories = categoryRepository.findAllById(
                         content.stream().map(Product::getCategoryId).collect(Collectors.toSet()))
                 .stream().collect(Collectors.toMap(Category::getId, c -> c));
