@@ -17,6 +17,8 @@ public class Order {
     public static final String STATUS_ACCEPTED     = "ACCEPTED";
     public static final String STATUS_REJECTED     = "REJECTED";
     public static final String STATUS_DEPOSIT_PAID = "DEPOSIT_PAID";
+    public static final String STATUS_CANCEL_REQUESTED = "CANCEL_REQUESTED";
+    public static final String STATUS_IN_TRANSIT   = "IN_TRANSIT";
     public static final String STATUS_CANCELLED    = "CANCELLED";
     public static final String STATUS_DELIVERED    = "DELIVERED";
     public static final String STATUS_COMPLETED    = "COMPLETED";
@@ -65,6 +67,9 @@ public class Order {
     /** Reason recorded when the Retailer cancels the order (BICAP-75). */
     @Column(name = "cancelled_reason", length = 1000)
     private String cancelledReason;
+
+    @Column(name = "cancel_requested_at")
+    private LocalDateTime cancelRequestedAt;
 
     /** Timestamp when Farm Manager confirms delivery (BICAP-75). */
     @Column(name = "delivered_at")
@@ -141,6 +146,8 @@ public class Order {
     public void setRejectReason(String rejectReason) { this.rejectReason = rejectReason; }
     public String getCancelledReason() { return cancelledReason; }
     public void setCancelledReason(String cancelledReason) { this.cancelledReason = cancelledReason; }
+    public LocalDateTime getCancelRequestedAt() { return cancelRequestedAt; }
+    public void setCancelRequestedAt(LocalDateTime cancelRequestedAt) { this.cancelRequestedAt = cancelRequestedAt; }
     public LocalDateTime getDeliveredAt() { return deliveredAt; }
     public void setDeliveredAt(LocalDateTime deliveredAt) { this.deliveredAt = deliveredAt; }
     public LocalDateTime getCompletedAt() { return completedAt; }

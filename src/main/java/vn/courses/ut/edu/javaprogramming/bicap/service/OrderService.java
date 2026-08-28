@@ -47,7 +47,7 @@ public class OrderService {
     private static final Set<String> DEPOSITABLE_STATUSES =
             Set.of(Order.STATUS_PENDING, Order.STATUS_ACCEPTED);
 
-    /** Các trạng thái Retailer được phép hủy đơn (BICAP-75). */
+    /** Các trạng thái Retailer được phép hủy đơn (BICAP-44). */
     private static final Set<String> CANCELLABLE_STATUSES =
             Set.of(Order.STATUS_PENDING, Order.STATUS_ACCEPTED);
 
@@ -340,11 +340,14 @@ public class OrderService {
     }
 
     /**
-     * Retailer hủy đơn hàng (PENDING hoặc ACCEPTED → CANCELLED).
-     * Không thể hủy khi đã đặt cọc (DEPOSIT_PAID) hoặc sau đó.
+     * Retailer hủy trực tiếp đơn PENDING/ACCEPTED; đơn DEPOSIT_PAID chuyển sang chờ Admin xử lý.
      */
     public OrderResponse cancelOrder(Long id, CancelOrderRequest request) {
         User actor = requireRetailer();
+
+        if (request == null || request.getReason() == null || request.getReason().isBlank()) {
+            throw new BadRequestException("Cancellation reason is required");
+        }
 
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
@@ -352,14 +355,16 @@ public class OrderService {
         if (!actor.getId().equals(order.getRetailerId())) {
             throw new ForbiddenException("This order does not belong to the current user");
         }
-        if (!CANCELLABLE_STATUSES.contains(order.getStatus())) {
+        boolean requiresAdminReview = Order.STATUS_DEPOSIT_PAID.equals(order.getStatus());
+        if (!requiresAdminReview && !CANCELLABLE_STATUSES.contains(order.getStatus())) {
             throw new BadRequestException(
                     "Order cannot be cancelled in its current state (current: " + order.getStatus() + ")");
         }
 
-        order.setStatus(Order.STATUS_CANCELLED);
-        if (request != null && request.getReason() != null && !request.getReason().isBlank()) {
-            order.setCancelledReason(request.getReason().trim());
+        order.setStatus(requiresAdminReview ? Order.STATUS_CANCEL_REQUESTED : Order.STATUS_CANCELLED);
+        order.setCancelledReason(request.getReason().trim());
+        if (requiresAdminReview) {
+            order.setCancelRequestedAt(LocalDateTime.now());
         }
         Order saved = orderRepository.save(order);
 
@@ -371,11 +376,20 @@ public class OrderService {
         if (season != null && season.getFarmId() != null) {
             farmRepository.findById(season.getFarmId()).ifPresent(farm ->
                 notificationService.sendNotification(farm.getUserId(), "WARNING",
-                        "Đơn hàng bị hủy",
-                        "Nhà bán lẻ " + actor.getFullName() + " đã hủy đơn hàng #" + id
+                        requiresAdminReview ? "Yêu cầu hủy đơn đã đặt cọc" : "Đơn hàng bị hủy",
+                        "Nhà bán lẻ " + actor.getFullName()
+                                + (requiresAdminReview ? " yêu cầu hủy đơn hàng #" : " đã hủy đơn hàng #") + id
                                 + (order.getCancelledReason() != null ? ". Lý do: " + order.getCancelledReason() : "."),
                         false)
             );
+        }
+
+        if (requiresAdminReview) {
+            userRepository.findDistinctByRoles_NameIn(Set.of("ADMIN", "SUPER_ADMIN")).forEach(admin ->
+                    notificationService.sendNotification(admin.getId(), "WARNING",
+                            "Yêu cầu hủy đơn đã đặt cọc",
+                            "Nhà bán lẻ " + actor.getFullName() + " yêu cầu hủy đơn #" + id
+                                    + ". Lý do: " + order.getCancelledReason(), false));
         }
 
         Farm farm = season != null && season.getFarmId() != null
@@ -384,8 +398,25 @@ public class OrderService {
         return OrderResponse.from(saved, product, season, farm, retailer);
     }
 
+    /** Đánh dấu đơn đã đặt cọc đang được vận chuyển (điểm tích hợp với shipment module). */
+    public OrderResponse markInTransit(Long id) {
+        User actor = requireFarmManager();
+        OrderContext ctx = loadOwnedOrder(id, actor.getId());
+        Order order = ctx.order;
+        if (!Order.STATUS_DEPOSIT_PAID.equals(order.getStatus())) {
+            throw new BadRequestException(
+                    "Only DEPOSIT_PAID orders can enter transit (current: " + order.getStatus() + ")");
+        }
+        order.setStatus(Order.STATUS_IN_TRANSIT);
+        Order saved = orderRepository.save(order);
+        notificationService.sendNotification(order.getRetailerId(), "INFO",
+                "Đơn hàng đang vận chuyển",
+                "Đơn hàng \"" + productName(ctx) + "\" đã bắt đầu vận chuyển.", false);
+        return buildOrderResponse(ctx.withOrder(saved));
+    }
+
     /**
-     * Farm Manager xác nhận đã giao hàng (DEPOSIT_PAID → DELIVERED).
+     * Farm Manager xác nhận đã giao hàng (IN_TRANSIT → DELIVERED).
      * Gửi thông báo Retailer để xác nhận đã nhận.
      */
     public OrderResponse confirmDelivery(Long id) {
@@ -393,9 +424,9 @@ public class OrderService {
         OrderContext ctx = loadOwnedOrder(id, actor.getId());
         Order order = ctx.order;
 
-        if (!Order.STATUS_DEPOSIT_PAID.equals(order.getStatus())) {
+        if (!Order.STATUS_IN_TRANSIT.equals(order.getStatus())) {
             throw new BadRequestException(
-                    "Only DEPOSIT_PAID orders can be marked as delivered (current: " + order.getStatus() + ")");
+                    "Only IN_TRANSIT orders can be marked as delivered (current: " + order.getStatus() + ")");
         }
 
         order.setStatus(Order.STATUS_DELIVERED);
@@ -454,7 +485,7 @@ public class OrderService {
     }
 
     /**
-     * Retailer xem danh sách đơn hàng của mình, lọc theo trạng thái (BICAP-75).
+     * Retailer xem danh sách đơn hàng của mình, lọc theo trạng thái (BICAP-45).
      */
     @Transactional(readOnly = true)
     public List<OrderResponse> getRetailerOrders(String status) {
@@ -483,6 +514,25 @@ public class OrderService {
                     return OrderResponse.from(o, p, s, f, actor);
                 })
                 .toList();
+    }
+
+    /** Retailer xem chi tiết đơn của chính mình (BICAP-46 / SRS-RT-011). */
+    @Transactional(readOnly = true)
+    public OrderResponse getRetailerOrderDetail(Long id) {
+        User actor = requireRetailer();
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
+        if (!actor.getId().equals(order.getRetailerId())) {
+            throw new ForbiddenException("This order does not belong to the current user");
+        }
+
+        Product product = order.getProductId() == null
+                ? null : productRepository.findById(order.getProductId()).orElse(null);
+        FarmingSeason season = product == null || product.getSeasonId() == null
+                ? null : seasonRepository.findById(product.getSeasonId()).orElse(null);
+        Farm farm = season == null || season.getFarmId() == null
+                ? null : farmRepository.findById(season.getFarmId()).orElse(null);
+        return OrderResponse.from(order, product, season, farm, actor);
     }
 
     private User requireFarmManager() {

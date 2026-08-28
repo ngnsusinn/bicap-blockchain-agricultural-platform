@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;
+import java.util.Collection;
+import java.util.List;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -19,6 +21,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmailIgnoreCase(String email);
     boolean existsByPhone(String phone);
     boolean existsByPhoneAndIdNot(String phone, Long id);
+    List<User> findDistinctByRoles_NameIn(Collection<String> roleNames);
 
     /**
      * Search term is matched literally: callers must escape {@code !}, {@code %} and

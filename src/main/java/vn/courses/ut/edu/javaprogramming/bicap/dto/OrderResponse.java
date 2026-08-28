@@ -51,6 +51,7 @@ public class OrderResponse {
 
     // BICAP-75: extended lifecycle fields
     private String cancelledReason;
+    private LocalDateTime cancelRequestedAt;
     private LocalDateTime deliveredAt;
     private LocalDateTime completedAt;
     private LocalDate desiredDeliveryDate;
@@ -132,6 +133,7 @@ public class OrderResponse {
                 order.getCompletedAt()
         );
         response.desiredDeliveryDate = order.getDesiredDeliveryDate();
+        response.cancelRequestedAt = order.getCancelRequestedAt();
         response.notes = order.getNotes();
         response.acceptedAt = order.getAcceptedAt();
         response.depositExpiresAt = order.getAcceptedAt() == null ? null : order.getAcceptedAt().plusHours(24);
@@ -188,6 +190,8 @@ public class OrderResponse {
     public void setDepositCode(String depositCode) { this.depositCode = depositCode; }
     public String getCancelledReason() { return cancelledReason; }
     public void setCancelledReason(String cancelledReason) { this.cancelledReason = cancelledReason; }
+    public LocalDateTime getCancelRequestedAt() { return cancelRequestedAt; }
+    public void setCancelRequestedAt(LocalDateTime cancelRequestedAt) { this.cancelRequestedAt = cancelRequestedAt; }
     public LocalDateTime getDeliveredAt() { return deliveredAt; }
     public void setDeliveredAt(LocalDateTime deliveredAt) { this.deliveredAt = deliveredAt; }
     public LocalDateTime getCompletedAt() { return completedAt; }

@@ -75,14 +75,24 @@ public class OrderController {
             @RequestParam(required = false) String status) {
         return ResponseEntity.ok(orderService.getRetailerOrders(status));
     }
+    /** Retailer xem chi tiết một đơn hàng thuộc chính tài khoản của mình. */
+    @GetMapping("/my/{id}")
+    public ResponseEntity<OrderResponse> getMyOrderDetail(@PathVariable Long id) {
+        return ResponseEntity.ok(orderService.getRetailerOrderDetail(id));
+    }
     /** Retailer hủy đơn (chỉ khi PENDING hoặc ACCEPTED). */
     @PutMapping("/{id}/cancel")
     public ResponseEntity<OrderResponse> cancelOrder(
             @PathVariable Long id,
-            @Valid @RequestBody(required = false) CancelOrderRequest request) {
+            @Valid @RequestBody CancelOrderRequest request) {
         return ResponseEntity.ok(orderService.cancelOrder(id, request));
     }
-    /** Farm Manager xác nhận đã giao hàng (DEPOSIT_PAID → DELIVERED). */
+    /** Farm Manager bàn giao đơn đã đặt cọc cho đơn vị vận chuyển. */
+    @PutMapping("/{id}/in-transit")
+    public ResponseEntity<OrderResponse> markInTransit(@PathVariable Long id) {
+        return ResponseEntity.ok(orderService.markInTransit(id));
+    }
+    /** Farm Manager xác nhận đã giao hàng (IN_TRANSIT → DELIVERED). */
     @PutMapping("/{id}/deliver")
     public ResponseEntity<OrderResponse> confirmDelivery(@PathVariable Long id) {
         return ResponseEntity.ok(orderService.confirmDelivery(id));
