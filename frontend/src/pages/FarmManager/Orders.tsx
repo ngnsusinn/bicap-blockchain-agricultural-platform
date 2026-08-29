@@ -25,12 +25,14 @@ type OrderItem = {
   depositAmount?: number;
 };
 
-type FilterKey = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'ALL';
+type FilterKey = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'DEPOSIT_PAID' | 'IN_TRANSIT' | 'ALL';
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'PENDING', label: 'Chờ xử lý' },
   { key: 'ACCEPTED', label: 'Đã chấp nhận' },
   { key: 'REJECTED', label: 'Đã từ chối' },
+  { key: 'DEPOSIT_PAID', label: 'Đã đặt cọc' },
+  { key: 'IN_TRANSIT', label: 'Đang vận chuyển' },
   { key: 'ALL', label: 'Tất cả' },
 ];
 
@@ -39,6 +41,9 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
   ACCEPTED: { label: 'Đã chấp nhận', color: '#10b981' },
   REJECTED: { label: 'Đã từ chối', color: '#ef4444' },
   DEPOSIT_PAID: { label: 'Đã đặt cọc', color: '#06b6d4' },
+  CANCEL_REQUESTED: { label: 'Chờ Admin duyệt hủy', color: '#f97316' },
+  IN_TRANSIT: { label: 'Đang vận chuyển', color: '#22d3ee' },
+  DELIVERED: { label: 'Đã giao hàng', color: '#14b8a6' },
 };
 
 /**
@@ -112,6 +117,16 @@ export default function Orders() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const transition = async (orderId: number, action: 'in-transit' | 'deliver') => {
+    setBusy(true); setError('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/orders/${orderId}/${action}`, { method: 'PUT', headers: getAuthHeaders() });
+      if (!res.ok) { const body = await res.json().catch(() => ({})); throw new Error(body.message || 'Không thể cập nhật trạng thái đơn hàng.'); }
+      await load();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Không thể cập nhật trạng thái đơn hàng.'); }
+    finally { setBusy(false); }
   };
 
   const total = (o: OrderItem) => o.totalAmount ?? o.price * o.quantity;
@@ -235,6 +250,8 @@ export default function Orders() {
                       )}
                     </div>
                   )}
+                  {o.status === 'DEPOSIT_PAID' && <button disabled={busy} onClick={() => transition(o.id, 'in-transit')} style={buttonStyle}>Bắt đầu vận chuyển</button>}
+                  {o.status === 'IN_TRANSIT' && <button disabled={busy} onClick={() => transition(o.id, 'deliver')} style={buttonStyle}>Xác nhận đã giao</button>}
                 </div>
               </div>
             );

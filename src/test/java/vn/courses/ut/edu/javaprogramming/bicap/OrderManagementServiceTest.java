@@ -234,10 +234,19 @@ class OrderManagementServiceTest {
         when(userRepository.findById(RETAILER_ID)).thenReturn(Optional.of(retailer));
         when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        OrderResponse response = service.cancelOrder(ORDER_ID, null);
+        OrderResponse response = service.cancelOrder(ORDER_ID, new CancelOrderRequest("Không còn nhu cáº§u"));
 
         assertEquals(Order.STATUS_CANCELLED, response.getStatus());
-        assertNull(order.getCancelledReason());
+        assertEquals("Không còn nhu cáº§u", order.getCancelledReason());
+    }
+
+    @Test
+    void cancelOrder_requiresReason() {
+        loginAs(retailer);
+
+        assertThrows(BadRequestException.class,
+                () -> service.cancelOrder(ORDER_ID, new CancelOrderRequest("  ")));
+        verifyNoInteractions(orderRepository);
     }
 
     @Test
@@ -248,27 +257,52 @@ class OrderManagementServiceTest {
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
 
         assertThrows(ForbiddenException.class,
-                () -> service.cancelOrder(ORDER_ID, null));
+                () -> service.cancelOrder(ORDER_ID, new CancelOrderRequest("Äáº·t nháº§m")));
         verify(orderRepository, never()).save(any());
     }
 
     @Test
-    void cancelOrder_throwsBadRequest_whenDepositAlreadyPaid() {
+    void cancelOrder_requestsAdminReview_whenDepositAlreadyPaid() {
         loginAs(retailer);
         Order order = depositPaidOrder();
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
+        when(seasonRepository.findById(SEASON_ID)).thenReturn(Optional.of(season));
+        when(farmRepository.findById(FARM_ID)).thenReturn(Optional.of(farm));
+        Role adminRole = Role.builder().name("ADMIN").permissions(Set.of()).build();
+        User admin = User.builder().id(99L).email("admin@bicap.com").roles(Set.of(adminRole)).build();
+        when(userRepository.findDistinctByRoles_NameIn(anyCollection())).thenReturn(java.util.List.of(admin));
+        when(userRepository.findById(RETAILER_ID)).thenReturn(Optional.of(retailer));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThrows(BadRequestException.class,
-                () -> service.cancelOrder(ORDER_ID, null));
-        verify(orderRepository, never()).save(any());
+        OrderResponse response = service.cancelOrder(ORDER_ID, new CancelOrderRequest("Change plan"));
+
+        assertEquals(Order.STATUS_CANCEL_REQUESTED, response.getStatus());
+        assertEquals("Change plan", order.getCancelledReason());
+        assertNotNull(order.getCancelRequestedAt());
+        verify(notificationService).sendNotification(eq(99L), eq("WARNING"), anyString(), anyString(), eq(false));
     }
 
     // ── confirmDelivery ──────────────────────────────────────────────────────
 
     @Test
+    void markInTransit_transitionsDepositPaidOrder_andNotifiesRetailer() {
+        loginAs(farmManager);
+        Order order = depositPaidOrder();
+        stubDeliveryContext(order);
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        OrderResponse response = service.markInTransit(ORDER_ID);
+
+        assertEquals(Order.STATUS_IN_TRANSIT, response.getStatus());
+        verify(notificationService).sendNotification(eq(RETAILER_ID), eq("INFO"), anyString(), anyString(), eq(false));
+    }
+
+    @Test
     void confirmDelivery_transitionsToDelivered_andNotifiesRetailer() {
         loginAs(farmManager);
         Order order = depositPaidOrder();
+        order.setStatus(Order.STATUS_IN_TRANSIT);
         stubDeliveryContext(order);
         when(userRepository.findById(RETAILER_ID)).thenReturn(Optional.of(retailer));
         when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -282,7 +316,7 @@ class OrderManagementServiceTest {
     }
 
     @Test
-    void confirmDelivery_throwsBadRequest_whenNotDepositPaid() {
+    void confirmDelivery_throwsBadRequest_whenNotInTransit() {
         loginAs(farmManager);
         Order order = pendingOrder(); // vẫn PENDING
         stubDeliveryContext(order);
@@ -380,5 +414,33 @@ class OrderManagementServiceTest {
 
         assertThrows(ForbiddenException.class, () -> service.getRetailerOrders(null));
         verifyNoInteractions(orderRepository);
+    }
+
+    @Test
+    void getRetailerOrderDetail_returnsOwnedOrder() {
+        loginAs(retailer);
+        Order order = pendingOrder();
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
+        when(seasonRepository.findById(SEASON_ID)).thenReturn(Optional.of(season));
+        when(farmRepository.findById(FARM_ID)).thenReturn(Optional.of(farm));
+
+        OrderResponse response = service.getRetailerOrderDetail(ORDER_ID);
+
+        assertEquals(ORDER_ID, response.getId());
+        assertEquals(product.getName(), response.getProductName());
+        assertEquals(farm.getName(), response.getFarmName());
+    }
+
+    @Test
+    void getRetailerOrderDetail_rejectsAnotherRetailersOrder() {
+        loginAs(retailer);
+        Order order = pendingOrder();
+        order.setRetailerId(999L);
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+
+        assertThrows(ForbiddenException.class,
+                () -> service.getRetailerOrderDetail(ORDER_ID));
+        verifyNoInteractions(productRepository, seasonRepository, farmRepository);
     }
 }

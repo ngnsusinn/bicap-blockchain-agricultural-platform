@@ -147,14 +147,14 @@ public class DatabaseSeeder implements CommandLineRunner {
         // 7. Seed FarmingSeason + Product ACTIVE (BICAP-75 test data)
         //    Dùng Farm 3 (APPROVED) vì chỉ farm APPROVED mới có thể bán hàng
         FarmingSeason season = seedFarmingSeason(farm3.getId(),
-                "Vu Rau Xanh 2026", "Rau an la", "Cai xanh huu co",
+                "Vụ Rau Xanh 2026", "Rau ăn lá", "Cải xanh hữu cơ",
                 5.0, java.time.LocalDate.of(2026, 1, 10));
-        Category rauCategory = categoryRepository.findByName("Rau an la")
+        Category rauCategory = categoryRepository.findByName("Rau ăn lá")
                 .orElse(categoryRepository.findAll().stream().findFirst().orElse(null));
         if (rauCategory != null && season != null) {
             seedProduct(season.getId(), rauCategory.getId(),
-                    "Cai xanh huu co BICAP",
-                    "Cai xanh trong theo chuan huu co, khong su dung thuoc bao ve thuc vat. Nguon goc ro rang, co chung nhan VietGAP.",
+                    "Cải xanh hữu cơ BICAP",
+                    "Cải xanh trồng theo chuẩn hữu cơ, không sử dụng thuốc bảo vệ thực vật. Nguồn gốc rõ ràng, có chứng nhận VietGAP.",
                     15000.0, 500.0);
         }
     }
