@@ -131,6 +131,31 @@ public class TradingFloorService {
                 .toList();
     }
 
+    /**
+     * Danh sách sản phẩm nông trại đã đẩy lên sàn kèm trạng thái duyệt
+     * (BICAP-19 / SRS-FM-013). Farm Manager chỉ xem được sản phẩm của chính mình.
+     *
+     * @param status bộ lọc tuỳ chọn: PENDING_REVIEW, ACTIVE, INACTIVE, REJECTED
+     */
+    @Transactional(readOnly = true)
+    public List<ProductListingResponse> getFarmListings(Long farmId, String status) {
+        User actor = requireFarmManager();
+        Farm farm = requireOwnedFarm(farmId, actor.getId());
+
+        String normalized = (status == null || status.isBlank()) ? null : status.trim().toUpperCase();
+        return productRepository.findByFarmId(farm.getId(), normalized).stream()
+                .map(p -> {
+                    Category category = p.getCategoryId() != null
+                            ? categoryRepository.findById(p.getCategoryId()).orElse(null) : null;
+                    FarmingSeason season = p.getSeasonId() != null
+                            ? seasonRepository.findById(p.getSeasonId()).orElse(null) : null;
+                    SeasonExport export = p.getExportId() != null
+                            ? exportRepository.findById(p.getExportId()).orElse(null) : null;
+                    return ProductListingResponse.fromEntity(p, category, season, export);
+                })
+                .toList();
+    }
+
     private User requireFarmManager() {
         User actor = CurrentUser.get();
         ActorAuthorizer.requireRoles(actor, Set.of("FARM_MANAGER"));

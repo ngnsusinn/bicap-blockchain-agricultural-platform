@@ -7,6 +7,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmStatusUpdateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmCertification;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmingSeason;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Notification;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Role;
@@ -49,6 +50,9 @@ public class FarmApprovalServiceTest {
 
     @Mock
     private FarmCertificationRepository certificationRepository;
+
+    @Mock
+    private vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepository seasonRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -173,6 +177,24 @@ public class FarmApprovalServiceTest {
         assertEquals("Trang Trại Xanh", detail.getName());
         assertEquals(1, detail.getCertifications().size());
         assertEquals("VietGAP", detail.getCertifications().get(0).getType());
+    }
+
+    @Test
+    void getFarmDetail_shouldIncludeSeasonHistory() {
+        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
+        when(farmRepository.findById(100L)).thenReturn(Optional.of(pendingFarm));
+        when(userRepository.findById(10L)).thenReturn(Optional.of(farmOwner));
+        when(certificationRepository.findByFarmId(100L)).thenReturn(List.of());
+        when(seasonRepository.findByFarmId(100L)).thenReturn(List.of(
+                new FarmingSeason(9L, 100L, "Vụ Rau 2026", "Rau ăn lá", "Cải xanh",
+                        5.0, java.time.LocalDate.of(2026, 1, 10), null, "HARVESTED", "0xtx", null)));
+
+        FarmDetailResponse detail = farmApprovalService.getFarmDetail(100L, "super@bicap.com");
+
+        assertNotNull(detail.getSeasons());
+        assertEquals(1, detail.getSeasons().size());
+        assertEquals("Vụ Rau 2026", detail.getSeasons().get(0).getName());
+        assertEquals("HARVESTED", detail.getSeasons().get(0).getStatus());
     }
 
     @Test

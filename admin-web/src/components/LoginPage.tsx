@@ -54,6 +54,27 @@ interface LoginPageProps {
   onNavigate: (path: string) => void;
 }
 
+// App được phục vụ dưới base /admin/ — ghép prefix khi render link thật.
+const BASE = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+const withBase = (path: string) => (path === '/' ? BASE + '/' : BASE + path);
+
+// Tài khoản test đã seed sẵn (DatabaseSeeder) — bấm để điền nhanh vào form.
+const TEST_ACCOUNTS: Record<PortalType, { id: string; pw: string; note: string }[]> = {
+  admin: [
+    { id: 'superadmin@bicap.com', pw: 'Superadmin@2026', note: 'Super Admin (toàn quyền)' },
+    { id: 'admin@bicap.com', pw: 'Adminpassword@2026', note: 'Admin (đọc/ghi)' },
+    { id: 'moderator@bicap.com', pw: 'Moderator@2026', note: 'Moderator (chỉ đọc)' },
+  ],
+  farm: [
+    { id: 'farm@bicap.com', pw: 'Farmpassword@2026', note: 'Farm Manager (có dữ liệu mẫu)' },
+    { id: 'farm@bicap.vn', pw: 'Farmpassword@2026', note: 'Farm Manager thứ hai' },
+  ],
+  retail: [
+    { id: 'retailer@bicap.com', pw: 'Retailpassword@2026', note: 'Nhà bán lẻ' },
+    { id: 'retail@bicap.com', pw: 'Retailpassword@2026', note: 'Nhà bán lẻ (alias)' },
+  ],
+};
+
 export const LoginPage: React.FC<LoginPageProps> = ({
   portalType,
   onLoginSuccess,
@@ -68,6 +89,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showAccounts, setShowAccounts] = useState(true);
 
   // ── Register fields ──
   const [regFullName, setRegFullName] = useState('');
@@ -295,6 +317,33 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         {/* ── LOGIN FORM ── */}
         {mode === 'login' && (
           <form onSubmit={handleLogin}>
+            {/* Test accounts quick-fill */}
+            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '10px 12px', marginBottom: '18px' }}>
+              <button
+                type="button"
+                onClick={() => setShowAccounts((s) => !s)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#c4b5fd', fontSize: '12px', fontWeight: 700, padding: 0 }}
+              >
+                <span>🧪 Tài khoản test (bấm để điền nhanh)</span>
+                <span>{showAccounts ? '▲' : '▼'}</span>
+              </button>
+              {showAccounts && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
+                  {TEST_ACCOUNTS[portalType].map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => { setIdentifier(a.id); setPassword(a.pw); setErrorMsg(null); }}
+                      style={{ textAlign: 'left', cursor: 'pointer', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px' }}
+                    >
+                      <div style={{ fontSize: '12px', color: '#fff', fontFamily: 'monospace' }}>{a.id} · {a.pw}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted, #94a3b8)' }}>{a.note}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div style={{ marginBottom: '18px' }}>
               <label className="login-label">Email hoặc Số điện thoại</label>
               <input
@@ -429,7 +478,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             {config.otherPortals.map((p) => (
               <a
                 key={p.path}
-                href={p.path}
+                href={withBase(p.path)}
                 onClick={(e) => { e.preventDefault(); onNavigate(p.path); }}
               >
                 {p.text}

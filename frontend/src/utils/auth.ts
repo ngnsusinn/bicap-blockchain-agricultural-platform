@@ -73,4 +73,8 @@ export function logout(): void {
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('currentUser');
+  // Chế độ 1 port: xóa luôn phiên Admin Web (nếu dùng chung origin) để logout
+  // ở cổng nào cũng thoát khỏi toàn bộ hệ thống.
+  localStorage.removeItem('bicap_session');
+  localStorage.removeItem('bicap_token');
 }

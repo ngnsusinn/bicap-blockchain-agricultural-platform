@@ -54,7 +54,45 @@ If Maven (`mvn`) is not registered in your global system `PATH`, you can use the
 
 ---
 
-## 4. Running the Frontend Dashboard (React Vite)
+## 4. Single-Port Mode — Spring Boot phục vụ cả 2 frontend (Khuyên dùng cho demo/test)
+
+Toàn bộ hệ thống chạy trên **một port duy nhất 8080**:
+
+| URL | Nội dung |
+|---|---|
+| `http://localhost:8080/` | Farm Portal (`frontend`) — đăng nhập Farm / Retailer / Admin |
+| `http://localhost:8080/admin/` | Admin Web (`admin-web`) — bảng điều khiển quản trị |
+| `http://localhost:8080/api/**` | Backend API |
+
+Cách chạy (Windows):
+
+1. Build và lắp 2 app React vào JAR:
+   ```bat
+   build-web.bat
+   ```
+   (script chạy `npm run build` cho cả `frontend` và `admin-web`, rồi copy `dist/` vào `src/main/resources/static/` — thư mục này được gitignore vì là build artifact)
+2. Chạy backend như mục 3 (`run-backend.bat` hoặc `mvn spring-boot:run`).
+3. Mở `http://localhost:8080/` — không cần chạy thêm server React nào.
+
+Deep-link SPA (`/trace/<hash>`, `/admin/farm`, `/admin/retail`…) đã được `SpaForwardController` forward về đúng `index.html`, refresh không bị 404.
+
+> **Dev hot-reload:** nếu vẫn muốn sửa code React và thấy ngay, chạy riêng `npm run dev` trong từng thư mục (farm 5174, admin 5173 — vào `http://localhost:5173/admin/`). Hai chế độ này song song, không ảnh hưởng nhau.
+
+### Tài khoản test (đã seed sẵn — trên trang login có nút điền nhanh)
+
+| Vai trò | Email | Mật khẩu |
+|---|---|---|
+| Super Admin | `superadmin@bicap.com` | `Superadmin@2026` |
+| Admin | `admin@bicap.com` | `Adminpassword@2026` |
+| Moderator | `moderator@bicap.com` | `Moderator@2026` |
+| Farm Manager | `farm@bicap.com` | `Farmpassword@2026` |
+| Retailer | `retailer@bicap.com` | `Retailpassword@2026` |
+| Shipping Manager | `shipping_mgr@bicap.com` | `Shipping@2026` |
+| Driver | `driver@bicap.com` | `Driver@2026` |
+
+---
+
+## 5. Running the Frontend Dashboard (React Vite)
 
 The frontend client must run on **port 3001** to align with the CORS policy allowed by the backend.
 
@@ -75,7 +113,7 @@ The frontend client must run on **port 3001** to align with the CORS policy allo
 
 ---
 
-## 5. Running via Docker Compose (Production/Contanerized)
+## 6. Running via Docker Compose (Production/Contanerized)
 
 We configured a unified multi-container docker compose setup inside `docker-compose.db.yml` to launch both the backend API and the React web application:
 

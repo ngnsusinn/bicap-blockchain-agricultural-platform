@@ -32,4 +32,18 @@ public interface ShipmentRepository extends JpaRepository<Shipment, Long> {
            "ORDER BY s.createdAt DESC, s.id DESC")
     List<Shipment> findByDriverIdFiltered(@Param("driverId") Long driverId,
                                           @Param("status") String status);
+
+    /**
+     * Shipments whose order's product originates from a given farm, resolved through
+     * shipment → order → product → season → farm. Used by BICAP-22 / SRS-FM-016 so a
+     * Farm Manager can track the delivery progress of their own outgoing goods.
+     */
+    @Query("SELECT s FROM Shipment s " +
+           "JOIN Order o ON s.orderId = o.id " +
+           "JOIN Product p ON o.productId = p.id " +
+           "JOIN FarmingSeason season ON p.seasonId = season.id " +
+           "WHERE season.farmId = :farmId " +
+           "AND (:status IS NULL OR s.status = :status) " +
+           "ORDER BY s.createdAt DESC, s.id DESC")
+    List<Shipment> findByFarmId(@Param("farmId") Long farmId, @Param("status") String status);
 }

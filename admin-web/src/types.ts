@@ -75,6 +75,7 @@ export interface FarmRegistration {
   ownerPhone: string | null;
   certificationCount: number;
   certifications?: FarmCertification[];
+  seasons?: FarmSeasonSummary[];
 }
 
 // ── Smart Contract and Blockchain types ──
@@ -156,5 +157,70 @@ export interface ProductStats {
   pendingReviewProducts: number;
   newProductsThisWeek: number;
   byCategory: CategoryStat[];
+}
+
+// ── Report types (BICAP-27 / SRS-FM-021 — reports sent to Admin by any role) ──
+export type ReportStatusType = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'REJECTED';
+export type ReportType = 'COMPLAINT' | 'FEEDBACK' | 'INCIDENT' | 'OTHER';
+
+export interface ReportItem {
+  id: number;
+  reporterId: number;
+  reporterName: string | null;
+  reporterRole: string;
+  type: ReportType;
+  subject: string;
+  content: string;
+  relatedOrderId: number | null;
+  status: ReportStatusType;
+  adminResponse: string | null;
+  handledAt: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export interface ReportStats {
+  open: number;
+  inProgress: number;
+  resolved: number;
+  rejected: number;
+  total: number;
+}
+
+// ── Farm season summary shown in admin farm detail (BICAP-4 / SRS-ADM-003) ──
+export interface FarmSeasonSummary {
+  id: number;
+  farmId: number;
+  name: string;
+  productType: string;
+  variety: string;
+  area: number | null;
+  startDate: string | null;
+  endDate: string | null;
+  status: string;
+  txHash: string | null;
+  createdAt: string | null;
+}
+
+// ── Admin dashboard (EPIC-1 / detail-design §4.2) ──
+export interface AdminDashboard {
+  admins: number;
+  farms: Record<string, number>;
+  products: Record<string, number>;
+  orders: Record<string, number>;
+  reports: Record<string, number>;
+  pendingFarms: FarmRegistration[];
+  recentTransactions: BlockchainTransaction[];
+}
+
+// ── In-app notification (BICAP-77) ──
+export interface AdminNotification {
+  id: number;
+  type: string;
+  title: string;
+  content: string;
+  channel?: string;
+  isRead: boolean;
+  createdAt: string;
 }
 

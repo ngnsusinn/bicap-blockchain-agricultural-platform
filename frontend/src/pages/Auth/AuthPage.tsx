@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { API_BASE_URL } from '../../utils/auth';
 import LoginForm from '../../components/Auth/LoginForm';
 import RegisterForm from '../../components/Auth/RegisterForm';
+import type { AuthRole } from '../../components/Auth/LoginForm';
 
 interface AuthPageProps {
   onLoginSuccess: (token: string, user: any, refreshToken?: string) => void;
-  defaultRole?: 'FARM_MANAGER' | 'RETAILER';
+  defaultRole?: AuthRole;
   defaultMode?: 'login' | 'register';
 }
 
@@ -14,11 +15,21 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   defaultRole = 'FARM_MANAGER',
   defaultMode = 'login',
 }) => {
-  const [role, setRole] = useState<'FARM_MANAGER' | 'RETAILER'>(defaultRole);
+  const [role, setRole] = useState<AuthRole>(defaultRole);
   const [mode, setMode] = useState<'login' | 'register'>(defaultMode);
   const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error' | null>(null);
 
   const isFarm = role === 'FARM_MANAGER';
+  const isAdmin = role === 'ADMIN';
+  // Accent used for the active role's theming (farm=green, retailer=cyan, admin=purple).
+  const accent = isAdmin ? '#8b5cf6' : isFarm ? '#10b981' : '#06b6d4';
+  const accent2 = isAdmin ? '#a78bfa' : isFarm ? '#34d399' : '#38bdf8';
+
+  const selectRole = (next: AuthRole) => {
+    setRole(next);
+    // Admin không tự đăng ký → luôn trở về chế độ đăng nhập.
+    if (next === 'ADMIN') setMode('login');
+  };
 
   const handleSuccess = (data: { token?: string; refreshToken?: string; user?: any; pendingVerification?: boolean }) => {
     if (data.token && data.user) {
@@ -49,7 +60,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
   return (
     <div
-      className={`auth-page-wrapper ${isFarm ? 'auth-page-wrapper--farm' : 'auth-page-wrapper--retailer'}`}
+      className={`auth-page-wrapper ${isAdmin ? 'auth-page-wrapper--admin' : isFarm ? 'auth-page-wrapper--farm' : 'auth-page-wrapper--retailer'}`}
       style={pageWrapperStyle}
     >
       {/* Background Glow Overlay */}
@@ -61,7 +72,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           width: '500px',
           height: '500px',
           borderRadius: '50%',
-          background: isFarm 
+          background: isAdmin
+            ? 'radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, rgba(0, 0, 0, 0) 70%)'
+            : isFarm
             ? 'radial-gradient(circle, rgba(16, 185, 129, 0.2) 0%, rgba(0, 0, 0, 0) 70%)'
             : 'radial-gradient(circle, rgba(6, 182, 212, 0.2) 0%, rgba(0, 0, 0, 0) 70%)',
           pointerEvents: 'none',
@@ -78,7 +91,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           </div>
 
           <h1 style={{ fontSize: '36px', fontWeight: 800, color: '#fff', lineHeight: 1.25, marginTop: '24px', marginBottom: '16px' }}>
-            Nền tảng Tích hợp Blockchain trong Sản xuất & Tiêu thụ <span style={{ background: isFarm ? 'linear-gradient(to right, #34d399, #10b981)' : 'linear-gradient(to right, #38bdf8, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Nông sản Sạch</span>
+            Nền tảng Tích hợp Blockchain trong Sản xuất & Tiêu thụ <span style={{ background: `linear-gradient(to right, ${accent2}, ${accent})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Nông sản Sạch</span>
           </h1>
 
           <p style={{ fontSize: '15px', color: 'var(--text-secondary, #cbd5e1)', lineHeight: 1.6, marginBottom: '32px' }}>
@@ -134,7 +147,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               </div>
             )}
             
-            {/* 1. Role Selector Tablist (BICAP-7 vs BICAP-36) */}
+            {/* 1. Role Selector Tablist (BICAP-7 vs BICAP-36 vs Admin) */}
             <div
               role="tablist"
               aria-label="Chọn Vai trò Tài khoản"
@@ -152,10 +165,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 role="tab"
                 aria-selected={isFarm}
                 aria-controls="auth-form-panel"
-                onClick={() => setRole('FARM_MANAGER')}
+                onClick={() => selectRole('FARM_MANAGER')}
                 style={{
                   flex: 1,
-                  padding: '10px 14px',
+                  padding: '10px 8px',
                   borderRadius: '8px',
                   border: 'none',
                   background: isFarm ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
@@ -172,25 +185,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 }}
               >
                 <span>🌾</span>
-                <span>Farm Manager</span>
-                <span style={{ fontSize: '10px', opacity: 0.7 }}>(BICAP-7)</span>
+                <span>Farm</span>
               </button>
 
               <button
                 id="tab-retailer"
                 role="tab"
                 className="auth-role-tab auth-role-tab--retailer"
-                aria-selected={!isFarm}
+                aria-selected={!isFarm && !isAdmin}
                 aria-controls="auth-form-panel"
-                onClick={() => setRole('RETAILER')}
+                onClick={() => selectRole('RETAILER')}
                 style={{
                   flex: 1,
-                  padding: '10px 14px',
+                  padding: '10px 8px',
                   borderRadius: '8px',
                   border: 'none',
-                  background: !isFarm ? 'rgba(6, 182, 212, 0.2)' : 'transparent',
-                  color: !isFarm ? '#38bdf8' : 'var(--text-secondary, #cbd5e1)',
-                  fontWeight: !isFarm ? 700 : 500,
+                  background: !isFarm && !isAdmin ? 'rgba(6, 182, 212, 0.2)' : 'transparent',
+                  color: !isFarm && !isAdmin ? '#38bdf8' : 'var(--text-secondary, #cbd5e1)',
+                  fontWeight: !isFarm && !isAdmin ? 700 : 500,
                   fontSize: '13px',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
@@ -198,15 +210,44 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px',
-                  boxShadow: !isFarm ? '0 2px 8px rgba(6, 182, 212, 0.2)' : 'none',
+                  boxShadow: !isFarm && !isAdmin ? '0 2px 8px rgba(6, 182, 212, 0.2)' : 'none',
                 }}
               >
                 <span>🛒</span>
                 <span>Retailer</span>
               </button>
+
+              <button
+                id="tab-admin"
+                role="tab"
+                aria-selected={isAdmin}
+                aria-controls="auth-form-panel"
+                onClick={() => selectRole('ADMIN')}
+                style={{
+                  flex: 1,
+                  padding: '10px 8px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: isAdmin ? 'rgba(139, 92, 246, 0.2)' : 'transparent',
+                  color: isAdmin ? '#a78bfa' : 'var(--text-secondary, #cbd5e1)',
+                  fontWeight: isAdmin ? 700 : 500,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  boxShadow: isAdmin ? '0 2px 8px rgba(139, 92, 246, 0.2)' : 'none',
+                }}
+              >
+                <span>🛡️</span>
+                <span>Admin</span>
+              </button>
             </div>
 
-            {/* 2. Mode Switcher (Login vs Register) */}
+            {/* 2. Mode Switcher (Login vs Register) — Admin chỉ đăng nhập, không tự đăng ký */}
+            {!isAdmin && (
             <div
               role="tablist"
               aria-label="Chọn Chế độ Xác thực"
@@ -227,7 +268,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   padding: '12px',
                   background: 'none',
                   border: 'none',
-                  borderBottom: mode === 'login' ? `3px solid ${isFarm ? '#10b981' : '#06b6d4'}` : '3px solid transparent',
+                  borderBottom: mode === 'login' ? `3px solid ${accent}` : '3px solid transparent',
                   color: mode === 'login' ? '#fff' : 'var(--text-muted, #94a3b8)',
                   fontWeight: mode === 'login' ? 700 : 500,
                   fontSize: '14px',
@@ -249,7 +290,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   padding: '12px',
                   background: 'none',
                   border: 'none',
-                  borderBottom: mode === 'register' ? `3px solid ${isFarm ? '#10b981' : '#06b6d4'}` : '3px solid transparent',
+                  borderBottom: mode === 'register' ? `3px solid ${accent}` : '3px solid transparent',
                   color: mode === 'register' ? '#fff' : 'var(--text-muted, #94a3b8)',
                   fontWeight: mode === 'register' ? 700 : 500,
                   fontSize: '14px',
@@ -260,10 +301,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 Tạo Tài Khoản Mới
               </button>
             </div>
+            )}
 
             {/* 3. Form Content Panel */}
             <div id="auth-form-panel" role="tabpanel" tabIndex={0} style={{ outline: 'none' }}>
-              {mode === 'login' ? (
+              {mode === 'login' || isAdmin ? (
                 <LoginForm
                   role={role}
                   onSuccess={handleSuccess}
@@ -271,7 +313,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 />
               ) : (
                 <RegisterForm
-                  role={role}
+                  role={role as 'FARM_MANAGER' | 'RETAILER'}
                   onSuccess={handleSuccess}
                   onSwitchToLogin={() => setMode('login')}
                 />

@@ -8,8 +8,10 @@ import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmDetailResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmNotesUpdateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.FarmStatusUpdateRequest;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.SeasonResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmCertification;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmingSeason;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Notification;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
@@ -17,6 +19,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmCertificationRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.NotificationRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
 import org.springframework.data.domain.Page;
@@ -40,15 +43,18 @@ public class FarmApprovalService {
 
     private final FarmRepository farmRepository;
     private final FarmCertificationRepository certificationRepository;
+    private final FarmingSeasonRepository seasonRepository;
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
 
     public FarmApprovalService(FarmRepository farmRepository,
                                FarmCertificationRepository certificationRepository,
+                               FarmingSeasonRepository seasonRepository,
                                UserRepository userRepository,
                                NotificationRepository notificationRepository) {
         this.farmRepository = farmRepository;
         this.certificationRepository = certificationRepository;
+        this.seasonRepository = seasonRepository;
         this.userRepository = userRepository;
         this.notificationRepository = notificationRepository;
     }
@@ -101,7 +107,25 @@ public class FarmApprovalService {
         List<FarmCertificationResponse> certifications = certs.stream()
                 .map(FarmCertificationResponse::fromEntity)
                 .collect(Collectors.toList());
-        return new FarmDetailResponse(summary, certifications);
+        // SRS-ADM-003: season history so the admin can assess the farm's activity.
+        List<SeasonResponse> seasons = seasonRepository.findByFarmId(farm.getId()).stream()
+                .sorted(java.util.Comparator.comparing(FarmingSeason::getCreatedAt,
+                        java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                .map(s -> SeasonResponse.builder()
+                        .id(s.getId())
+                        .farmId(s.getFarmId())
+                        .name(s.getName())
+                        .productType(s.getProductType())
+                        .variety(s.getVariety())
+                        .area(s.getArea())
+                        .startDate(s.getStartDate())
+                        .endDate(s.getEndDate())
+                        .status(s.getStatus())
+                        .txHash(s.getTxHash())
+                        .createdAt(s.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+        return new FarmDetailResponse(summary, certifications, seasons);
     }
 
     @Transactional(readOnly = true)

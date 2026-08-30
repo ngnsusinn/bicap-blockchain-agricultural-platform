@@ -5,14 +5,37 @@ import { LoginPage } from './components/LoginPage';
 import { StatsCards } from './components/StatsCards';
 import { AdminTable } from './components/AdminTable';
 import { AdminModal } from './components/AdminModal';
+import { DashboardPage } from './components/DashboardPage';
+import { NotificationBell } from './components/NotificationBell';
 import { FarmApprovalPage } from './components/FarmApprovalPage';
 import { FarmManagementPage } from './components/FarmManagementPage';
 import { SmartContractPage } from './components/SmartContractPage';
 import { ProductMonitoringPage } from './components/ProductMonitoringPage';
+import { ReportsPage } from './components/ReportsPage';
 import { Toast } from './components/Toast';
 import type { ToastMessage } from './components/Toast';
+import { API_ORIGIN } from './utils/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/admins';
+
+// ── Base path ──
+// App được Spring Boot phục vụ tại /admin/ (Vite base). Khi dev riêng qua Vite,
+// BASE_URL vẫn là '/admin/' nên truy cập http://localhost:5173/admin/.
+const BASE = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+
+/** Bỏ prefix BASE khỏi window.location.pathname để lấy path logic của app. */
+function stripBase(fullPath: string): string {
+  if (BASE && (fullPath === BASE || fullPath.startsWith(BASE + '/'))) {
+    const rest = fullPath.slice(BASE.length);
+    return rest === '' ? '/' : rest;
+  }
+  return fullPath;
+}
+
+/** Ghép path logic thành URL thật khi điều hướng history. */
+function withBase(path: string): string {
+  return path === '/' ? BASE + '/' : BASE + path;
+}
 
 // ── Helpers ──
 function getPortalFromPath(path: string): PortalType | null {
@@ -33,17 +56,17 @@ function isRoleAllowedForPortal(role: UserSession['role'], portal: PortalType): 
 
 export default function App() {
   // ── Navigation & URL Routing ──
-  const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname);
+  const [currentPath, setCurrentPath] = useState<string>(() => stripBase(window.location.pathname));
   const [currentTab, setCurrentTab] = useState('overview');
 
   useEffect(() => {
-    const handlePopState = () => setCurrentPath(window.location.pathname);
+    const handlePopState = () => setCurrentPath(stripBase(window.location.pathname));
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   const navigateTo = (path: string) => {
-    window.history.pushState({}, '', path);
+    window.history.pushState({}, '', withBase(path));
     setCurrentPath(path);
   };
 
@@ -54,6 +77,43 @@ export default function App() {
     if (saved) { try { return JSON.parse(saved); } catch { return null; } }
     return null;
   });
+
+  // ── SSO từ Farm Portal: đăng nhập ADMIN ở cổng / được chuyển hướng sang
+  // /admin/?token=... — đổi token lấy hồ sơ, thiết lập phiên và vào thẳng dashboard.
+  const [ssoPending, setSsoPending] = useState<boolean>(
+    () => !!new URLSearchParams(window.location.search).get('token'));
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const handedToken = params.get('token');
+    if (!handedToken) { setSsoPending(false); return; }
+    params.delete('token');
+    const qs = params.toString();
+    window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''));
+    localStorage.setItem('bicap_token', handedToken);
+    fetch(`${API_ORIGIN}/api/profile`, { headers: { Authorization: `Bearer ${handedToken}` } })
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Token không hợp lệ');
+        return res.json();
+      })
+      .then((p: any) => {
+        const role = (p.role || 'ADMIN') as UserSession['role'];
+        const permissions =
+          role === 'SUPER_ADMIN' ? ['ADMIN_CREATE', 'ADMIN_READ', 'ADMIN_UPDATE', 'ADMIN_DELETE']
+            : role === 'ADMIN' ? ['ADMIN_READ', 'ADMIN_UPDATE']
+              : role === 'MODERATOR' ? ['ADMIN_READ'] : [];
+        const session: UserSession = {
+          id: p.id, email: p.email, fullName: p.fullName, phone: p.phone,
+          role, permissions, accessToken: handedToken,
+        };
+        localStorage.setItem('bicap_session', JSON.stringify(session));
+        setCurrentSession(session);
+        setIsAuthenticated(true);
+      })
+      .catch(() => { localStorage.removeItem('bicap_token'); })
+      .finally(() => setSsoPending(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Admin Table State ──
   const [admins, setAdmins] = useState<AdminUser[]>([]);
@@ -97,6 +157,11 @@ export default function App() {
     setCurrentSession(null);
     localStorage.removeItem('bicap_session');
     localStorage.removeItem('bicap_token');
+    // Chế độ 1 port: Farm Portal dùng chung origin — xóa luôn phiên của nó để
+    // không bị auto-redirect đăng nhập lại khi quay về trang chủ.
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('currentUser');
     showToast('Đã đăng xuất khỏi hệ thống.', 'info');
   };
 
@@ -181,6 +246,16 @@ export default function App() {
   if (currentPortal) {
     const isAllowed = isAuthenticated && currentSession && isRoleAllowedForPortal(currentSession.role, currentPortal);
 
+    // Đang đổi token từ Farm Portal → hiển thị splash thay vì trang login.
+    if (ssoPending && !isAllowed) {
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, background: '#0b0f19', color: '#cbd5e1' }}>
+          <div style={{ width: 42, height: 42, border: '3px solid rgba(139,92,246,0.25)', borderTopColor: '#8b5cf6', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <p style={{ fontSize: 14 }}>Đang mở Bảng điều khiển Admin…</p>
+        </div>
+      );
+    }
+
     // Not logged in or wrong role → show portal-specific login
     if (!isAllowed) {
       return (
@@ -203,22 +278,18 @@ export default function App() {
         />
 
         <main className="main-content animate-fade-in">
+          {/* Header bar: NotificationBell (detail-design §4.2 Header) */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+            <NotificationBell email={currentSession!.email} />
+          </div>
+
           {/* ── ADMIN DASHBOARD ── */}
           {currentPortal === 'admin' && currentTab === 'overview' && (
-            <div>
-              <h1 className="dashboard-title">Dashboard Overview</h1>
-              <p className="dashboard-subtitle">BICAP — Blockchain Agricultural Platform Administrator Portal</p>
-              <div className="glass-panel" style={{ padding: '32px', textAlign: 'center', background: 'rgba(22,23,33,0.4)' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌱</div>
-                <h2 style={{ color: '#fff', fontSize: '22px', fontWeight: 700 }}>Chào mừng đến Bảng điều khiển Admin!</h2>
-                <p style={{ color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '600px', marginInline: 'auto', fontSize: '14px', lineHeight: '1.6' }}>
-                  Dashboard quản trị IoT, chứng nhận nông sản, hợp đồng thông minh VeChainThor, và phân quyền RBAC.
-                </p>
-                <button onClick={() => setCurrentTab('admins')} className="btn btn-primary" style={{ marginTop: '24px' }}>
-                  Quản lý Admin →
-                </button>
-              </div>
-            </div>
+            <DashboardPage
+              currentSession={currentSession!}
+              onToast={showToast}
+              onNavigateTab={setCurrentTab}
+            />
           )}
 
           {currentPortal === 'admin' && currentTab === 'admins' && (
@@ -263,6 +334,10 @@ export default function App() {
 
           {currentPortal === 'admin' && currentTab === 'products' && (
             <ProductMonitoringPage currentSession={currentSession!} onToast={showToast} />
+          )}
+
+          {currentPortal === 'admin' && currentTab === 'reports' && (
+            <ReportsPage currentSession={currentSession!} onToast={showToast} />
           )}
 
           {/* ── FARM DASHBOARD ── */}

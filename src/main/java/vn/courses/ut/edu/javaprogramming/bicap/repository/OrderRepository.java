@@ -53,4 +53,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
            "AND (:status IS NULL OR o.status = :status) " +
            "ORDER BY o.createdAt DESC, o.id DESC")
     List<Order> findRetailerOrders(@Param("retailerId") Long retailerId, @Param("status") String status);
+
+    /** Total orders grouped by status — feeds the admin dashboard (SRS-ADM / EPIC-1). */
+    @Query("SELECT o.status, COUNT(o) FROM Order o GROUP BY o.status")
+    List<Object[]> countGroupedByStatus();
 }

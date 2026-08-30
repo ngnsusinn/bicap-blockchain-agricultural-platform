@@ -4,10 +4,13 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.CurrentUser;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.ChangePasswordRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.UpdateProfileRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.UserProfileResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.service.UserProfileService;
+
+import java.util.Map;
 
 /**
  * Controller for Farm Manager Profile Management (BICAP-8 / SRS-FM-002).
@@ -40,5 +43,15 @@ public class UserProfileController {
         User currentUser = CurrentUser.get();
         UserProfileResponse updatedProfile = userProfileService.updateProfile(currentUser, request);
         return ResponseEntity.ok(updatedProfile);
+    }
+
+    /**
+     * Đổi mật khẩu cho người dùng đang đăng nhập (Settings).
+     */
+    @PostMapping("/api/profile/change-password")
+    public ResponseEntity<Map<String, String>> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        User currentUser = CurrentUser.get();
+        userProfileService.changePassword(currentUser, request);
+        return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
     }
 }

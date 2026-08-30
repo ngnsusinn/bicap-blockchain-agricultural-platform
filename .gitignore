@@ -85,3 +85,6 @@ coverage.json
 
 # Runtime uploads (BICAP-37/38)
 uploads/
+
+# Frontend bundles assembled into the Spring Boot JAR by build-web.bat (single-port mode)
+src/main/resources/static/

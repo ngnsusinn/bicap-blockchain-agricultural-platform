@@ -13,12 +13,40 @@ import SeasonExports from './pages/FarmManager/SeasonExports';
 import TradingFloor from './pages/FarmManager/TradingFloor';
 import Orders from './pages/FarmManager/Orders';
 import Retailers from './pages/FarmManager/Retailers';
+import Seasons from './pages/FarmManager/Seasons';
+import FarmInfo from './pages/FarmManager/FarmInfo';
+import MyListings from './pages/FarmManager/MyListings';
+import FarmShipments from './pages/FarmManager/FarmShipments';
+import Reports from './pages/FarmManager/Reports';
+import Certificates from './pages/FarmManager/Certificates';
+import Settings from './pages/FarmManager/Settings';
 import TracePage from './pages/TracePage';
 import NotificationBell from './components/NotificationBell';
 import IotDashboard from './pages/FarmManager/IotDashboard';
 import GuestEducation from './pages/Guest/GuestEducation';
 import GuestProductSearch from './pages/Guest/GuestProductSearch';
 import GuestNotifications from './pages/Guest/GuestNotifications';
+
+/* ── Admin Portal redirect ──
+ * Tài khoản ADMIN dùng bảng điều khiển trong ứng dụng Admin Web (admin-web).
+ * Khi đăng nhập admin từ cổng này, chuyển thẳng sang Admin Web kèm token qua
+ * ?token= để Admin Web tự thiết lập phiên và vào thẳng dashboard.
+ *   - Chế độ 1 port (Spring Boot phục vụ cả 2 app): '/admin/'
+ *   - Chế độ dev riêng (Vite 5174): trỏ sang Vite 5173
+ * Override bằng VITE_ADMIN_PORTAL_URL khi deploy tách origin. */
+function adminPortalUrl(): string {
+  const env = import.meta.env.VITE_ADMIN_PORTAL_URL as string | undefined;
+  if (env) return env;
+  const { protocol, hostname, port } = window.location;
+  if (port === '5174') return `${protocol}//${hostname}:5173/admin/`;
+  return '/admin/';
+}
+
+function redirectToAdminPortal(token: string) {
+  const base = adminPortalUrl();
+  const sep = base.includes('?') ? '&' : '?';
+  window.location.replace(`${base}${sep}token=${encodeURIComponent(token)}`);
+}
 
 /* ── Sidebar Component (Dành cho Farm Manager - BICAP-7 / BICAP-8) ── */
 interface SidebarProps {
@@ -35,13 +63,16 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
     { id: 'profile', label: 'Cập nhật hồ sơ', icon: '👤', isProtected: false },
     { id: 'packages', label: 'Gói Dịch Vụ', icon: '📦', isProtected: false },
     { id: 'farm-info', label: 'Nông Trại Của Tôi', icon: '🌾', isProtected: false },
+    { id: 'seasons', label: 'Quản Lý Mùa Vụ', icon: '🌱', isProtected: true },
     { id: 'exports', label: 'Xuất Kho & QR', icon: '🏷️', isProtected: true },
     { id: 'trading-floor', label: 'Sàn Giao Dịch', icon: '🛒', isProtected: true },
+    { id: 'products', label: 'Sản Phẩm Đã Đăng', icon: '📋', isProtected: true },
     { id: 'orders', label: 'Đơn Hàng', icon: '🧾', isProtected: true },
+    { id: 'shipments', label: 'Vận Chuyển', icon: '🚚', isProtected: true },
     { id: 'retailers', label: 'Nhà Bán Lẻ', icon: '🤝', isProtected: true },
-    { id: 'products', label: 'Sản Phẩm & QR Code', icon: '🔍', isProtected: true },
     { id: 'iot', label: 'Giám Sát IoT', icon: '🌡️', isProtected: true },
-    { id: 'certificates', label: 'Chứng Nhận VietGAP', icon: '📜', isProtected: true },
+    { id: 'certificates', label: 'Chứng Nhận', icon: '📜', isProtected: false },
+    { id: 'reports', label: 'Báo Cáo Cho Admin', icon: '📣', isProtected: false },
     { id: 'guest-education', label: 'Nội Dung Giáo Dục (BICAP-71)', icon: '📚', isProtected: false },
     { id: 'guest-products', label: 'Tìm Kiếm Sản Phẩm (BICAP-70)', icon: '🔍', isProtected: false },
     { id: 'settings', label: 'Cài Đặt', icon: '⚙️', isProtected: false },
@@ -167,6 +198,11 @@ export default function App() {
   // Xử lý sau khi Đăng nhập thành công từ AuthPage
   const handleLoginSuccess = (token: string, userData: any, refreshToken?: string) => {
     saveSession(token, userData, refreshToken);
+    // ADMIN → vào thẳng Dashboard Admin (Admin Web), không ở lại cổng Farm/Retail.
+    if (userData?.role === 'ADMIN') {
+      redirectToAdminPortal(token);
+      return;
+    }
     setAuthenticated(true);
     setUser(userData);
     if (userData?.role === 'RETAILER' && sessionStorage.getItem('retailerProfileRequired') === '1') {
@@ -182,6 +218,13 @@ export default function App() {
     setUser(null);
     setIsGuestMode(false);
   };
+
+  useEffect(() => {
+    // Session ADMIN sẵn có (F5 trên trang chủ) → đưa thẳng về Dashboard Admin.
+    if (authenticated && user?.role === 'ADMIN') {
+      redirectToAdminPortal(localStorage.getItem('accessToken') || '');
+    }
+  }, [authenticated, user?.role]);
 
   useEffect(() => {
     if (!authenticated || user?.role !== 'FARM_MANAGER') return;
@@ -285,7 +328,12 @@ export default function App() {
     );
   }
 
-  // 3. Render Retailer Portal nếu người dùng là RETAILER (BICAP-36)
+  // 3. Phiên ADMIN không có giao diện ở cổng này — tự chuyển sang Dashboard Admin (Admin Web).
+  if (user?.role === 'ADMIN') {
+    return null;
+  }
+
+  // 4. Render Retailer Portal nếu người dùng là RETAILER (BICAP-36)
   if (user?.role === 'RETAILER') {
     return (
       <div className="retailer-portal">
@@ -396,10 +444,17 @@ export default function App() {
           {currentTab === 'guest-notifications' && <GuestNotifications />}
           {currentTab === 'profile' && <ProfilePage onUserUpdated={(updated: UserSession) => setUser(updated)} />}
           {currentTab === 'packages' && <ServicePackages />}
+          {currentTab === 'farm-info' && <FarmInfo farmId={user?.farmId} />}
+          {currentTab === 'seasons' && <Seasons farmId={user?.farmId} />}
           {currentTab === 'exports' && <SeasonExports farmId={user?.farmId} />}
           {currentTab === 'trading-floor' && <TradingFloor farmId={user?.farmId} />}
+          {currentTab === 'products' && <MyListings farmId={user?.farmId} />}
           {currentTab === 'orders' && <Orders />}
+          {currentTab === 'shipments' && <FarmShipments farmId={user?.farmId} />}
           {currentTab === 'retailers' && <Retailers />}
+          {currentTab === 'certificates' && <Certificates farmId={user?.farmId} />}
+          {currentTab === 'reports' && <Reports />}
+          {currentTab === 'settings' && <Settings />}
           {currentTab === 'guest-education' && <GuestEducation />}
           {currentTab === 'guest-products' && <GuestProductSearch />}
 
@@ -413,26 +468,6 @@ export default function App() {
                 <p style={{ color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '500px', marginInline: 'auto', fontSize: '14px', lineHeight: 1.6 }}>
                   Đã xác thực tài khoản Chủ trang trại thành công ({user?.email}).
                 </p>
-              </div>
-            </div>
-          )}
-
-          {currentTab === 'farm-info' && (
-            <div>
-              <h1 className="dashboard-title">Thông Tin Nông Trại</h1>
-              <div className="glass-panel" style={{ padding: '48px', textAlign: 'center' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌾</div>
-                <h2 style={{ color: '#fff', fontSize: '22px', fontWeight: 700 }}>Hồ Sơ & Vùng Canh Tác Trang Trại</h2>
-              </div>
-            </div>
-          )}
-
-          {currentTab === 'products' && (
-            <div>
-              <h1 className="dashboard-title">Sản Phẩm & Mã QR Blockchain</h1>
-              <div className="glass-panel" style={{ padding: '48px', textAlign: 'center' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
-                <h2 style={{ color: '#fff', fontSize: '22px', fontWeight: 700 }}>Quản lý Sản Phẩm & Mã Truy Xuất VeChain</h2>
               </div>
             </div>
           )}

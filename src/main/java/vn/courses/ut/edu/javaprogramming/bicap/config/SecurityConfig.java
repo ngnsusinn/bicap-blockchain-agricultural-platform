@@ -68,6 +68,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/notifications").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/service-packages/**").permitAll()
 
+                        // Static SPA shells served by Spring Boot itself (single-port setup):
+                        // Farm Portal at "/", Admin Web at "/admin". Only the HTML/asset shells
+                        // are public — every data call still goes through authenticated /api/**.
+                        .requestMatchers("/", "/index.html", "/favicon.ico", "/favicon.svg",
+                                "/icons.svg", "/assets/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/trace/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/admin", "/admin/", "/admin/**").permitAll()
+
                         // Thêm quyền truy cập GET cho Guest (BICAP-70)
                         .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/admin/products/**").permitAll()

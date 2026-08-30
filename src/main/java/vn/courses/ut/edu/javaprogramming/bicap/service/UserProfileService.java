@@ -1,11 +1,14 @@
 package vn.courses.ut.edu.javaprogramming.bicap.service;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.ChangePasswordRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.UpdateProfileRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.UserProfileResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
+import vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
@@ -20,10 +23,13 @@ public class UserProfileService {
 
     private final UserRepository userRepository;
     private final FarmRepository farmRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserProfileService(UserRepository userRepository, FarmRepository farmRepository) {
+    public UserProfileService(UserRepository userRepository, FarmRepository farmRepository,
+                              PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.farmRepository = farmRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -114,5 +120,28 @@ public class UserProfileService {
                 statusStr,
                 savedUser.getCreatedAt()
         );
+    }
+
+    /**
+     * Đổi mật khẩu cho người dùng đang đăng nhập (Settings). Yêu cầu mật khẩu hiện tại
+     * đúng và mật khẩu mới khớp xác nhận.
+     */
+    @Transactional
+    public void changePassword(User currentUser, ChangePasswordRequest request) {
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + currentUser.getId()));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new BadRequestException("Current password is incorrect");
+        }
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new BadRequestException("New password confirmation does not match");
+        }
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new BadRequestException("New password must be different from the current password");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 }
