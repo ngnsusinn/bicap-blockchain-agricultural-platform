@@ -88,3 +88,6 @@ uploads/
 
 # Frontend bundles assembled into the Spring Boot JAR by build-web.bat (single-port mode)
 src/main/resources/static/
+
+# BIP39 mnemonic for local key derivation (tools/MnemonicToKey.java) — NEVER commit
+mnemonic.txt

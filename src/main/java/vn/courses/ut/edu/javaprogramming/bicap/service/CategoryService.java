@@ -72,6 +72,10 @@ public class CategoryService {
         return toResponse(category, count);
     }
 
+    @org.springframework.cache.annotation.CacheEvict(cacheNames = {
+            vn.courses.ut.edu.javaprogramming.bicap.config.RedisCacheConfig.CACHE_CATEGORIES,
+            vn.courses.ut.edu.javaprogramming.bicap.config.RedisCacheConfig.CACHE_MARKETPLACE_DETAIL },
+            allEntries = true)
     public CategoryResponse createCategory(CategoryRequest request, String actorEmail) {
         checkWrite(actorEmail);
 
@@ -90,6 +94,10 @@ public class CategoryService {
         return toResponse(saved, 0L);
     }
 
+    @org.springframework.cache.annotation.CacheEvict(cacheNames = {
+            vn.courses.ut.edu.javaprogramming.bicap.config.RedisCacheConfig.CACHE_CATEGORIES,
+            vn.courses.ut.edu.javaprogramming.bicap.config.RedisCacheConfig.CACHE_MARKETPLACE_DETAIL },
+            allEntries = true)
     public CategoryResponse updateCategory(Long id, CategoryRequest request, String actorEmail) {
         checkWrite(actorEmail);
         Category category = categoryRepository.findById(id)
@@ -119,6 +127,10 @@ public class CategoryService {
         return toResponse(saved, count);
     }
 
+    @org.springframework.cache.annotation.CacheEvict(cacheNames = {
+            vn.courses.ut.edu.javaprogramming.bicap.config.RedisCacheConfig.CACHE_CATEGORIES,
+            vn.courses.ut.edu.javaprogramming.bicap.config.RedisCacheConfig.CACHE_MARKETPLACE_DETAIL },
+            allEntries = true)
     public void deleteCategory(Long id, String actorEmail) {
         checkWrite(actorEmail);
         Category category = categoryRepository.findById(id)

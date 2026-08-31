@@ -153,6 +153,8 @@ public class ProductService {
 
     // ── Mutations ──
 
+    @org.springframework.cache.annotation.CacheEvict(cacheNames =
+            vn.courses.ut.edu.javaprogramming.bicap.config.RedisCacheConfig.CACHE_MARKETPLACE_DETAIL, allEntries = true)
     public ProductResponse updateStatus(Long id, ProductStatusUpdateRequest request, String actorEmail) {
         checkWrite(actorEmail);
         Product product = productRepository.findById(id)

@@ -71,8 +71,18 @@ export default function Seasons({ farmId }: { farmId?: number }) {
   const changeStatus = async (status: string) => {
     if (!farmId || !selected) return;
     setError(''); setNotice('');
+    let body: Record<string, unknown> = { status };
+    if (status === 'HARVESTED') {
+      const qty = window.prompt(`Sản lượng thu hoạch của "${selected.name}" (số, vd: 120.5):`, '100');
+      if (qty === null) return;
+      const unit = window.prompt('Đơn vị thu hoạch (kg, tấn, hộp...):', 'kg');
+      if (unit === null) return;
+      const parsed = Number(qty);
+      if (!parsed || parsed <= 0) { setError('Sản lượng thu hoạch phải là số dương.'); return; }
+      body = { status, harvestedQuantity: parsed, harvestUnit: unit || 'kg' };
+    }
     const res = await fetch(`${API_BASE_URL}/farms/${farmId}/seasons/${selected.id}/status`, {
-      method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ status }),
+      method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify(body),
     });
     if (!res.ok) { const b = await res.json().catch(() => ({})); setError(b.message || 'Cập nhật trạng thái thất bại.'); return; }
     setNotice(`Đã cập nhật trạng thái mùa vụ → ${status}.`);

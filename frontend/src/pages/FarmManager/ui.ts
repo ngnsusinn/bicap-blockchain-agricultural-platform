@@ -101,6 +101,8 @@ const STATUS_COLORS: Record<string, { fg: string; bg: string }> = {
   DELIVERED: { fg: '#6ee7b7', bg: 'rgba(16,185,129,.15)' },
   RESOLVED: { fg: '#6ee7b7', bg: 'rgba(16,185,129,.15)' },
   IN_PROGRESS: { fg: '#7dd3fc', bg: 'rgba(56,189,248,.15)' },
+  IN_TRANSIT: { fg: '#7dd3fc', bg: 'rgba(56,189,248,.15)' },
+  PICKING_UP: { fg: '#fcd34d', bg: 'rgba(245,158,11,.15)' },
   SHIPPING: { fg: '#7dd3fc', bg: 'rgba(56,189,248,.15)' },
   PENDING: { fg: '#fcd34d', bg: 'rgba(245,158,11,.15)' },
   PENDING_REVIEW: { fg: '#fcd34d', bg: 'rgba(245,158,11,.15)' },

@@ -92,7 +92,10 @@ public class SeasonService {
         return saved;
     }
 
-    public FarmingSeason updateSeasonStatus(Long farmId, Long seasonId, String newStatus, User currentUser) {
+    public FarmingSeason updateSeasonStatus(Long farmId, Long seasonId,
+                                            vn.courses.ut.edu.javaprogramming.bicap.dto.SeasonStatusUpdateRequest request,
+                                            User currentUser) {
+        String newStatus = request.getStatus();
         Farm farm = farmRepository.findById(farmId)
                 .orElseThrow(() -> new ResourceNotFoundException("Farm not found: " + farmId));
 
@@ -118,7 +121,16 @@ public class SeasonService {
         season.setStatus(newStatus);
         
         if ("HARVESTED".equals(newStatus)) {
+            // BICAP-16: the harvested amount is mandatory so the season can be exported
+            // (SeasonExportService validates export quantities against it).
+            if (request.getHarvestedQuantity() == null) {
+                throw new BadRequestException(
+                        "harvestedQuantity is required when marking a season as HARVESTED");
+            }
             season.setEndDate(LocalDate.now());
+            season.setHarvestedQuantity(request.getHarvestedQuantity());
+            season.setHarvestUnit(request.getHarvestUnit() != null && !request.getHarvestUnit().isBlank()
+                    ? request.getHarvestUnit().trim() : "kg");
         }
 
         FarmingSeason saved = seasonRepository.save(season);

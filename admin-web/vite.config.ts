@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -7,4 +8,10 @@ export default defineConfig({
   // Khi được Spring Boot phục vụ (đóng gói chung port 8080), app nằm ở /admin/.
   // Khi dev riêng (vite), vẫn truy cập qua http://localhost:5173/admin/.
   base: '/admin/',
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/test/setup.ts',
+    css: false,
+  },
 })

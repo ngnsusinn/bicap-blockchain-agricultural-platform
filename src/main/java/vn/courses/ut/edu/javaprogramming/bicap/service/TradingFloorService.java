@@ -123,7 +123,8 @@ public class TradingFloorService {
         return ProductListingResponse.fromEntity(saved, category, season, export);
     }
 
-    /** Danh mục sản phẩm để form đăng ký đẩy lên sàn (BICAP-18). */
+    /** Danh mục sản phẩm để form đăng ký đẩy lên sàn (BICAP-18). Cached — public read (BICAP-79). */
+    @org.springframework.cache.annotation.Cacheable(vn.courses.ut.edu.javaprogramming.bicap.config.RedisCacheConfig.CACHE_CATEGORIES)
     @Transactional(readOnly = true)
     public List<CategoryResponse> getCategories() {
         return categoryRepository.findAll().stream()

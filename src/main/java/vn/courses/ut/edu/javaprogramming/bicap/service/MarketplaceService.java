@@ -68,6 +68,8 @@ public class MarketplaceService {
         return new PageImpl<>(matches.subList(from, to), PageRequest.of(page, size), matches.size());
     }
 
+    @org.springframework.cache.annotation.Cacheable(cacheNames =
+            vn.courses.ut.edu.javaprogramming.bicap.config.RedisCacheConfig.CACHE_MARKETPLACE_DETAIL, key = "#id")
     public MarketplaceProductResponse detail(Long id) {
         requireRetailer();
         Product product = products.findById(id).filter(p -> "ACTIVE".equals(p.getStatus()))
