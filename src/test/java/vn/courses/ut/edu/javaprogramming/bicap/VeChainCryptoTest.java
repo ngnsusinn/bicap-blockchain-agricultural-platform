@@ -56,10 +56,10 @@ class VeChainCryptoTest {
                         BigInteger.ZERO, HexUtils.fromHex("deadbeef")));
 
         VeChainTxSigner.SignedTransaction a = VeChainTxSigner.signType0(
-                39, new byte[]{0, 0, 0, 0, 0x01, 0x02, 0x03, 0x04}, 720, clauses,
+                39, 16909060L, 720, clauses,
                 128, 53000, 12345L, TEST_KEY);
         VeChainTxSigner.SignedTransaction b = VeChainTxSigner.signType0(
-                39, new byte[]{0, 0, 0, 0, 0x01, 0x02, 0x03, 0x04}, 720, clauses,
+                39, 16909060L, 720, clauses,
                 128, 53000, 12345L, TEST_KEY);
 
         assertArrayEquals(a.rawTx(), b.rawTx(), "RFC6979 signing must be deterministic");
@@ -77,9 +77,9 @@ class VeChainCryptoTest {
         List<VeChainTxSigner.Clause> clauses = List.of(
                 VeChainTxSigner.Clause.create(BigInteger.ZERO, new byte[]{1, 2, 3}));
         VeChainTxSigner.SignedTransaction a = VeChainTxSigner.signType0(
-                39, new byte[8], 720, clauses, 128, 21000, 1L, TEST_KEY);
+                39, 0L, 720, clauses, 128, 21000, 1L, TEST_KEY);
         VeChainTxSigner.SignedTransaction b = VeChainTxSigner.signType0(
-                39, new byte[8], 720, clauses, 128, 21000, 2L, TEST_KEY);
+                39, 0L, 720, clauses, 128, 21000, 2L, TEST_KEY);
         assertFalse(java.util.Arrays.equals(a.id(), b.id()));
     }
 
