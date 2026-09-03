@@ -18,6 +18,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByExportId(Long exportId);
 
     /**
+     * Products owned by a farm (resolved through the product's season → farm), optionally
+     * filtered by listing status. Used by BICAP-19 / SRS-FM-013 (farm views the review
+     * status of products it pushed to the trading floor).
+     */
+    @Query("SELECT p FROM Product p " +
+           "JOIN FarmingSeason s ON p.seasonId = s.id " +
+           "WHERE s.farmId = :farmId " +
+           "AND (:status IS NULL OR p.status = :status) " +
+           "ORDER BY p.createdAt DESC, p.id DESC")
+    List<Product> findByFarmId(@Param("farmId") Long farmId, @Param("status") String status);
+
+    /**
      * Search term is matched literally: callers must escape {@code !}, {@code %} and
      * {@code _} in the input with {@code !} so user input like "%" is not interpreted
      * as a LIKE wildcard (see {@code SearchUtils.escapeLike}).

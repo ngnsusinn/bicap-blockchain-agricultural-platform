@@ -36,6 +36,13 @@ public class FarmingSeason {
     @Column(nullable = false, length = 20)
     private String status = "IN_PROGRESS"; // IN_PROGRESS, HARVESTED, CANCELLED
 
+    /** Total harvested amount recorded when the season transitions to HARVESTED (BICAP-16). */
+    @Column(name = "harvested_quantity", precision = 16, scale = 2)
+    private java.math.BigDecimal harvestedQuantity;
+
+    @Column(name = "harvest_unit", length = 30)
+    private String harvestUnit;
+
     @Column(name = "tx_hash", length = 66)
     private String txHash;
 
@@ -141,6 +148,22 @@ public class FarmingSeason {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public java.math.BigDecimal getHarvestedQuantity() {
+        return harvestedQuantity;
+    }
+
+    public void setHarvestedQuantity(java.math.BigDecimal harvestedQuantity) {
+        this.harvestedQuantity = harvestedQuantity;
+    }
+
+    public String getHarvestUnit() {
+        return harvestUnit;
+    }
+
+    public void setHarvestUnit(String harvestUnit) {
+        this.harvestUnit = harvestUnit;
     }
 
     public String getTxHash() {

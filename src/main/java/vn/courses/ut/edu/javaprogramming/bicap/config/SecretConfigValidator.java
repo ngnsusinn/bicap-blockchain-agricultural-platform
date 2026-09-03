@@ -33,6 +33,12 @@ public class SecretConfigValidator {
     @Value("${sepay.api-key:}")
     private String sepayApiKey;
 
+    @Value("${blockchain.mode:mock}")
+    private String blockchainMode;
+
+    @Value("${blockchain.private-key:}")
+    private String blockchainPrivateKey;
+
     @PostConstruct
     void validate() {
         if (isBlank(jwtSecret)) {
@@ -61,7 +67,15 @@ public class SecretConfigValidator {
                             + "'. Configure the real Sepay API key before starting the application.");
         }
 
-        log.info("Deploy-time secrets validated (JWT_SECRET, SEPAY_API_KEY)");
+        // BICAP-74/81: live VeChainThor mode is useless (and misleading) without a signer key.
+        if ("live".equalsIgnoreCase(blockchainMode) && isBlank(blockchainPrivateKey)) {
+            throw new IllegalStateException(
+                    "BLOCKCHAIN_PRIVATE_KEY is required when BLOCKCHAIN_MODE=live. "
+                            + "Set it to the hex private key of the platform signer wallet, "
+                            + "or run with BLOCKCHAIN_MODE=mock.");
+        }
+
+        log.info("Deploy-time secrets validated (JWT_SECRET, SEPAY_API_KEY, blockchain mode={})", blockchainMode);
     }
 
     private boolean isBlank(String value) {

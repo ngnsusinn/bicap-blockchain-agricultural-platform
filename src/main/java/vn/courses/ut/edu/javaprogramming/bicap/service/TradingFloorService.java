@@ -123,11 +123,37 @@ public class TradingFloorService {
         return ProductListingResponse.fromEntity(saved, category, season, export);
     }
 
-    /** Danh mục sản phẩm để form đăng ký đẩy lên sàn (BICAP-18). */
+    /** Danh mục sản phẩm để form đăng ký đẩy lên sàn (BICAP-18). Cached — public read (BICAP-79). */
+    @org.springframework.cache.annotation.Cacheable(vn.courses.ut.edu.javaprogramming.bicap.config.RedisCacheConfig.CACHE_CATEGORIES)
     @Transactional(readOnly = true)
     public List<CategoryResponse> getCategories() {
         return categoryRepository.findAll().stream()
                 .map(CategoryResponse::fromEntity)
+                .toList();
+    }
+
+    /**
+     * Danh sách sản phẩm nông trại đã đẩy lên sàn kèm trạng thái duyệt
+     * (BICAP-19 / SRS-FM-013). Farm Manager chỉ xem được sản phẩm của chính mình.
+     *
+     * @param status bộ lọc tuỳ chọn: PENDING_REVIEW, ACTIVE, INACTIVE, REJECTED
+     */
+    @Transactional(readOnly = true)
+    public List<ProductListingResponse> getFarmListings(Long farmId, String status) {
+        User actor = requireFarmManager();
+        Farm farm = requireOwnedFarm(farmId, actor.getId());
+
+        String normalized = (status == null || status.isBlank()) ? null : status.trim().toUpperCase();
+        return productRepository.findByFarmId(farm.getId(), normalized).stream()
+                .map(p -> {
+                    Category category = p.getCategoryId() != null
+                            ? categoryRepository.findById(p.getCategoryId()).orElse(null) : null;
+                    FarmingSeason season = p.getSeasonId() != null
+                            ? seasonRepository.findById(p.getSeasonId()).orElse(null) : null;
+                    SeasonExport export = p.getExportId() != null
+                            ? exportRepository.findById(p.getExportId()).orElse(null) : null;
+                    return ProductListingResponse.fromEntity(p, category, season, export);
+                })
                 .toList();
     }
 

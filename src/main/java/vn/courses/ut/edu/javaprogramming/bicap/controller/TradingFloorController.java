@@ -39,6 +39,17 @@ public class TradingFloorController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    /**
+     * Farm Manager xem danh sách sản phẩm đã đẩy lên sàn kèm trạng thái duyệt
+     * (BICAP-19 / SRS-FM-013). Có thể lọc theo {@code status}.
+     */
+    @GetMapping("/farms/{farmId}/marketplace/products")
+    public ResponseEntity<List<ProductListingResponse>> getFarmListings(
+            @PathVariable Long farmId,
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(tradingFloorService.getFarmListings(farmId, status));
+    }
+
     /** Danh mục sản phẩm cho form đăng ký đẩy lên sàn (BICAP-18). */
     @GetMapping("/categories")
     public ResponseEntity<List<CategoryResponse>> getCategories() {

@@ -13,6 +13,8 @@ public class SeasonResponse {
     private LocalDate startDate;
     private LocalDate endDate;
     private String status;
+    private java.math.BigDecimal harvestedQuantity;
+    private String harvestUnit;
     private String txHash;
     private LocalDateTime createdAt;
 
@@ -60,6 +62,12 @@ public class SeasonResponse {
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
+    public java.math.BigDecimal getHarvestedQuantity() { return harvestedQuantity; }
+    public void setHarvestedQuantity(java.math.BigDecimal harvestedQuantity) { this.harvestedQuantity = harvestedQuantity; }
+
+    public String getHarvestUnit() { return harvestUnit; }
+    public void setHarvestUnit(String harvestUnit) { this.harvestUnit = harvestUnit; }
+
     public String getTxHash() { return txHash; }
     public void setTxHash(String txHash) { this.txHash = txHash; }
 
@@ -80,6 +88,8 @@ public class SeasonResponse {
         private LocalDate startDate;
         private LocalDate endDate;
         private String status;
+        private java.math.BigDecimal harvestedQuantity;
+        private String harvestUnit;
         private String txHash;
         private LocalDateTime createdAt;
 
@@ -92,11 +102,16 @@ public class SeasonResponse {
         public Builder startDate(LocalDate startDate) { this.startDate = startDate; return this; }
         public Builder endDate(LocalDate endDate) { this.endDate = endDate; return this; }
         public Builder status(String status) { this.status = status; return this; }
+        public Builder harvestedQuantity(java.math.BigDecimal harvestedQuantity) { this.harvestedQuantity = harvestedQuantity; return this; }
+        public Builder harvestUnit(String harvestUnit) { this.harvestUnit = harvestUnit; return this; }
         public Builder txHash(String txHash) { this.txHash = txHash; return this; }
         public Builder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
 
         public SeasonResponse build() {
-            return new SeasonResponse(id, farmId, name, productType, variety, area, startDate, endDate, status, txHash, createdAt);
+            SeasonResponse r = new SeasonResponse(id, farmId, name, productType, variety, area, startDate, endDate, status, txHash, createdAt);
+            r.setHarvestedQuantity(harvestedQuantity);
+            r.setHarvestUnit(harvestUnit);
+            return r;
         }
     }
 }

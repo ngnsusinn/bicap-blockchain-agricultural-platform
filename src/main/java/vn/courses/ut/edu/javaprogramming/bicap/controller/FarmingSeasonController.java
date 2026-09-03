@@ -94,7 +94,7 @@ public class FarmingSeasonController {
             @PathVariable Long seasonId,
             @Valid @RequestBody SeasonStatusUpdateRequest request) {
         User user = CurrentUser.get();
-        FarmingSeason season = seasonService.updateSeasonStatus(farmId, seasonId, request.getStatus(), user);
+        FarmingSeason season = seasonService.updateSeasonStatus(farmId, seasonId, request, user);
         return ResponseEntity.ok(toResponse(season));
     }
 
@@ -110,6 +110,8 @@ public class FarmingSeasonController {
                 .startDate(s.getStartDate())
                 .endDate(s.getEndDate())
                 .status(s.getStatus())
+                .harvestedQuantity(s.getHarvestedQuantity())
+                .harvestUnit(s.getHarvestUnit())
                 .txHash(s.getTxHash())
                 .createdAt(s.getCreatedAt())
                 .build();

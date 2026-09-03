@@ -397,6 +397,43 @@ export const FarmManagementPage: React.FC<FarmManagementPageProps> = ({ currentS
               )}
             </div>
 
+            {/* Season history (SRS-ADM-003) */}
+            <div style={sectionStyle}>
+              <h3 style={sectionTitleStyle}>🌱 Lịch Sử Mùa Vụ ({selectedFarm.seasons?.length ?? 0})</h3>
+              {!selectedFarm.seasons || selectedFarm.seasons.length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Nông trại chưa có mùa vụ nào được ghi nhận.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto' }}>
+                  {selectedFarm.seasons.map((s) => (
+                    <div
+                      key={s.id}
+                      style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px',
+                        padding: '10px 14px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid var(--border-color)',
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: '13px', color: '#fff' }}>{s.name}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {s.productType} · {s.variety}{s.area ? ` · ${s.area} ha` : ''} · {formatDate(s.startDate)}{s.endDate ? ` → ${formatDate(s.endDate)}` : ''}
+                        </div>
+                      </div>
+                      <span
+                        style={{
+                          padding: '3px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap',
+                          color: s.status === 'HARVESTED' ? '#6ee7b7' : s.status === 'CANCELLED' ? '#fca5a5' : '#7dd3fc',
+                          background: s.status === 'HARVESTED' ? 'rgba(16,185,129,0.12)' : s.status === 'CANCELLED' ? 'rgba(239,68,68,0.12)' : 'rgba(56,189,248,0.12)',
+                        }}
+                      >
+                        {s.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Admin notes */}
             <div style={sectionStyle}>
               <h3 style={sectionTitleStyle}>🗒️ Ghi Chú Admin</h3>

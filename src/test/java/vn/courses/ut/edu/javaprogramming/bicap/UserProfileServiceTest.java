@@ -7,11 +7,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.ChangePasswordRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.UpdateProfileRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.UserProfileResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Role;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
+import vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.service.UserProfileService;
@@ -32,6 +35,9 @@ class UserProfileServiceTest {
 
     @Mock
     private FarmRepository farmRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private UserProfileService userProfileService;
@@ -96,5 +102,54 @@ class UserProfileServiceTest {
         assertEquals("ACTIVE", response.getStatus());
 
         verify(userRepository, times(1)).save(sampleUser);
+    }
+
+    @Test
+    @DisplayName("Settings: đổi mật khẩu thành công khi mật khẩu hiện tại đúng")
+    void changePassword_Success() {
+        when(userRepository.findById(10L)).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoder.matches("OldPass123", "encoded_password")).thenReturn(true);
+        when(passwordEncoder.matches("NewPass456", "encoded_password")).thenReturn(false);
+        when(passwordEncoder.encode("NewPass456")).thenReturn("re_encoded_password");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        request.setCurrentPassword("OldPass123");
+        request.setNewPassword("NewPass456");
+        request.setConfirmPassword("NewPass456");
+
+        userProfileService.changePassword(sampleUser, request);
+
+        verify(userRepository).save(argThat(u -> "re_encoded_password".equals(u.getPassword())));
+    }
+
+    @Test
+    @DisplayName("Settings: từ chối đổi mật khẩu khi mật khẩu hiện tại sai")
+    void changePassword_WrongCurrent() {
+        when(userRepository.findById(10L)).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoder.matches("Wrong", "encoded_password")).thenReturn(false);
+
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        request.setCurrentPassword("Wrong");
+        request.setNewPassword("NewPass456");
+        request.setConfirmPassword("NewPass456");
+
+        assertThrows(BadRequestException.class, () -> userProfileService.changePassword(sampleUser, request));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Settings: từ chối khi mật khẩu mới không khớp xác nhận")
+    void changePassword_ConfirmMismatch() {
+        when(userRepository.findById(10L)).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoder.matches("OldPass123", "encoded_password")).thenReturn(true);
+
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        request.setCurrentPassword("OldPass123");
+        request.setNewPassword("NewPass456");
+        request.setConfirmPassword("Different999");
+
+        assertThrows(BadRequestException.class, () -> userProfileService.changePassword(sampleUser, request));
+        verify(userRepository, never()).save(any());
     }
 }
