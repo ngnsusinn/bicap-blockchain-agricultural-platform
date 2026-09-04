@@ -78,9 +78,8 @@ public class MarketplaceService {
     }
 
     public MarketplaceProductResponse trace(String traceHash) {
-        requireRetailer();
         SeasonExport export = exports.findByTraceHash(traceHash)
-                .orElseThrow(() -> new ResourceNotFoundException("Traceable export not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Traceable export not found: " + traceHash));
         Product product = products.findByExportId(export.getId())
                 .filter(p -> "ACTIVE".equals(p.getStatus()))
                 .orElseThrow(() -> new ResourceNotFoundException("Marketplace product not found for this QR code"));
