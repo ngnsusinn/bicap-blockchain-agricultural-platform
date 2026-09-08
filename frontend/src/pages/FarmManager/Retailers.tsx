@@ -100,7 +100,7 @@ export default function Retailers() {
 
         <h1 className="dashboard-title" style={{ marginTop: 12 }}>{r.businessName || r.retailerName}</h1>
         <p className="dashboard-subtitle">
-          BICAP-21 · Nhà bán lẻ đã ký hợp đồng · Thông tin chi tiết và lịch sử giao dịch.
+          · Nhà bán lẻ đã ký hợp đồng · Thông tin chi tiết và lịch sử giao dịch.
         </p>
 
         {error && <div style={alertStyle}>{error}</div>}
@@ -185,7 +185,7 @@ export default function Retailers() {
     <div>
       <h1 className="dashboard-title">Nhà bán lẻ đã ký hợp đồng</h1>
       <p className="dashboard-subtitle">
-        BICAP-21 · Xem thông tin chi tiết của các Nhà bán lẻ đã có giao dịch với nông trại của bạn
+        · Xem thông tin chi tiết của các Nhà bán lẻ đã có giao dịch với nông trại của bạn
         (tên, địa chỉ, giấy phép kinh doanh, lịch sử giao dịch) để đánh giá đối tác.
       </p>
 

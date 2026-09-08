@@ -59,7 +59,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSubscription, user }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊', isProtected: false },
-    { id: 'guest-notifications', label: 'Thông Báo (BICAP-69)', icon: '🔔', isProtected: false },
+    { id: 'guest-notifications', label: 'Thông Báo', icon: '🔔', isProtected: false },
     { id: 'profile', label: 'Cập nhật hồ sơ', icon: '👤', isProtected: false },
     { id: 'packages', label: 'Gói Dịch Vụ', icon: '📦', isProtected: false },
     { id: 'farm-info', label: 'Nông Trại Của Tôi', icon: '🌾', isProtected: false },
@@ -73,8 +73,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
     { id: 'iot', label: 'Giám Sát IoT', icon: '🌡️', isProtected: true },
     { id: 'certificates', label: 'Chứng Nhận', icon: '📜', isProtected: false },
     { id: 'reports', label: 'Báo Cáo Cho Admin', icon: '📣', isProtected: false },
-    { id: 'guest-education', label: 'Nội Dung Giáo Dục (BICAP-71)', icon: '📚', isProtected: false },
-    { id: 'guest-products', label: 'Tìm Kiếm Sản Phẩm (BICAP-70)', icon: '🔍', isProtected: false },
+    { id: 'guest-education', label: 'Nội Dung Giáo Dục', icon: '📚', isProtected: false },
+    { id: 'guest-products', label: 'Tìm Kiếm Sản Phẩm', icon: '🔍', isProtected: false },
     { id: 'settings', label: 'Cài Đặt', icon: '⚙️', isProtected: false },
   ];
 
@@ -156,7 +156,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
             {/* Edit Button next to Account Avatar (BICAP-8) */}
             <button
               onClick={() => onTabChange('profile')}
-              title="Cập nhật thông tin cá nhân (BICAP-8)"
+              title="Cập nhật thông tin cá nhân"
               style={{
                 background: 'rgba(16, 185, 129, 0.15)',
                 border: '1px solid rgba(16, 185, 129, 0.3)',
@@ -426,7 +426,7 @@ export default function App() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <header style={{ ...headerStyle, marginLeft: 'var(--sidebar-width)' }}>
           <div style={{ fontSize: '14px', color: '#cbd5e1' }}>
-            Cổng Quản Lý Nông Trại <strong style={{ color: '#10b981' }}>(BICAP-7)</strong>
+            Cổng Quản Lý Nông Trại <strong style={{ color: '#10b981' }}></strong>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

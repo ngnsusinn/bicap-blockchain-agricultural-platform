@@ -33,7 +33,7 @@ export default function Certificates({ farmId }: { farmId?: number }) {
 
       <section className="glass-panel" style={panelStyle}>
         <h2 style={titleStyle}>Tài liệu ({items.length})</h2>
-        {!items.length && <p style={{ color: '#94a3b8' }}>Chưa có tài liệu nào. Vào "Thông tin nông trại" để tải lên (BICAP-9).</p>}
+        {!items.length && <p style={{ color: '#94a3b8' }}>Chưa có tài liệu nào. Vào "Thông tin nông trại" để tải lên.</p>}
         {items.map(c => (
           <article key={c.id} style={cardStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>

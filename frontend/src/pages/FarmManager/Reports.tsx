@@ -48,7 +48,7 @@ export default function Reports() {
   return (
     <div>
       <h1 className="dashboard-title">Gửi báo cáo cho Admin</h1>
-      <p className="dashboard-subtitle">BICAP-27 · Gửi khiếu nại, phản hồi hoặc báo cáo sự cố tới ban quản trị nền tảng.</p>
+      <p className="dashboard-subtitle">· Gửi khiếu nại, phản hồi hoặc báo cáo sự cố tới ban quản trị nền tảng.</p>
       {error && <div style={alertStyle}>{error}</div>}
       {notice && <div style={successStyle}>{notice}</div>}
 

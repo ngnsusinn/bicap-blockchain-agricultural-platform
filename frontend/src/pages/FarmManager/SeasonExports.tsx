@@ -48,7 +48,7 @@ export default function SeasonExports({ farmId }: { farmId?: number }) {
 
   return <div>
     <h1 className="dashboard-title">Xuất kho & QR truy xuất</h1>
-    <p className="dashboard-subtitle">BICAP-16/17 · Mỗi lần xuất tạo một mã QR riêng sau khi ghi nhận blockchain.</p>
+    <p className="dashboard-subtitle">· Mỗi lần xuất tạo một mã QR riêng sau khi ghi nhận blockchain.</p>
     {error && <div style={alertStyle}>{error}</div>}
     <div style={gridStyle}>
       <form className="glass-panel" style={panelStyle} onSubmit={submit}>

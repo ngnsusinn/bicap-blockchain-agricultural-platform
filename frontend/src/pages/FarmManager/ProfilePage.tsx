@@ -214,7 +214,7 @@ export default function ProfilePage({ onUserUpdated }: ProfilePageProps) {
       <div style={{ marginBottom: '24px' }}>
         <h1 className="dashboard-title" style={{ fontSize: '26px' }}>Cập Nhật Hồ Sơ Cá Nhân</h1>
         <p className="dashboard-subtitle">
-          Quản lý và cập nhật thông tin tài khoản Chủ trang trại (BICAP-8).
+          Quản lý và cập nhật thông tin tài khoản Chủ trang trại.
         </p>
       </div>
 
