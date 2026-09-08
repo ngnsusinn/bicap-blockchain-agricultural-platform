@@ -46,4 +46,16 @@ public interface ShipmentRepository extends JpaRepository<Shipment, Long> {
            "AND (:status IS NULL OR s.status = :status) " +
            "ORDER BY s.createdAt DESC, s.id DESC")
     List<Shipment> findByFarmId(@Param("farmId") Long farmId, @Param("status") String status);
+
+    /**
+     * Shipments for orders placed by a specific retailer (BICAP-49 / SRS-RT-014).
+     * Resolved through shipment → order → retailer user.
+     */
+    @Query("SELECT s FROM Shipment s " +
+           "JOIN Order o ON s.orderId = o.id " +
+           "WHERE o.retailerId = :retailerId " +
+           "AND (:status IS NULL OR s.status = :status) " +
+           "ORDER BY s.createdAt DESC, s.id DESC")
+    List<Shipment> findByRetailerId(@Param("retailerId") Long retailerId,
+                                    @Param("status") String status);
 }
