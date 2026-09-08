@@ -78,8 +78,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
     { id: 'shipments', label: 'Vận Chuyển', icon: '🚚', isProtected: true },
     { id: 'retailers', label: 'Nhà Bán Lẻ', icon: '🤝', isProtected: true },
     { id: 'iot', label: 'Giám Sát IoT', icon: '🌡️', isProtected: true },
-    { id: 'certificates', label: 'Chứng Nhận', icon: '📜', isProtected: false },
-    { id: 'reports', label: 'Báo Cáo Cho Admin', icon: '📣', isProtected: false },
+    { id: 'certificates', label: 'Chứng Nhận', icon: '📜', isProtected: true },
+    { id: 'reports', label: 'Báo Cáo Cho Admin', icon: '📣', isProtected: true },
     { id: 'guest-education', label: 'Nội Dung Giáo Dục', icon: '📚', isProtected: false },
     { id: 'guest-products', label: 'Tìm Kiếm Sản Phẩm', icon: '🔍', isProtected: false },
     { id: 'settings', label: 'Cài Đặt', icon: '⚙️', isProtected: false },
@@ -434,8 +434,20 @@ export default function App() {
 
     checkSubscription();
     resolveFarmId();
+    window.addEventListener('bicap-subscription-changed', checkSubscription);
+    return () => window.removeEventListener('bicap-subscription-changed', checkSubscription);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authenticated, user?.role, currentTab]);
+
+  useEffect(() => {
+    const protectedTabs = new Set([
+      'seasons', 'exports', 'trading-floor', 'products', 'orders', 'shipments',
+      'retailers', 'iot', 'certificates', 'reports',
+    ]);
+    if (!hasActiveSubscription && protectedTabs.has(currentTab)) {
+      setCurrentTab('packages');
+    }
+  }, [hasActiveSubscription, currentTab]);
 
   if (traceMatch) return <TracePage hash={traceMatch[1]} />;
 

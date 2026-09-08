@@ -1,13 +1,27 @@
 package vn.courses.ut.edu.javaprogramming.bicap;
 
+import java.math.BigDecimal;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
 import org.mockito.Mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+
 import vn.courses.ut.edu.javaprogramming.bicap.config.SepayConfig;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.PurchasePackageRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.PurchasePackageResponse;
@@ -24,15 +38,6 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ServicePackageRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.SubscriptionRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.service.SubscriptionService;
-
-import java.math.BigDecimal;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 /**
  * H-5/H-6/H-8: purchase ownership, state-machine activation, duplicate-subscription protection.
@@ -138,6 +143,19 @@ class SubscriptionServiceTest {
         assertThrows(vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException.class,
                 () -> subscriptionService.purchasePackage(new PurchasePackageRequest(1L, 1L)));
     }
+
+        @Test
+        void cancelSubscription_activeSubscription_allowsBuyingAnotherPackage() {
+                Subscription sub = Subscription.builder().id(7L).farmId(1L).packageId(1L)
+                                .status(SubscriptionStatus.ACTIVE).build();
+                when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(sub));
+                when(farmRepository.findById(1L)).thenReturn(Optional.of(farm));
+
+                subscriptionService.cancelSubscription(7L);
+
+                assertEquals(SubscriptionStatus.CANCELLED, sub.getStatus());
+                verify(subscriptionRepository).save(sub);
+        }
 
     @Test
     void activateSubscription_onlyFromPendingPayment() {

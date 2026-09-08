@@ -1,16 +1,23 @@
 package vn.courses.ut.edu.javaprogramming.bicap.controller;
 
-import jakarta.validation.Valid;
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.validation.Valid;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.PaymentStatusResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.PurchasePackageRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.PurchasePackageResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.SubscriptionResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.service.SubscriptionService;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/subscriptions")
@@ -43,10 +50,17 @@ public class SubscriptionController {
         return ResponseEntity.ok(subscriptionService.checkPaymentStatus(paymentCode));
     }
 
-    /** Farm Manager: cancel a PENDING_PAYMENT subscription (allows re-purchasing). */
+    /** Farm Manager: cancel an ACTIVE or PENDING_PAYMENT subscription (allows re-purchasing). */
     @PutMapping("/{id}/cancel")
-    public ResponseEntity<Void> cancelPendingSubscription(@PathVariable Long id) {
-        subscriptionService.cancelPendingSubscription(id);
+    public ResponseEntity<Void> cancelSubscription(@PathVariable Long id) {
+        subscriptionService.cancelSubscription(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Farm Manager: cancel the current subscription belonging to the authenticated user. */
+    @PutMapping("/current/cancel")
+    public ResponseEntity<Void> cancelCurrentSubscription() {
+        subscriptionService.cancelCurrentSubscription();
         return ResponseEntity.noContent().build();
     }
 }

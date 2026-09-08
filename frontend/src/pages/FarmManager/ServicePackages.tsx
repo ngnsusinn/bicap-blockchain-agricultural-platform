@@ -73,6 +73,7 @@ const ServicePackages: React.FC = () => {
         const data = await subRes.json();
         setSubscriptions(Array.isArray(data) ? data : []);
       }
+      window.dispatchEvent(new Event('bicap-subscription-changed'));
     } catch {
       setError('Không tải được dữ liệu gói dịch vụ.');
     } finally {
@@ -109,15 +110,22 @@ const ServicePackages: React.FC = () => {
     finally { setSubscribing(false); }
   };
 
-  const handleCancelPending = async (subId: number) => {
-    if (!window.confirm('Huỷ đơn thanh toán đang chờ? Bạn có thể mua lại sau.')) return;
-    setCancellingId(subId);
+  const handleCancelSubscription = async (subscription: Subscription) => {
+    const isActive = subscription.status === 'ACTIVE';
+    const message = isActive
+      ? 'Huỷ gói hiện tại ngay? Quyền sử dụng sẽ kết thúc và bạn có thể mua gói khác.'
+      : 'Huỷ đơn thanh toán đang chờ? Bạn có thể mua lại sau.';
+    if (!window.confirm(message)) return;
+    setCancellingId(subscription.id);
     try {
-      const res = await fetch(`${API_BASE_URL}/subscriptions/${subId}/cancel`, {
+      const res = await fetch(`${API_BASE_URL}/subscriptions/current/cancel`, {
         method: 'PUT', headers: getAuthHeaders(),
       });
       if (res.ok) {
-        flash('success', 'Đã huỷ đơn thanh toán. Bạn có thể chọn gói mới.');
+        flash('success', isActive
+          ? 'Đã huỷ gói hiện tại. Bạn có thể chọn gói mới.'
+          : 'Đã huỷ đơn thanh toán. Bạn có thể chọn gói mới.');
+        window.dispatchEvent(new Event('bicap-subscription-changed'));
         await fetchData();
       } else {
         const err = await res.json().catch(() => ({}));
@@ -202,11 +210,22 @@ const ServicePackages: React.FC = () => {
           </div>
           <div style={{ display:'flex', gap:10, alignItems:'center' }}>
             {activeSub && (
-              <span style={{
-                padding:'6px 14px', borderRadius:20, fontWeight:700, fontSize:13,
-                ...STATUS_COLOR['ACTIVE'], border: `1px solid ${STATUS_COLOR['ACTIVE'].border}`,
-                color: STATUS_COLOR['ACTIVE'].fg, background: STATUS_COLOR['ACTIVE'].bg,
-              }}>ACTIVE</span>
+              <>
+                <span style={{
+                  padding:'6px 14px', borderRadius:20, fontWeight:700, fontSize:13,
+                  ...STATUS_COLOR['ACTIVE'], border: `1px solid ${STATUS_COLOR['ACTIVE'].border}`,
+                  color: STATUS_COLOR['ACTIVE'].fg, background: STATUS_COLOR['ACTIVE'].bg,
+                }}>ACTIVE</span>
+                <button
+                  onClick={() => handleCancelSubscription(activeSub)}
+                  disabled={cancellingId === activeSub.id}
+                  style={{
+                    padding:'8px 14px', border:'1px solid rgba(239,68,68,.3)',
+                    borderRadius:8, background:'rgba(239,68,68,.08)', color:'#f87171',
+                    fontWeight:600, cursor:'pointer', fontSize:13,
+                  }}
+                >{cancellingId === activeSub.id ? 'Đang huỷ…' : '✕ Huỷ gói'}</button>
+              </>
             )}
             {pendingSub && (
               <>
@@ -219,7 +238,7 @@ const ServicePackages: React.FC = () => {
                   }}
                 >💳 Xem thanh toán</button>
                 <button
-                  onClick={() => handleCancelPending(pendingSub!.id)}
+                  onClick={() => handleCancelSubscription(pendingSub!)}
                   disabled={cancellingId === pendingSub!.id}
                   style={{
                     padding:'8px 14px', border:'1px solid rgba(239,68,68,.3)',
@@ -329,7 +348,7 @@ const ServicePackages: React.FC = () => {
                       <td style={{ padding:'12px 14px' }}>
                         {sub.status === 'PENDING_PAYMENT' && (
                           <button
-                            onClick={() => handleCancelPending(sub.id)}
+                            onClick={() => handleCancelSubscription(sub)}
                             disabled={cancellingId === sub.id}
                             style={{
                               padding:'5px 12px', border:'1px solid rgba(239,68,68,.3)',
