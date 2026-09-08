@@ -52,7 +52,7 @@ export default function FarmShipments({ farmId }: { farmId?: number }) {
   return (
     <div>
       <h1 className="dashboard-title">Quy trình vận chuyển</h1>
-      <p className="dashboard-subtitle">BICAP-22/23 · Theo dõi và báo cáo tổng hợp các lô hàng xuất từ nông trại của bạn.</p>
+      <p className="dashboard-subtitle">Theo dõi và báo cáo tổng hợp các lô hàng xuất từ nông trại của bạn.</p>
       {error && <div style={alertStyle}>{error}</div>}
 
       {summary && (
@@ -81,9 +81,9 @@ export default function FarmShipments({ farmId }: { farmId?: number }) {
           {items.map(s => (
             <article key={s.id} style={{ ...cardStyle, cursor: 'pointer', borderColor: detail?.id === s.id ? '#10b981' : '#334155' }} onClick={() => openDetail(s.id)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                <strong>Lô #{s.id} · Đơn #{s.orderId}</strong><span style={badgeStyle(s.status)}>{s.status}</span>
+                <strong>Lô #{s.id}, Đơn #{s.orderId}</strong><span style={badgeStyle(s.status)}>{s.status}</span>
               </div>
-              <p style={{ fontSize: 13, margin: '6px 0' }}>{s.driverName || 'Chưa gán tài xế'}{s.vehicleLicensePlate ? ` · ${s.vehicleLicensePlate}` : ''}</p>
+              <p style={{ fontSize: 13, margin: '6px 0' }}>{s.driverName || 'Chưa gán tài xế'}{s.vehicleLicensePlate ? `, ${s.vehicleLicensePlate}` : ''}</p>
               {s.deliveryAddr && <p style={{ fontSize: 12, color: '#94a3b8' }}>Giao tới: {s.deliveryAddr}</p>}
             </article>
           ))}
@@ -96,14 +96,14 @@ export default function FarmShipments({ farmId }: { farmId?: number }) {
             <p style={{ fontSize: 13, marginTop: 8 }}>Tài xế: {detail.driverName || '—'} {detail.driverPhone ? `(${detail.driverPhone})` : ''}</p>
             <p style={{ fontSize: 13 }}>Phương tiện: {detail.vehicleType || '—'} {detail.vehicleLicensePlate ? `- ${detail.vehicleLicensePlate}` : ''}</p>
             {detail.routeSummary && <p style={{ fontSize: 13 }}>Tuyến: {detail.routeSummary}</p>}
-            <p style={{ fontSize: 12, color: '#94a3b8' }}>Lấy hàng: {detail.pickupTime || '—'} · Giao: {detail.deliveryTime || '—'}</p>
+            <p style={{ fontSize: 12, color: '#94a3b8' }}>Lấy hàng: {detail.pickupTime || '—'}, Giao: {detail.deliveryTime || '—'}</p>
             <h3 style={{ color: '#fff', fontSize: 15, margin: '16px 0 4px' }}>Lịch sử định vị ({detail.trackingHistory?.length || 0})</h3>
             {!detail.trackingHistory?.length && <p style={{ color: '#94a3b8', fontSize: 13 }}>Chưa có dữ liệu định vị.</p>}
             {detail.trackingHistory?.map(t => (
               <div key={t.id} style={{ padding: '8px 0', borderBottom: '1px solid #1f2937', fontSize: 12 }}>
                 <span style={badgeStyle(t.status)}>{t.status}</span>{' '}
                 <span style={hashStyle}>{t.gpsLat?.toFixed?.(5)}, {t.gpsLng?.toFixed?.(5)}</span>
-                <span style={{ color: '#94a3b8' }}> · {t.timestamp}</span>
+                <span style={{ color: '#94a3b8' }}>, {t.timestamp}</span>
                 {t.notes && <div style={{ color: '#cbd5e1' }}>{t.notes}</div>}
               </div>
             ))}

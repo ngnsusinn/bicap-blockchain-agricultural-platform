@@ -5,7 +5,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.*;
-import vn.courses.ut.edu.javaprogramming.bicap.entity.Order;
 import vn.courses.ut.edu.javaprogramming.bicap.service.DriverService;
 import vn.courses.ut.edu.javaprogramming.bicap.service.ShipmentService;
 import vn.courses.ut.edu.javaprogramming.bicap.service.VehicleService;
@@ -35,10 +34,32 @@ public class ShippingController {
 
     // ── ORDERS (read-only — expose DEPOSIT_PAID orders ready for shipment) ─────
 
-    /** Lists orders in DEPOSIT_PAID state waiting for a shipment to be created. */
-    @GetMapping("/orders")
-    public ResponseEntity<List<Order>> getCompletedOrders() {
+    /**
+     * Lists orders in DEPOSIT_PAID state waiting for a shipment to be created (BICAP-54).
+     * Returns OrderResponse with product/retailer/farm info for the frontend.
+     */
+    @GetMapping("/orders/completed")
+    public ResponseEntity<List<OrderResponse>> getCompletedOrders() {
         return ResponseEntity.ok(shipmentService.getCompletedOrders());
+    }
+
+    /**
+     * Driver incident/delay/damage reports visible to Shipping Manager (BICAP-62).
+     * Optionally filtered by shipmentId.
+     */
+    @GetMapping("/driver-reports")
+    public ResponseEntity<List<TrackingResponse>> getDriverReports(
+            @RequestParam(required = false) Long shipmentId) {
+        return ResponseEntity.ok(shipmentService.getDriverReports(shipmentId));
+    }
+
+    /**
+     * Returns users with SHIP_DRIVER role that have no driver profile yet.
+     * Used by the frontend create-driver form to pick from existing accounts.
+     */
+    @GetMapping("/driver-users")
+    public ResponseEntity<List<java.util.Map<String, Object>>> getDriverUsers() {
+        return ResponseEntity.ok(shipmentService.getAvailableDriverUsers());
     }
 
     // ── SHIPMENTS ─────────────────────────────────────────────────────────────

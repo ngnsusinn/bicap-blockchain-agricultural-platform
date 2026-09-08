@@ -107,7 +107,7 @@ export default function RetailerBusinessPage() {
           <textarea value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} rows={3} required />
         </label>
         <label className="retailer-form__wide retailer-file">
-          <span>Giấy phép kinh doanh * · PDF/JPG/PNG, tối đa 10MB</span>
+          <span>Giấy phép kinh doanh * (PDF/JPG/PNG, tối đa 10MB)</span>
           <input
             type="file"
             accept="application/pdf,image/jpeg,image/png"

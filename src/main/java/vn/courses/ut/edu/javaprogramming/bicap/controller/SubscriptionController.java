@@ -42,4 +42,11 @@ public class SubscriptionController {
     public ResponseEntity<PaymentStatusResponse> checkPaymentStatus(@PathVariable String paymentCode) {
         return ResponseEntity.ok(subscriptionService.checkPaymentStatus(paymentCode));
     }
+
+    /** Farm Manager: cancel a PENDING_PAYMENT subscription (allows re-purchasing). */
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<Void> cancelPendingSubscription(@PathVariable Long id) {
+        subscriptionService.cancelPendingSubscription(id);
+        return ResponseEntity.noContent().build();
+    }
 }

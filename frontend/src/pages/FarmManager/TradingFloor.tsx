@@ -80,7 +80,7 @@ export default function TradingFloor({ farmId }: { farmId?: number }) {
 
   return <div>
     <h1 className="dashboard-title">Sàn giao dịch</h1>
-    <p className="dashboard-subtitle">BICAP-18 · Đăng sản phẩm đã xuất kho lên sàn để Nhà bán lẻ tìm kiếm và đặt mua. Sản phẩm cần được admin duyệt trước khi lên sàn.</p>
+    <p className="dashboard-subtitle">Đăng sản phẩm đã xuất kho lên sàn để Nhà bán lẻ tìm kiếm và đặt mua. Sản phẩm cần được admin duyệt trước khi lên sàn.</p>
     {error && <div style={alertStyle}>{error}</div>}
     {success && (
       <div style={successStyle}>
@@ -102,10 +102,10 @@ export default function TradingFloor({ farmId }: { farmId?: number }) {
             setForm({ ...form, exportId: e.target.value, quantity: item ? String(item.quantity) : form.quantity });
           }} style={inputStyle}>
             <option value="">Chọn lô hàng</option>
-            {exports.map(e => <option key={e.id} value={e.id}>Lô #{e.id} · Mùa vụ #{e.seasonId} · {e.quantity} {e.unit}</option>)}
+            {exports.map(e => <option key={e.id} value={e.id}>Lô #{e.id}, Mùa vụ #{e.seasonId}, {e.quantity} {e.unit}</option>)}
           </select>
         ) : (
-          <p style={{ color: '#94a3b8', fontSize: 13 }}>Chưa có lô hàng nào sẵn sàng đăng sàn. Hãy xuất kho &amp; tạo QR trước (BICAP-16/17).</p>
+          <p style={{ color: '#94a3b8', fontSize: 13 }}>Chưa có lô hàng nào sẵn sàng đăng sàn. Hãy xuất kho &amp; tạo QR trước.</p>
         )}
 
         {selectedExport && (
@@ -113,7 +113,7 @@ export default function TradingFloor({ farmId }: { farmId?: number }) {
             {selectedExport.qrImage && <img src={selectedExport.qrImage} alt="QR lô hàng" width="64" height="64" style={{ borderRadius: 6 }} />}
             <div style={{ fontSize: 12, color: '#cbd5e1', lineHeight: 1.6 }}>
               <div>Số lượng lô: <strong>{selectedExport.quantity} {selectedExport.unit}</strong></div>
-              <div>Kho: {selectedExport.warehouse} · Ngày: {selectedExport.exportDate}</div>
+              <div>Kho: {selectedExport.warehouse}, Ngày: {selectedExport.exportDate}</div>
               <a href={`/trace/${selectedExport.traceHash}`} target="_blank" rel="noreferrer" style={{ color: '#34d399' }}>Xem truy xuất</a>
             </div>
           </div>

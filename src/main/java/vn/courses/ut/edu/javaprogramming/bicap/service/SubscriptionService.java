@@ -120,6 +120,30 @@ public class SubscriptionService {
         return toResponses(subscriptions);
     }
 
+    /**
+     * Cancels a PENDING_PAYMENT subscription owned by the authenticated user.
+     * Allows the farm to start a new purchase after a stale pending payment.
+     */
+    public void cancelPendingSubscription(Long subscriptionId) {
+        Subscription sub = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subscription not found: " + subscriptionId));
+        if (sub.getStatus() != SubscriptionStatus.PENDING_PAYMENT) {
+            throw new BadRequestException(
+                    "Only PENDING_PAYMENT subscriptions can be cancelled (current: " + sub.getStatus() + ")");
+        }
+        // Ownership check: farm must belong to the current user
+        User actor = CurrentUser.get();
+        if (!CurrentUser.isAdminView(actor)) {
+            Farm farm = farmRepository.findById(sub.getFarmId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Farm not found: " + sub.getFarmId()));
+            if (!farm.getUserId().equals(actor.getId())) {
+                throw new ForbiddenException("You do not have access to this subscription");
+            }
+        }
+        sub.setStatus(SubscriptionStatus.CANCELLED);
+        subscriptionRepository.save(sub);
+    }
+
     @Transactional(readOnly = true)
     public List<SubscriptionResponse> getSubscriptionsByFarm(Long farmId) {
         checkAccessToFarm(farmId);

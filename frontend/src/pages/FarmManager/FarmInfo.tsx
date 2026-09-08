@@ -83,7 +83,7 @@ export default function FarmInfo({ farmId }: { farmId?: number }) {
   return (
     <div>
       <h1 className="dashboard-title">Thông tin nông trại</h1>
-      <p className="dashboard-subtitle">· Cập nhật hồ sơ nông trại, vùng canh tác và giấy phép kinh doanh.</p>
+      <p className="dashboard-subtitle">Cập nhật hồ sơ nông trại, vùng canh tác và giấy phép kinh doanh.</p>
       {error && <div style={alertStyle}>{error}</div>}
       {notice && <div style={successStyle}>{notice}</div>}
 

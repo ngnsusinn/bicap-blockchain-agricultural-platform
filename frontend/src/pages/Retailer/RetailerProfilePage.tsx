@@ -107,7 +107,7 @@ export default function RetailerProfilePage({ user, onUserUpdated }: Props) {
           <textarea value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} rows={3} />
         </label>
         <label className="retailer-form__wide retailer-file">
-          <span>Ảnh đại diện · JPG/PNG, tối đa 5MB</span>
+          <span>Ảnh đại diện (JPG/PNG, tối đa 5MB)</span>
           <input
             type="file"
             accept="image/jpeg,image/png"

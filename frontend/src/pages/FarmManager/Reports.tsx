@@ -48,7 +48,7 @@ export default function Reports() {
   return (
     <div>
       <h1 className="dashboard-title">Gửi báo cáo cho Admin</h1>
-      <p className="dashboard-subtitle">· Gửi khiếu nại, phản hồi hoặc báo cáo sự cố tới ban quản trị nền tảng.</p>
+      <p className="dashboard-subtitle">Gửi khiếu nại, phản hồi hoặc báo cáo sự cố tới ban quản trị nền tảng.</p>
       {error && <div style={alertStyle}>{error}</div>}
       {notice && <div style={successStyle}>{notice}</div>}
 
@@ -76,7 +76,7 @@ export default function Reports() {
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                 <strong>{r.subject}</strong><span style={badgeStyle(r.status)}>{r.status}</span>
               </div>
-              <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0' }}>{TYPE_LABELS[r.type] || r.type} · {r.createdAt}</p>
+              <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0' }}>{TYPE_LABELS[r.type] || r.type}, {r.createdAt}</p>
               <p style={{ fontSize: 13 }}>{r.content}</p>
               {r.adminResponse && (
                 <div style={{ marginTop: 8, padding: 10, borderRadius: 8, background: 'rgba(16,185,129,.08)', border: '1px solid rgba(16,185,129,.25)', fontSize: 13 }}>

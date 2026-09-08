@@ -336,7 +336,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                       onClick={() => { setIdentifier(a.id); setPassword(a.pw); setErrorMsg(null); }}
                       style={{ textAlign: 'left', cursor: 'pointer', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px' }}
                     >
-                      <div style={{ fontSize: '12px', color: '#fff', fontFamily: 'monospace' }}>{a.id} · {a.pw}</div>
+                      <div style={{ fontSize: '12px', color: '#fff', fontFamily: 'monospace' }}>{a.id}, {a.pw}</div>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted, #94a3b8)' }}>{a.note}</div>
                     </button>
                   ))}

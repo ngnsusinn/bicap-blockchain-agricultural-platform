@@ -32,7 +32,7 @@ export default function MyListings({ farmId }: { farmId?: number }) {
   return (
     <div>
       <h1 className="dashboard-title">Sản phẩm đã đẩy lên sàn</h1>
-      <p className="dashboard-subtitle">BICAP-19 · Theo dõi trạng thái duyệt của từng sản phẩm sau khi đăng lên sàn giao dịch.</p>
+      <p className="dashboard-subtitle">Theo dõi trạng thái duyệt của từng sản phẩm sau khi đăng lên sàn giao dịch.</p>
       {error && <div style={alertStyle}>{error}</div>}
 
       <section className="glass-panel" style={panelStyle}>
@@ -48,7 +48,7 @@ export default function MyListings({ farmId }: { farmId?: number }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <strong>{p.name}</strong><span style={badgeStyle(p.status)}>{p.status}</span>
             </div>
-            <p style={{ fontSize: 13, margin: '6px 0' }}>{p.categoryName || '—'} · {p.seasonName || ''} · {p.quantity} · {p.price.toLocaleString('vi-VN')} ₫</p>
+            <p style={{ fontSize: 13, margin: '6px 0' }}>{p.categoryName || '—'}, {p.seasonName || ''}, {p.quantity}, {p.price.toLocaleString('vi-VN')} ₫</p>
             {p.traceHash && <p style={hashStyle}>Trace: {p.traceHash}</p>}
             {p.qrImage && <img src={p.qrImage} alt={`QR ${p.name}`} width="96" height="96" style={{ marginTop: 8, borderRadius: 8 }} />}
           </article>
