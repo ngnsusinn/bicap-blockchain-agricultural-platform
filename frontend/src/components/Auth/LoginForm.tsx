@@ -162,7 +162,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ role, onSuccess, onSwitchT
                   borderRadius: '8px', padding: '8px 10px',
                 }}
               >
-                <div style={{ fontSize: '12px', color: '#fff', fontFamily: 'monospace' }}>{a.id} · {a.pw}</div>
+                <div style={{ fontSize: '12px', color: '#fff', fontFamily: 'monospace' }}>{a.id}, {a.pw}</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted, #94a3b8)' }}>{a.note}</div>
               </button>
             ))}

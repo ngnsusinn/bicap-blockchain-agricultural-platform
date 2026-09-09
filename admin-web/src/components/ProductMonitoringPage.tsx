@@ -389,7 +389,7 @@ export const ProductMonitoringPage: React.FC<ProductMonitoringPageProps> = ({ cu
               <div>
                 <h2 style={{ margin: 0, color: '#fff', fontSize: '20px', fontWeight: 700 }}>{selectedProduct.name}</h2>
                 <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
-                  {selectedProduct.categoryName || '—'} · {CURRENCY.format(selectedProduct.price)}
+                  {selectedProduct.categoryName || '—'}, {CURRENCY.format(selectedProduct.price)}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

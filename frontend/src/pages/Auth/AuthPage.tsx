@@ -103,7 +103,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             <div style={featureItemStyle}>
               <span style={featureIconStyle}>🌾</span>
               <div>
-                <strong style={{ color: '#fff', fontSize: '14px', display: 'block' }}>Dành cho Chủ Trang Trại (BICAP-7)</strong>
+                <strong style={{ color: '#fff', fontSize: '14px', display: 'block' }}>Dành cho Chủ Trang Trại</strong>
                 <span style={{ fontSize: '12px', color: 'var(--text-muted, #94a3b8)' }}>Quản lý mùa vụ, ghi nhật ký canh tác & cấp mã QR truy xuất nguồn gốc lên Blockchain.</span>
               </div>
             </div>

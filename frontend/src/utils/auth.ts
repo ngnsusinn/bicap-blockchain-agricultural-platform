@@ -1,13 +1,14 @@
 /**
  * Quản lý xác thực JWT & Session người dùng trong localStorage.
- * Hỗ trợ các role: FARM_MANAGER (BICAP-7) và RETAILER (BICAP-36).
+ * Hỗ trợ các role: FARM_MANAGER (BICAP-7), RETAILER (BICAP-36),
+ * SHIPPING_MGR (BICAP-54→62) và SHIP_DRIVER (BICAP-63→68).
  */
 
 export interface UserSession {
   id: number;
   email: string;
   fullName: string;
-  role: 'FARM_MANAGER' | 'RETAILER' | 'ADMIN';
+  role: 'FARM_MANAGER' | 'RETAILER' | 'ADMIN' | 'SHIPPING_MGR' | 'SHIP_DRIVER';
   phone?: string;
   address?: string;
   avatarUrl?: string;

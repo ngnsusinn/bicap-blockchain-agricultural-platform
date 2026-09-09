@@ -58,10 +58,10 @@ export default function RetailerOrdersPage(){
     <div style={{display:'grid',gap:14}}>{items.map(o=><article key={o.id} style={s.card}>
       <div style={{display:'flex',gap:15,alignItems:'center',flex:'1 1 500px'}}>
         <div style={s.thumb}>{o.productImage?<img src={`${API_BASE_URL.replace(/\/api$/,'')}${o.productImage}`} alt={o.productName||'Nông sản'} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:'🌿'}</div>
-        <div><div style={{display:'flex',gap:9,alignItems:'center',flexWrap:'wrap'}}><strong>#{o.id} · {o.productName||'Sản phẩm'}</strong>{badge(o.status)}</div>
-          <p style={s.muted}>{o.farmName||'Chưa có thông tin trang trại'} · Tạo {date(o.createdAt)}</p>
+        <div><div style={{display:'flex',gap:9,alignItems:'center',flexWrap:'wrap'}}><strong>#{o.id} , {o.productName||'Sản phẩm'}</strong>{badge(o.status)}</div>
+          <p style={s.muted}>{o.farmName||'Chưa có thông tin trang trại'} , Tạo {date(o.createdAt)}</p>
           <p style={{margin:'6px 0'}}>{o.quantity} × {money(o.price)} = <b style={{color:'#6ee7b7'}}>{money(o.totalAmount)}</b></p>
-          <p style={s.muted}>Nhận tại: {o.deliveryAddr||'—'} · Ngày mong muốn: {date(o.desiredDeliveryDate)}</p>
+          <p style={s.muted}>Nhận tại: {o.deliveryAddr||'—'} , Ngày mong muốn: {date(o.desiredDeliveryDate)}</p>
         </div>
       </div>
       <div style={s.actions}><button style={s.secondary} onClick={()=>void openDetail(o.id)}>Xem chi tiết</button>{o.status==='ACCEPTED'&&<button style={s.primary} onClick={()=>void deposit(o.id)}>Thanh toán đặt cọc</button>}{['PENDING','ACCEPTED','DEPOSIT_PAID'].includes(o.status)&&<button style={s.danger} onClick={()=>{setCancel(o);setReason('');setError('')}}>{o.status==='DEPOSIT_PAID'?'Yêu cầu hủy':'Hủy đơn'}</button>}</div>
@@ -89,7 +89,7 @@ function Detail({order,close,cancel}:{order:Order;close:()=>void;cancel:()=>void
   </div>{(order.depositAmount!=null||order.depositExpiresAt)&&<Box title="Đặt cọc"><Info k="Số tiền đặt cọc" v={money(order.depositAmount)} hi/><Info k="Hạn thanh toán" v={date(order.depositExpiresAt)}/></Box>}
   {(order.cancelledReason||order.rejectReason)&&<div style={s.reason}><b>{order.cancelledReason?'Lý do hủy đơn':'Lý do từ chối'}</b><p>{order.cancelledReason||order.rejectReason}</p></div>}
   <h3>Tiến trình đơn hàng</h3>{stopped?<div style={s.reason}>{order.status==='CANCEL_REQUESTED'?'Đang chờ Admin xem xét yêu cầu hủy.':`Tiến trình đã dừng vì đơn ${order.status==='CANCELLED'?'đã bị hủy':'bị từ chối'}.`}</div>:<div>{steps.map(([label,reached,at])=><div key={label} style={s.step}><span style={{...s.dot,background:reached?'#10b981':'#334155'}}/><div><b style={{color:reached?'#e2e8f0':'#64748b'}}>{label}</b>{at&&<p style={s.muted}>{date(at)}</p>}</div></div>)}</div>}
-  <p style={s.muted}>Chi tiết tài xế, vị trí và ETA thuộc màn hình theo dõi shipment (BICAP-49).</p><div style={s.modalActions}>{['PENDING','ACCEPTED','DEPOSIT_PAID'].includes(order.status)&&<button style={s.danger} onClick={cancel}>{order.status==='DEPOSIT_PAID'?'Yêu cầu hủy':'Hủy đơn'}</button>}<button style={s.secondary} onClick={close}>Đóng</button></div></Modal>
+  <p style={s.muted}>Chi tiết tài xế, vị trí và ETA thuộc màn hình theo dõi shipment.</p><div style={s.modalActions}>{['PENDING','ACCEPTED','DEPOSIT_PAID'].includes(order.status)&&<button style={s.danger} onClick={cancel}>{order.status==='DEPOSIT_PAID'?'Yêu cầu hủy':'Hủy đơn'}</button>}<button style={s.secondary} onClick={close}>Đóng</button></div></Modal>
 }
 function Modal({title,close,wide=false,children}:{title:string;close:()=>void;wide?:boolean;children:React.ReactNode}){return <div style={s.overlay} role="dialog" aria-modal="true"><div style={{...s.modal,...(wide?{width:'min(760px,94vw)',maxHeight:'90vh',overflowY:'auto'}:{})}}><button style={s.close} onClick={close} aria-label="Đóng">×</button><h2>{title}</h2>{children}</div></div>}
 function Box({title,children}:{title:string;children:React.ReactNode}){return <section style={s.box}><h3 style={{marginTop:0}}>{title}</h3>{children}</section>}

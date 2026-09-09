@@ -135,7 +135,7 @@ export default function Orders() {
     <div>
       <h1 className="dashboard-title">Đơn hàng / Yêu cầu mua</h1>
       <p className="dashboard-subtitle">
-        BICAP-20 · Xem và xử lý (chấp nhận / từ chối) các yêu cầu mua nông sản từ Nhà bán lẻ.
+        Xem và xử lý (chấp nhận / từ chối) các yêu cầu mua nông sản từ Nhà bán lẻ.
         Khi chấp nhận, Nhà bán lẻ có 24h để đặt cọc 30% xác nhận đơn hàng.
       </p>
 
@@ -182,7 +182,7 @@ export default function Orders() {
                           <span style={{ fontSize: 11, color: meta.color, marginLeft: 10, border: `1px solid ${meta.color}55`, padding: '2px 8px', borderRadius: 10 }}>{meta.label}</span>
                         </div>
                         <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-                          {o.seasonName ? `Mùa vụ: ${o.seasonName} · ` : ''}
+                          {o.seasonName ? `Mùa vụ: ${o.seasonName}, ` : ''}
                           {o.farmName ? `${o.farmName}` : ''}
                         </div>
                       </div>

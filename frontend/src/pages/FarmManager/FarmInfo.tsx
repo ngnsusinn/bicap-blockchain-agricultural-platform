@@ -83,7 +83,7 @@ export default function FarmInfo({ farmId }: { farmId?: number }) {
   return (
     <div>
       <h1 className="dashboard-title">Thông tin nông trại</h1>
-      <p className="dashboard-subtitle">BICAP-9 · Cập nhật hồ sơ nông trại, vùng canh tác và giấy phép kinh doanh.</p>
+      <p className="dashboard-subtitle">Cập nhật hồ sơ nông trại, vùng canh tác và giấy phép kinh doanh.</p>
       {error && <div style={alertStyle}>{error}</div>}
       {notice && <div style={successStyle}>{notice}</div>}
 
@@ -116,7 +116,7 @@ export default function FarmInfo({ farmId }: { farmId?: number }) {
 
         <form className="glass-panel" style={panelStyle} onSubmit={uploadCert}>
           <h2 style={titleStyle}>Giấy phép & chứng nhận</h2>
-          <p style={{ color: '#94a3b8', fontSize: 13 }}>Tải giấy phép kinh doanh hoặc chứng nhận VietGAP/GlobalGAP. Admin sẽ xem xét khi phê duyệt (BICAP-3).</p>
+          <p style={{ color: '#94a3b8', fontSize: 13 }}>Tải giấy phép kinh doanh hoặc chứng nhận VietGAP/GlobalGAP. Admin sẽ xem xét khi phê duyệt).</p>
           <label style={labelStyle}>Loại tài liệu</label>
           <select value={cert.type} onChange={e => setCert({ ...cert, type: e.target.value })} style={inputStyle}>
             <option value="BUSINESS_LICENSE">Giấy phép kinh doanh</option>

@@ -416,7 +416,7 @@ export const FarmManagementPage: React.FC<FarmManagementPageProps> = ({ currentS
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 600, fontSize: '13px', color: '#fff' }}>{s.name}</div>
                         <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          {s.productType} · {s.variety}{s.area ? ` · ${s.area} ha` : ''} · {formatDate(s.startDate)}{s.endDate ? ` → ${formatDate(s.endDate)}` : ''}
+                          {s.productType}, {s.variety}{s.area ? `, ${s.area} ha` : ''}, {formatDate(s.startDate)}{s.endDate ? ` → ${formatDate(s.endDate)}` : ''}
                         </div>
                       </div>
                       <span

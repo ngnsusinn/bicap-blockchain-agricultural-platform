@@ -12,6 +12,7 @@ import { FarmManagementPage } from './components/FarmManagementPage';
 import { SmartContractPage } from './components/SmartContractPage';
 import { ProductMonitoringPage } from './components/ProductMonitoringPage';
 import { ReportsPage } from './components/ReportsPage';
+import { ServicePackagesPage } from './components/ServicePackagesPage';
 import { Toast } from './components/Toast';
 import type { ToastMessage } from './components/Toast';
 import { API_ORIGIN } from './utils/api';
@@ -328,6 +329,10 @@ export default function App() {
             <FarmManagementPage currentSession={currentSession!} onToast={showToast} />
           )}
 
+          {currentPortal === 'admin' && currentTab === 'packages' && (
+            <ServicePackagesPage currentSession={currentSession!} onToast={showToast} />
+          )}
+
           {currentPortal === 'admin' && currentTab === 'contracts' && (
             <SmartContractPage currentSession={currentSession!} onToast={showToast} />
           )}
@@ -498,7 +503,7 @@ export default function App() {
       {/* Footer */}
       <footer style={{ textAlign: 'center', padding: '48px 20px 32px', color: 'var(--text-muted)', fontSize: '12px' }}>
         <p>© 2025 BICAP — Blockchain-Integrated Clean Agricultural Platform</p>
-        <p style={{ marginTop: '4px' }}>UT Education · Java Programming · VeChainThor</p>
+        <p style={{ marginTop: '4px' }}>UT Education, Java Programming, VeChainThor</p>
       </footer>
 
       <Toast toasts={toasts} onClose={handleCloseToast} />

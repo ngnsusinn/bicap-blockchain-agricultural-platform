@@ -28,6 +28,13 @@ import IotDashboard from './pages/FarmManager/IotDashboard';
 import GuestEducation from './pages/Guest/GuestEducation';
 import GuestProductSearch from './pages/Guest/GuestProductSearch';
 import GuestNotifications from './pages/Guest/GuestNotifications';
+// Shipping Manager pages (BICAP-54 → BICAP-62)
+import CompletedOrdersPage from './pages/Shipping/CompletedOrdersPage';
+import ShipmentsPage from './pages/Shipping/ShipmentsPage';
+import TrackingPage from './pages/Shipping/TrackingPage';
+import VehiclesPage from './pages/Shipping/VehiclesPage';
+import DriversPage from './pages/Shipping/DriversPage';
+import ShippingReportsPage from './pages/Shipping/ShippingReportsPage';
 
 /* ── Admin Portal redirect ──
  * Tài khoản ADMIN dùng bảng điều khiển trong ứng dụng Admin Web (admin-web).
@@ -61,7 +68,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSubscription, user }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊', isProtected: false },
-    { id: 'guest-notifications', label: 'Thông Báo (BICAP-69)', icon: '🔔', isProtected: false },
+    { id: 'guest-notifications', label: 'Thông Báo', icon: '🔔', isProtected: false },
     { id: 'profile', label: 'Cập nhật hồ sơ', icon: '👤', isProtected: false },
     { id: 'packages', label: 'Gói Dịch Vụ', icon: '📦', isProtected: false },
     { id: 'farm-info', label: 'Nông Trại Của Tôi', icon: '🌾', isProtected: false },
@@ -73,10 +80,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
     { id: 'shipments', label: 'Vận Chuyển', icon: '🚚', isProtected: true },
     { id: 'retailers', label: 'Nhà Bán Lẻ', icon: '🤝', isProtected: true },
     { id: 'iot', label: 'Giám Sát IoT', icon: '🌡️', isProtected: true },
-    { id: 'certificates', label: 'Chứng Nhận', icon: '📜', isProtected: false },
-    { id: 'reports', label: 'Báo Cáo Cho Admin', icon: '📣', isProtected: false },
-    { id: 'guest-education', label: 'Nội Dung Giáo Dục (BICAP-71)', icon: '📚', isProtected: false },
-    { id: 'guest-products', label: 'Tìm Kiếm Sản Phẩm (BICAP-70)', icon: '🔍', isProtected: false },
+    { id: 'certificates', label: 'Chứng Nhận', icon: '📜', isProtected: true },
+    { id: 'reports', label: 'Báo Cáo Cho Admin', icon: '📣', isProtected: true },
+    { id: 'guest-education', label: 'Nội Dung Giáo Dục', icon: '📚', isProtected: false },
+    { id: 'guest-products', label: 'Tìm Kiếm Sản Phẩm', icon: '🔍', isProtected: false },
     { id: 'settings', label: 'Cài Đặt', icon: '⚙️', isProtected: false },
   ];
 
@@ -158,7 +165,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
             {/* Edit Button next to Account Avatar (BICAP-8) */}
             <button
               onClick={() => onTabChange('profile')}
-              title="Cập nhật thông tin cá nhân (BICAP-8)"
+              title="Cập nhật thông tin cá nhân"
               style={{
                 background: 'rgba(16, 185, 129, 0.15)',
                 border: '1px solid rgba(16, 185, 129, 0.3)',
@@ -182,6 +189,167 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
         <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '12px' }}>BICAP Platform v0.1</p>
       </div>
     </aside>
+  );
+};
+
+/* ── Shipping Manager Portal (BICAP-54 → BICAP-62) ── */
+type ShippingTab = 'orders' | 'shipments' | 'tracking' | 'vehicles' | 'drivers' | 'reports';
+
+interface ShippingPortalProps {
+  user: UserSession;
+  onLogout: () => void;
+}
+
+type CompletedOrderForCreate = { id: number; status: string; productName?: string; retailerName?: string; deliveryAddr?: string; quantity?: number; price?: number; totalAmount?: number };
+type ShipmentForTracking = { id: number; status: string; orderId?: number; driverName?: string };
+
+const ShippingManagerPortal: React.FC<ShippingPortalProps> = ({ user, onLogout }) => {
+  const [tab, setTab] = useState<ShippingTab>('orders');
+  const [orderForCreate, setOrderForCreate] = useState<CompletedOrderForCreate | null>(null);
+
+  const handleCreateShipment = (order: CompletedOrderForCreate) => {
+    setOrderForCreate(order);
+    setTab('shipments');
+  };
+
+  const handleTrack = (shipment: ShipmentForTracking) => {
+    setTab('tracking');
+  };
+
+  const navItems: { id: ShippingTab; label: string; icon: string }[] = [
+    { id: 'orders',    label: 'Đơn hàng chờ',     icon: '📋' },
+    { id: 'shipments', label: 'Lô vận chuyển',     icon: '🚚' },
+    { id: 'tracking',  label: 'Quy trình',          icon: '🗺️' },
+    { id: 'vehicles',  label: 'Phương tiện',        icon: '🚛' },
+    { id: 'drivers',   label: 'Tài xế',             icon: '🧑‍💼' },
+    { id: 'reports',   label: 'Báo cáo',            icon: '📣' },
+  ];
+
+  return (
+    <div className="app-container">
+      {/* Sidebar */}
+      <aside style={{
+        width: 'var(--sidebar-width)',
+        position: 'fixed', top: 0, left: 0, bottom: 0,
+        background: 'rgba(15, 16, 22, 0.95)',
+        borderRight: '1px solid var(--border-color)',
+        display: 'flex', flexDirection: 'column',
+        zIndex: 1000, padding: '24px 16px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px', paddingLeft: '8px' }}>
+          <div style={{
+            width: '36px', height: '36px', borderRadius: '10px',
+            background: 'linear-gradient(135deg, #0284c7 0%, #7c3aed 100%)',
+            color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 800, fontSize: '18px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)',
+          }}>S</div>
+          <span style={{
+            fontSize: '16px', fontWeight: 800, letterSpacing: '-0.5px',
+            background: 'linear-gradient(to right, #fff, #7c3aed)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          }}>BICAP Shipping</span>
+        </div>
+
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => { setTab(item.id); if (item.id !== 'shipments') setOrderForCreate(null); }}
+              style={{
+                width: '100%', padding: '12px 16px',
+                borderRadius: '0 8px 8px 0',
+                display: 'flex', alignItems: 'center', gap: '12px',
+                textAlign: 'left', border: 0, cursor: 'pointer', fontSize: '14px',
+                color: tab === item.id ? '#fff' : 'var(--text-secondary)',
+                background: tab === item.id ? 'rgba(2, 132, 199, 0.15)' : 'transparent',
+                borderLeft: tab === item.id ? '3px solid #0284c7' : '3px solid transparent',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <span style={{ fontSize: '18px' }}>{item.icon}</span>
+              <span style={{ fontWeight: tab === item.id ? 600 : 400 }}>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div style={{ marginTop: 'auto', paddingLeft: '8px' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
+            background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)',
+            borderRadius: '10px', marginBottom: '12px',
+          }}>
+            <div style={{
+              width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
+              background: 'linear-gradient(135deg, #0284c7 0%, #7c3aed 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontWeight: 700, fontSize: '13px',
+            }}>
+              {user.fullName?.charAt(0)?.toUpperCase() || 'S'}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user.fullName}
+              </div>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user.email}
+              </div>
+            </div>
+          </div>
+          <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>BICAP Platform v0.1</p>
+        </div>
+      </aside>
+
+      {/* Main area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <header style={{
+          height: '64px',
+          background: 'rgba(15, 23, 42, 0.9)',
+          backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 32px',
+          marginLeft: 'var(--sidebar-width)',
+        }}>
+          <div style={{ fontSize: '14px', color: '#cbd5e1' }}>
+            Cổng Quản Lý Vận Chuyển
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <NotificationBell />
+            <span style={{ fontSize: '13px', color: '#cbd5e1' }}>
+              Xin chào, <strong>{user.fullName}</strong>{' '}
+              <span style={{
+                fontSize: '11px', background: 'rgba(2, 132, 199, 0.2)',
+                color: '#38bdf8', padding: '2px 8px', borderRadius: '12px',
+                border: '1px solid rgba(2, 132, 199, 0.3)', marginLeft: '6px',
+              }}>Shipping Mgr</span>
+            </span>
+            <button onClick={onLogout} style={{
+              background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
+              color: '#f87171', padding: '6px 14px', borderRadius: '8px',
+              fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+            }}>
+              🚪 Đăng xuất
+            </button>
+          </div>
+        </header>
+
+        <main className="main-content animate-fade-in" style={{ marginTop: '60px' }}>
+          {tab === 'orders' && (
+            <CompletedOrdersPage onCreateShipment={handleCreateShipment} />
+          )}
+          {tab === 'shipments' && (
+            <ShipmentsPage
+              initialOrderForCreate={orderForCreate}
+              onTrack={handleTrack}
+            />
+          )}
+          {tab === 'tracking' && <TrackingPage />}
+          {tab === 'vehicles' && <VehiclesPage />}
+          {tab === 'drivers' && <DriversPage />}
+          {tab === 'reports' && <ShippingReportsPage />}
+        </main>
+      </div>
+    </div>
   );
 };
 
@@ -268,8 +436,20 @@ export default function App() {
 
     checkSubscription();
     resolveFarmId();
+    window.addEventListener('bicap-subscription-changed', checkSubscription);
+    return () => window.removeEventListener('bicap-subscription-changed', checkSubscription);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authenticated, user?.role, currentTab]);
+
+  useEffect(() => {
+    const protectedTabs = new Set([
+      'seasons', 'exports', 'trading-floor', 'products', 'orders', 'shipments',
+      'retailers', 'iot', 'certificates', 'reports',
+    ]);
+    if (!hasActiveSubscription && protectedTabs.has(currentTab)) {
+      setCurrentTab('packages');
+    }
+  }, [hasActiveSubscription, currentTab]);
 
   if (traceMatch) return <TracePage hash={traceMatch[1]} />;
 
@@ -419,7 +599,12 @@ export default function App() {
     );
   }
 
-  // 4. Render Farm Manager Portal (BICAP-7)
+  // 4. Render Shipping Manager Portal (BICAP-54 → BICAP-62)
+  if (user?.role === 'SHIPPING_MGR') {
+    return <ShippingManagerPortal user={user} onLogout={handleLogout} />;
+  }
+
+  // 5. Render Farm Manager Portal (BICAP-7)
   return (
     <div className="app-container">
       <Sidebar
@@ -432,7 +617,7 @@ export default function App() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <header style={{ ...headerStyle, marginLeft: 'var(--sidebar-width)' }}>
           <div style={{ fontSize: '14px', color: '#cbd5e1' }}>
-            Cổng Quản Lý Nông Trại <strong style={{ color: '#10b981' }}>(BICAP-7)</strong>
+            Cổng Quản Lý Nông Trại <strong style={{ color: '#10b981' }}></strong>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

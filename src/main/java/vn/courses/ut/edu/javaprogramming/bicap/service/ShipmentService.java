@@ -4,13 +4,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.ActorAuthorizer;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.CurrentUser;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.OrderResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.ShipmentCancelRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.ShipmentCreateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.ShipmentDetailResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.ShipmentResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.TrackingResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Driver;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmingSeason;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Order;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Product;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Shipment;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Vehicle;
@@ -18,7 +22,10 @@ import vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ConflictException;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.DriverRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.OrderRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.ProductRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ShipmentRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ShipmentTrackingRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
@@ -26,6 +33,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.VehicleRepository;
 
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Shipping Manager operations: create/view/cancel shipments (BICAP-76).
@@ -50,6 +58,9 @@ public class ShipmentService {
     private final DriverRepository          driverRepository;
     private final VehicleRepository         vehicleRepository;
     private final UserRepository            userRepository;
+    private final ProductRepository         productRepository;
+    private final FarmingSeasonRepository   seasonRepository;
+    private final FarmRepository            farmRepository;
     private final NotificationService       notificationService;
 
     public ShipmentService(ShipmentRepository shipmentRepository,
@@ -58,6 +69,9 @@ public class ShipmentService {
                            DriverRepository driverRepository,
                            VehicleRepository vehicleRepository,
                            UserRepository userRepository,
+                           ProductRepository productRepository,
+                           FarmingSeasonRepository seasonRepository,
+                           FarmRepository farmRepository,
                            NotificationService notificationService) {
         this.shipmentRepository  = shipmentRepository;
         this.trackingRepository  = trackingRepository;
@@ -65,17 +79,63 @@ public class ShipmentService {
         this.driverRepository    = driverRepository;
         this.vehicleRepository   = vehicleRepository;
         this.userRepository      = userRepository;
+        this.productRepository   = productRepository;
+        this.seasonRepository    = seasonRepository;
+        this.farmRepository      = farmRepository;
         this.notificationService = notificationService;
     }
 
     // ── READ ──────────────────────────────────────────────────────────────────
 
-    /** Orders in DEPOSIT_PAID state awaiting shipment creation. */
+    /**
+     * Orders in DEPOSIT_PAID state awaiting shipment creation (BICAP-54).
+     * Returns full OrderResponse so the frontend can display product/retailer/farm info.
+     */
     @Transactional(readOnly = true)
-    public List<Order> getCompletedOrders() {
+    public List<OrderResponse> getCompletedOrders() {
         requireShippingMgr();
         return orderRepository.findAll().stream()
                 .filter(o -> Order.STATUS_DEPOSIT_PAID.equals(o.getStatus()))
+                .map(this::buildOrderResponse)
+                .toList();
+    }
+
+    /**
+     * Driver reports (shipment_tracking entries with status REPORT_*) for SHIPPING_MGR (BICAP-62).
+     * Optionally filtered by shipmentId.
+     */
+    @Transactional(readOnly = true)
+    public List<TrackingResponse> getDriverReports(Long shipmentId) {
+        requireShippingMgr();
+        return trackingRepository.findDriverReports(shipmentId).stream()
+                .map(TrackingResponse::from)
+                .toList();
+    }
+
+    /**
+     * Returns SHIP_DRIVER users that do not yet have a driver profile.
+     * Used by the Shipping Manager to pick from existing accounts when creating a driver (BICAP-59).
+     */
+    @Transactional(readOnly = true)
+    public List<java.util.Map<String, Object>> getAvailableDriverUsers() {
+        requireShippingMgr();
+        // Get all user IDs already registered as drivers
+        java.util.Set<Long> registeredIds = driverRepository.findAll().stream()
+                .map(Driver::getUserId)
+                .filter(id -> id != null)
+                .collect(java.util.stream.Collectors.toSet());
+        // Find users with SHIP_DRIVER role not yet in drivers table
+        return userRepository.findAll().stream()
+                .filter(u -> u.getRoles().stream().anyMatch(r -> "SHIP_DRIVER".equals(r.getName())))
+                .filter(u -> !registeredIds.contains(u.getId()))
+                .map(u -> {
+                    java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("id", u.getId());
+                    m.put("fullName", u.getFullName());
+                    m.put("email", u.getEmail());
+                    m.put("phone", u.getPhone());
+                    return m;
+                })
                 .toList();
     }
 
@@ -153,12 +213,28 @@ public class ShipmentService {
         vehicle.setStatus(Vehicle.STATUS_IN_USE);
         vehicleRepository.save(vehicle);
 
-        // Notify the retailer that their order is now being shipped
+        // Notify the retailer that their order is now being shipped (BICAP-61)
         if (order.getRetailerId() != null) {
             notificationService.sendNotification(order.getRetailerId(), "INFO",
                     "Đơn hàng đang được vận chuyển",
                     "Đơn hàng #" + order.getId() + " đã được giao cho tài xế "
                             + userNameFor(driver.getUserId()) + " vận chuyển.",
+                    false);
+        }
+
+        // Notify the Farm Manager that their goods are being picked up (BICAP-61)
+        Product product = order.getProductId() != null
+                ? productRepository.findById(order.getProductId()).orElse(null) : null;
+        FarmingSeason season = (product != null && product.getSeasonId() != null)
+                ? seasonRepository.findById(product.getSeasonId()).orElse(null) : null;
+        Farm farm = (season != null && season.getFarmId() != null)
+                ? farmRepository.findById(season.getFarmId()).orElse(null) : null;
+        if (farm != null && farm.getUserId() != null) {
+            notificationService.sendNotification(farm.getUserId(), "INFO",
+                    "Hàng của bạn đang được vận chuyển",
+                    "Sản phẩm từ đơn hàng #" + order.getId()
+                            + " đang được tài xế " + userNameFor(driver.getUserId())
+                            + " đến lấy hàng tại trang trại.",
                     false);
         }
 
@@ -255,6 +331,19 @@ public class ShipmentService {
     private String userNameFor(Long userId) {
         if (userId == null) return "N/A";
         return userRepository.findById(userId).map(User::getFullName).orElse("N/A");
+    }
+
+    /** Builds a full OrderResponse from an Order entity, null-safe for missing relations. */
+    private OrderResponse buildOrderResponse(Order order) {
+        Product product = order.getProductId() != null
+                ? productRepository.findById(order.getProductId()).orElse(null) : null;
+        FarmingSeason season = (product != null && product.getSeasonId() != null)
+                ? seasonRepository.findById(product.getSeasonId()).orElse(null) : null;
+        Farm farm = (season != null && season.getFarmId() != null)
+                ? farmRepository.findById(season.getFarmId()).orElse(null) : null;
+        User retailer = order.getRetailerId() != null
+                ? userRepository.findById(order.getRetailerId()).orElse(null) : null;
+        return OrderResponse.from(order, product, season, farm, retailer);
     }
 
     private static String normalize(String s) {

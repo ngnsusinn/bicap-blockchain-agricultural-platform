@@ -231,16 +231,16 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentDat
         <div style={modalStyle}>
           <button style={closeBtnStyle} onClick={onClose} onMouseOver={e => e.currentTarget.style.color = '#fff'} onMouseOut={e => e.currentTarget.style.color = '#a1a1aa'}>×</button>
           
-          <h2 style={titleStyle}>Payment Instructions</h2>
-          <p style={subtitleStyle}>Please transfer exactly the amount below</p>
+          <h2 style={titleStyle}>Thông tin thanh toán</h2>
+          <p style={subtitleStyle}>Vui lòng chuyển khoản đúng số tiền bên dưới</p>
 
           <div style={rowStyle}>
-            <span style={labelStyle}>Bank</span>
+            <span style={labelStyle}>Ngân hàng</span>
             <span style={valueStyle}>{paymentData.bankName}</span>
           </div>
 
           <div style={rowStyle}>
-            <span style={labelStyle}>Account Number</span>
+            <span style={labelStyle}>Số tài khoản</span>
             <div style={valueStyle}>
               {paymentData.accountNumber}
               <button 
@@ -253,7 +253,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentDat
           </div>
 
           <div style={rowStyle}>
-            <span style={labelStyle}>Amount</span>
+            <span style={labelStyle}>Số tiền</span>
             <div style={valueStyle}>
               <span style={{ color: '#06b6d4' }}>
                 {paymentData.amount.toLocaleString('vi-VN')} ₫
@@ -268,7 +268,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentDat
           </div>
 
           <div style={highlightContentStyle}>
-            <div style={{ ...labelStyle, marginBottom: '12px' }}>Transfer Content</div>
+            <div style={{ ...labelStyle, marginBottom: '12px' }}>Nội dung chuyển khoản</div>
             <div style={{ 
               fontSize: '28px', 
               fontWeight: 800, 
@@ -290,19 +290,19 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentDat
             {status === 'PENDING' && (
               <>
                 <span style={{ fontSize: '20px' }}>⏳</span>
-                Waiting for payment...
+                Đang chờ thanh toán...
               </>
             )}
             {status === 'ACTIVE' && (
               <>
                 <span style={{ fontSize: '20px' }}>✅</span>
-                Payment confirmed!
+                Thanh toán thành công!
               </>
             )}
             {status === 'FAILED' && (
               <>
                 <span style={{ fontSize: '20px' }}>❌</span>
-                Payment failed.
+                Thanh toán thất bại.
               </>
             )}
           </div>

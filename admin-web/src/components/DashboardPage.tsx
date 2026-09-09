@@ -49,11 +49,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentSession, on
 
       {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', margin: '24px 0' }}>
-        <StatCard label="Tài khoản Admin" value={data?.admins} sub="SUPER_ADMIN · ADMIN · MODERATOR" accent="#a78bfa" onClick={() => onNavigateTab('admins')} />
-        <StatCard label="Nông trại" value={farms.TOTAL} sub={`Chờ duyệt: ${farms.PENDING ?? 0} · Hoạt động: ${farms.APPROVED ?? 0}`} accent="#34d399" onClick={() => onNavigateTab('farms')} />
-        <StatCard label="Sản phẩm" value={products.TOTAL} sub={`Đang bán: ${products.ACTIVE ?? 0} · Chờ duyệt: ${products.PENDING_REVIEW ?? 0}`} accent="#38bdf8" onClick={() => onNavigateTab('products')} />
-        <StatCard label="Đơn hàng" value={orders.TOTAL} sub={`Vận chuyển: ${orders.SHIPPING ?? 0} · Hoàn thành: ${orders.COMPLETED ?? 0}`} accent="#fbbf24" />
-        <StatCard label="Báo cáo người dùng" value={reports.TOTAL} sub={`Mới: ${reports.OPEN ?? 0} · Đang xử lý: ${reports.IN_PROGRESS ?? 0}`} accent="#f87171" onClick={() => onNavigateTab('reports')} />
+        <StatCard label="Tài khoản Admin" value={data?.admins} sub="SUPER_ADMIN, ADMIN, MODERATOR" accent="#a78bfa" onClick={() => onNavigateTab('admins')} />
+        <StatCard label="Nông trại" value={farms.TOTAL} sub={`Chờ duyệt: ${farms.PENDING ?? 0}, Hoạt động: ${farms.APPROVED ?? 0}`} accent="#34d399" onClick={() => onNavigateTab('farms')} />
+        <StatCard label="Sản phẩm" value={products.TOTAL} sub={`Đang bán: ${products.ACTIVE ?? 0}, Chờ duyệt: ${products.PENDING_REVIEW ?? 0}`} accent="#38bdf8" onClick={() => onNavigateTab('products')} />
+        <StatCard label="Đơn hàng" value={orders.TOTAL} sub={`Vận chuyển: ${orders.SHIPPING ?? 0}, Hoàn thành: ${orders.COMPLETED ?? 0}`} accent="#fbbf24" />
+        <StatCard label="Báo cáo người dùng" value={reports.TOTAL} sub={`Mới: ${reports.OPEN ?? 0}, Đang xử lý: ${reports.IN_PROGRESS ?? 0}`} accent="#f87171" onClick={() => onNavigateTab('reports')} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px', alignItems: 'start' }}>
@@ -69,7 +69,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentSession, on
             <div key={f.id} style={rowStyle}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: '13px', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{f.ownerName || '—'} · {formatDate(f.createdAt)} · {f.certificationCount > 0 ? `${f.certificationCount} chứng nhận` : 'Thiếu hồ sơ ⚠️'}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{f.ownerName || '—'}, {formatDate(f.createdAt)}, {f.certificationCount > 0 ? `${f.certificationCount} chứng nhận` : 'Thiếu hồ sơ ⚠️'}</div>
               </div>
               <StatusBadge status={f.status} />
             </div>

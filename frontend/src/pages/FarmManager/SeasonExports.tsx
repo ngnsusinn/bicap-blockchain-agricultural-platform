@@ -48,7 +48,7 @@ export default function SeasonExports({ farmId }: { farmId?: number }) {
 
   return <div>
     <h1 className="dashboard-title">Xuất kho & QR truy xuất</h1>
-    <p className="dashboard-subtitle">BICAP-16/17 · Mỗi lần xuất tạo một mã QR riêng sau khi ghi nhận blockchain.</p>
+    <p className="dashboard-subtitle">Mỗi lần xuất tạo một mã QR riêng sau khi ghi nhận blockchain.</p>
     {error && <div style={alertStyle}>{error}</div>}
     <div style={gridStyle}>
       <form className="glass-panel" style={panelStyle} onSubmit={submit}>
@@ -73,7 +73,7 @@ export default function SeasonExports({ farmId }: { farmId?: number }) {
         {!items.length && <p style={{color:'#94a3b8'}}>Chưa có lần xuất kho nào.</p>}
         {items.map(item=><article key={item.id} style={cardStyle}>
           <div style={{display:'flex',justifyContent:'space-between',gap:12}}><strong>Lô xuất #{item.id}</strong><span style={badgeStyle(item.status)}>{item.status}</span></div>
-          <p>Mùa vụ #{item.seasonId} · {item.quantity} {item.unit}</p><p>{item.exportDate} · {item.warehouse}</p>
+          <p>Mùa vụ #{item.seasonId}, {item.quantity} {item.unit}</p><p>{item.exportDate}, {item.warehouse}</p>
           {item.transactionHash && <p style={hashStyle}>TX: {item.transactionHash}</p>}
           {item.qrImage && <div style={{display:'flex',alignItems:'center',gap:16}}><img src={item.qrImage} alt={`QR lô ${item.id}`} width="112" height="112"/>
             <div><a href={`/trace/${item.traceHash}`} target="_blank" rel="noreferrer" style={{color:'#34d399'}}>Mở trang truy xuất</a><br/>

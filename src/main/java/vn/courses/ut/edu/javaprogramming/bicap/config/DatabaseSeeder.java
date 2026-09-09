@@ -1,38 +1,39 @@
 package vn.courses.ut.edu.javaprogramming.bicap.config;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Category;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Driver;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmCertification;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmStatus;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmingSeason;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Permission;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Product;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Role;
-import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
-import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
-import vn.courses.ut.edu.javaprogramming.bicap.repository.CategoryRepository;
-import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmCertificationRepository;
-import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
-import vn.courses.ut.edu.javaprogramming.bicap.repository.PermissionRepository;
-import vn.courses.ut.edu.javaprogramming.bicap.repository.RoleRepository;
-import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
-import vn.courses.ut.edu.javaprogramming.bicap.repository.ServicePackageRepository;
-import vn.courses.ut.edu.javaprogramming.bicap.repository.SubscriptionRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.ServicePackage;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Subscription;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.SubscriptionStatus;
-import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmingSeason;
-import vn.courses.ut.edu.javaprogramming.bicap.entity.Product;
-import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepository;
-import vn.courses.ut.edu.javaprogramming.bicap.repository.ProductRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.CategoryRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.DriverRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
-
-import java.time.LocalDate;
-import java.math.BigDecimal;
-import java.util.HashSet;
-import java.util.Set;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmCertificationRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.PermissionRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.ProductRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.RoleRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.ServicePackageRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.SubscriptionRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
 
 @Component
 @SuppressWarnings("null")
@@ -268,26 +269,76 @@ public class DatabaseSeeder implements CommandLineRunner {
     }
 
     private void seedSubscription(Long farmId) {
-        ServicePackage sp = servicePackageRepository.findAll().stream().findFirst().orElseGet(() -> {
-            ServicePackage newSp = new ServicePackage();
-            newSp.setName("Goi Dich Vu Co Ban");
-            newSp.setDescription("Goi co ban cho moi trang trai");
-            newSp.setPrice(new BigDecimal("100000"));
-            newSp.setDurationDays(365);
-            newSp.setStatus("ACTIVE");
-            return servicePackageRepository.save(newSp);
-        });
+        // Seed 3-tier packages idempotently
+        seedServicePackage(
+            "Gói Cơ Bản",
+            "Phù hợp cho trang trại nhỏ đang bắt đầu số hoá quy trình sản xuất.",
+            new BigDecimal("500000"), 365,
+            "[\"Quản lý 1 mùa vụ\",\"Ghi nhật ký quy trình (tối đa 10 bước)\",\"Xuất kho & tạo mã QR\",\"Truy xuất nguồn gốc cơ bản\",\"Hỗ trợ email\"]",
+            "ACTIVE");
+        ServicePackage pro = seedServicePackage(
+            "Gói Chuyên Nghiệp",
+            "Dành cho trang trại đang mở rộng với nhiều mùa vụ và đối tác bán lẻ.",
+            new BigDecimal("1500000"), 365,
+            "[\"Không giới hạn mùa vụ\",\"Ghi nhật ký quy trình không giới hạn\",\"Xuất kho & mã QR Blockchain VeChainThor\",\"Tích hợp cảm biến IoT cơ bản\",\"Quản lý đơn hàng & nhà bán lẻ\",\"Theo dõi vận chuyển\",\"Báo cáo phân tích\",\"Hỗ trợ ưu tiên 24/7\"]",
+            "ACTIVE");
+        seedServicePackage(
+            "Gói Doanh Nghiệp",
+            "Giải pháp toàn diện cho HTX và trang trại quy mô lớn cần tích hợp sâu Blockchain.",
+            new BigDecimal("5000000"), 365,
+            "[\"Tất cả tính năng Chuyên Nghiệp\",\"Dashboard IoT nâng cao (nhiệt độ, độ ẩm, pH)\",\"Ghi dữ liệu tự động lên Blockchain VeChainThor\",\"Phân tích nâng cao & báo cáo tùy chỉnh\",\"API tích hợp bên thứ ba\",\"Quản lý đa nông trại\",\"Dedicated Account Manager\",\"SLA 99.9% uptime\"]",
+            "ACTIVE");
 
-        boolean exists = subscriptionRepository.findByFarmIdAndStatus(farmId, SubscriptionStatus.ACTIVE).isPresent();
-        if (!exists) {
+        // Ensure the demo farm always has the Professional package.
+        Subscription activeSubscription = subscriptionRepository
+                .findByFarmIdAndStatus(farmId, SubscriptionStatus.ACTIVE)
+                .orElse(null);
+        if (activeSubscription == null) {
             Subscription sub = new Subscription();
             sub.setFarmId(farmId);
-            sub.setPackageId(sp.getId());
+            sub.setPackageId(pro.getId());
             sub.setStartDate(LocalDate.now());
             sub.setEndDate(LocalDate.now().plusDays(365));
             sub.setStatus(SubscriptionStatus.ACTIVE);
             subscriptionRepository.save(sub);
+        } else if (!pro.getId().equals(activeSubscription.getPackageId())
+                || activeSubscription.getEndDate() == null
+                || activeSubscription.getStartDate() == null
+                || !activeSubscription.getEndDate().equals(activeSubscription.getStartDate().plusDays(365))) {
+            activeSubscription.setPackageId(pro.getId());
+            LocalDate startDate = activeSubscription.getStartDate() == null
+                    ? LocalDate.now()
+                    : activeSubscription.getStartDate();
+            activeSubscription.setStartDate(startDate);
+            activeSubscription.setEndDate(startDate.plusDays(365));
+            subscriptionRepository.save(activeSubscription);
         }
+    }
+
+    /** Idempotent: creates a ServicePackage only if a package with the same name does not exist. */
+    private ServicePackage seedServicePackage(String name, String description,
+                                               java.math.BigDecimal price, int durationDays,
+                                               String features, String status) {
+                return servicePackageRepository.findAll().stream()
+                .filter(p -> name.equals(p.getName()))
+                .findFirst()
+                                .map(existing -> {
+                                        if (existing.getDurationDays() != durationDays) {
+                                                existing.setDurationDays(durationDays);
+                                                return servicePackageRepository.save(existing);
+                                        }
+                                        return existing;
+                                })
+                                .orElseGet(() -> {
+                    ServicePackage sp = new ServicePackage();
+                    sp.setName(name);
+                    sp.setDescription(description);
+                    sp.setPrice(price);
+                    sp.setDurationDays(durationDays);
+                    sp.setFeatures(features);
+                    sp.setStatus(status);
+                    return servicePackageRepository.save(sp);
+                });
     }
 
     /**

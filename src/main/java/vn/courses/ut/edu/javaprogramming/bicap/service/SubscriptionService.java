@@ -1,10 +1,19 @@
 package vn.courses.ut.edu.javaprogramming.bicap.service;
 
+import java.math.BigDecimal;
+import java.security.SecureRandom;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.courses.ut.edu.javaprogramming.bicap.config.SepayConfig;
+
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.CurrentUser;
+import vn.courses.ut.edu.javaprogramming.bicap.config.SepayConfig;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.PaymentStatusResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.PurchasePackageRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.PurchasePackageResponse;
@@ -21,13 +30,6 @@ import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundExcepti
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ServicePackageRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.SubscriptionRepository;
-
-import java.math.BigDecimal;
-import java.security.SecureRandom;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -118,6 +120,55 @@ public class SubscriptionService {
                 .flatMap(f -> subscriptionRepository.findByFarmId(f.getId()).stream())
                 .collect(Collectors.toList());
         return toResponses(subscriptions);
+    }
+
+    /**
+     * Cancels an ACTIVE or PENDING_PAYMENT subscription owned by the authenticated user.
+     * Cancelling an ACTIVE subscription ends access immediately and allows a new purchase.
+     */
+    public void cancelSubscription(Long subscriptionId) {
+        Subscription sub = subscriptionRepository.findById(subscriptionId)
+            .orElseThrow(() -> new ResourceNotFoundException("Subscription not found: " + subscriptionId));
+        cancelOwnedSubscription(sub, CurrentUser.get());
+        }
+
+        /** Cancels the current user's active or pending subscription without relying on a client ID. */
+        public void cancelCurrentSubscription() {
+        User actor = CurrentUser.get();
+        Subscription sub = findCurrentOwnedSubscription(actor)
+            .orElseThrow(() -> new ResourceNotFoundException("No active or pending subscription found"));
+        cancelOwnedSubscription(sub, actor);
+        }
+
+        private void cancelOwnedSubscription(Subscription sub, User actor) {
+        if (sub.getStatus() != SubscriptionStatus.PENDING_PAYMENT
+                && sub.getStatus() != SubscriptionStatus.ACTIVE) {
+            throw new BadRequestException(
+                    "Only ACTIVE or PENDING_PAYMENT subscriptions can be cancelled (current: " + sub.getStatus() + ")");
+        }
+        // Ownership check: farm must belong to the current user
+        if (!CurrentUser.isAdminView(actor)) {
+            Farm farm = farmRepository.findById(sub.getFarmId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Farm not found: " + sub.getFarmId()));
+            if (!farm.getUserId().equals(actor.getId())) {
+                throw new ForbiddenException("You do not have access to this subscription");
+            }
+        }
+        sub.setStatus(SubscriptionStatus.CANCELLED);
+        subscriptionRepository.save(sub);
+    }
+
+    private Optional<Subscription> findCurrentOwnedSubscription(User actor) {
+        if (CurrentUser.isAdminView(actor)) {
+            return Optional.empty();
+        }
+        return farmRepository.findByUserId(actor.getId()).stream()
+                .map(Farm::getId)
+                .map(farmId -> subscriptionRepository.findByFarmIdAndStatus(farmId, SubscriptionStatus.ACTIVE)
+                        .or(() -> subscriptionRepository.findByFarmIdAndStatus(
+                                farmId, SubscriptionStatus.PENDING_PAYMENT)))
+                .flatMap(Optional::stream)
+                .findFirst();
     }
 
     @Transactional(readOnly = true)

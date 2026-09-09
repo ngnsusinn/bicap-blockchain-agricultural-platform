@@ -35,8 +35,8 @@ services:
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5174}
       - UPLOAD_DIR=${UPLOAD_DIR:-uploads}
       - SEPAY_API_KEY=${SEPAY_API_KEY}
-      - SEPAY_ACCOUNT_NO=${SEPAY_ACCOUNT_NO:-123456789}
-      - SEPAY_BANK_NAME=${SEPAY_BANK_NAME:-MBBank}
+      - SEPAY_ACCOUNT_NO=${SEPAY_ACCOUNT_NO:-0362600223}
+      - SEPAY_BANK_NAME=${SEPAY_BANK_NAME:-VietinBank}
     volumes:
       - bicap-uploads:/app/uploads
     healthcheck:

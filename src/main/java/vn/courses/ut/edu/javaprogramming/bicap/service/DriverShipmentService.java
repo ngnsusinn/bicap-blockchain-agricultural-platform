@@ -13,7 +13,10 @@ import vn.courses.ut.edu.javaprogramming.bicap.dto.ShipmentResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.TrackingAddRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.TrackingResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Driver;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmingSeason;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Order;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Product;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Shipment;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.ShipmentTracking;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
@@ -22,7 +25,10 @@ import vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ForbiddenException;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.DriverRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.OrderRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.ProductRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ShipmentRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ShipmentTrackingRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
@@ -54,6 +60,9 @@ public class DriverShipmentService {
     private final DriverRepository          driverRepository;
     private final VehicleRepository         vehicleRepository;
     private final UserRepository            userRepository;
+    private final ProductRepository         productRepository;
+    private final FarmingSeasonRepository   seasonRepository;
+    private final FarmRepository            farmRepository;
     private final NotificationService       notificationService;
 
     public DriverShipmentService(ShipmentRepository shipmentRepository,
@@ -62,6 +71,9 @@ public class DriverShipmentService {
                                  DriverRepository driverRepository,
                                  VehicleRepository vehicleRepository,
                                  UserRepository userRepository,
+                                 ProductRepository productRepository,
+                                 FarmingSeasonRepository seasonRepository,
+                                 FarmRepository farmRepository,
                                  NotificationService notificationService) {
         this.shipmentRepository  = shipmentRepository;
         this.trackingRepository  = trackingRepository;
@@ -69,6 +81,9 @@ public class DriverShipmentService {
         this.driverRepository    = driverRepository;
         this.vehicleRepository   = vehicleRepository;
         this.userRepository      = userRepository;
+        this.productRepository   = productRepository;
+        this.seasonRepository    = seasonRepository;
+        this.farmRepository      = farmRepository;
         this.notificationService = notificationService;
     }
 
@@ -200,7 +215,7 @@ public class DriverShipmentService {
             });
         }
 
-        // Transition order to DELIVERED and notify retailer
+        // Transition order to DELIVERED and notify retailer + farm manager (BICAP-61)
         orderRepository.findById(shipment.getOrderId()).ifPresent(order -> {
             order.setStatus(Order.STATUS_DELIVERED);
             order.setDeliveredAt(LocalDateTime.now());
@@ -212,6 +227,27 @@ public class DriverShipmentService {
                         "Đơn hàng #" + order.getId()
                                 + " đã được giao thành công. Vui lòng xác nhận đã nhận hàng.",
                         false);
+            }
+
+            // Notify Farm Manager that their goods were delivered (BICAP-61)
+            if (order.getProductId() != null) {
+                productRepository.findById(order.getProductId()).ifPresent(product -> {
+                    if (product.getSeasonId() != null) {
+                        seasonRepository.findById(product.getSeasonId()).ifPresent(season -> {
+                            if (season.getFarmId() != null) {
+                                farmRepository.findById(season.getFarmId()).ifPresent(farm -> {
+                                    if (farm.getUserId() != null) {
+                                        notificationService.sendNotification(farm.getUserId(), "SUCCESS",
+                                                "Hàng của bạn đã được giao thành công",
+                                                "Sản phẩm từ đơn hàng #" + order.getId()
+                                                        + " đã được giao đến nhà bán lẻ.",
+                                                false);
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
             }
         });
 

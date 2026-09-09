@@ -100,7 +100,7 @@ export default function Retailers() {
 
         <h1 className="dashboard-title" style={{ marginTop: 12 }}>{r.businessName || r.retailerName}</h1>
         <p className="dashboard-subtitle">
-          BICAP-21 · Nhà bán lẻ đã ký hợp đồng · Thông tin chi tiết và lịch sử giao dịch.
+          Nhà bán lẻ đã ký hợp đồng. Thông tin chi tiết và lịch sử giao dịch.
         </p>
 
         {error && <div style={alertStyle}>{error}</div>}
@@ -137,7 +137,7 @@ export default function Retailers() {
           <div style={infoCellStyle}>
             <span style={infoLabelStyle}>Tổng kết giao dịch</span>
             <div style={{ color: '#34d399', fontSize: 14, fontWeight: 700 }}>
-              {fmt(r.totalSpent)} ₫ · {r.totalOrders} đơn
+              {fmt(r.totalSpent)} ₫, {r.totalOrders} đơn
             </div>
             <div style={{ fontSize: 12, color: '#94a3b8' }}>
               {r.lastOrderAt ? `Giao dịch cuối: ${new Date(r.lastOrderAt).toLocaleDateString('vi-VN')}` : ''}
@@ -164,7 +164,7 @@ export default function Retailers() {
                         <span style={{ fontSize: 11, color: meta.color, marginLeft: 10, border: `1px solid ${meta.color}55`, padding: '2px 8px', borderRadius: 10 }}>{meta.label}</span>
                       </div>
                       <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-                        #{t.orderId} · {t.farmName || `Nông trại #${t.farmId}`} · {t.createdAt ? new Date(t.createdAt).toLocaleString('vi-VN') : ''}
+                        #{t.orderId}, {t.farmName || `Nông trại #${t.farmId}`}, {t.createdAt ? new Date(t.createdAt).toLocaleString('vi-VN') : ''}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
@@ -185,7 +185,7 @@ export default function Retailers() {
     <div>
       <h1 className="dashboard-title">Nhà bán lẻ đã ký hợp đồng</h1>
       <p className="dashboard-subtitle">
-        BICAP-21 · Xem thông tin chi tiết của các Nhà bán lẻ đã có giao dịch với nông trại của bạn
+        Xem thông tin chi tiết của các Nhà bán lẻ đã có giao dịch với nông trại của bạn
         (tên, địa chỉ, giấy phép kinh doanh, lịch sử giao dịch) để đánh giá đối tác.
       </p>
 
@@ -215,7 +215,7 @@ export default function Retailers() {
                     </span>
                   </div>
                   <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-                    {r.retailerName ? `Người đại diện: ${r.retailerName} · ` : ''}{r.retailerEmail}
+                    {r.retailerName ? `Người đại diện: ${r.retailerName}, ` : ''}{r.retailerEmail}
                   </div>
                   {r.retailerAddress && <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>📍 {r.retailerAddress}</div>}
                 </div>

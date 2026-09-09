@@ -108,7 +108,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentSession, onToas
       <div>
         <h1 className="dashboard-title">Báo Cáo Từ Người Dùng</h1>
         <p className="dashboard-subtitle">
-          Tiếp nhận và xử lý khiếu nại / phản hồi / sự cố từ Nông trại, Nhà bán lẻ, Vận chuyển (BICAP-27).
+          Tiếp nhận và xử lý khiếu nại / phản hồi / sự cố từ Nông trại, Nhà bán lẻ, Vận chuyển.
         </p>
       </div>
 
@@ -187,8 +187,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentSession, onToas
               <div>
                 <h2 style={{ margin: 0, color: '#fff', fontSize: '19px', fontWeight: 700 }}>{selected.subject}</h2>
                 <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
-                  {TYPE_LABELS[selected.type] || selected.type} · từ {selected.reporterName || `#${selected.reporterId}`} ({selected.reporterRole})
-                  {selected.relatedOrderId ? ` · Đơn #${selected.relatedOrderId}` : ''}
+                  {TYPE_LABELS[selected.type] || selected.type}, từ {selected.reporterName || `#${selected.reporterId}`} ({selected.reporterRole})
+                  {selected.relatedOrderId ? `, Đơn #${selected.relatedOrderId}` : ''}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

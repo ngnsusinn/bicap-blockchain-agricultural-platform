@@ -113,7 +113,7 @@ export default function Seasons({ farmId }: { farmId?: number }) {
   return (
     <div>
       <h1 className="dashboard-title">Quản lý mùa vụ</h1>
-      <p className="dashboard-subtitle">BICAP-12→15 · Tạo mùa vụ, cập nhật quy trình sản xuất và ghi dữ liệu lên Blockchain.</p>
+      <p className="dashboard-subtitle">Tạo mùa vụ, cập nhật quy trình sản xuất và ghi dữ liệu lên Blockchain.</p>
       {error && <div style={alertStyle}>{error}</div>}
       {notice && <div style={successStyle}>{notice}</div>}
 
@@ -147,7 +147,7 @@ export default function Seasons({ farmId }: { farmId?: number }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                 <strong>{s.name}</strong><span style={badgeStyle(s.status)}>{s.status}</span>
               </div>
-              <p style={{ margin: '6px 0' }}>{s.productType} · {s.variety} · {s.area} m²</p>
+              <p style={{ margin: '6px 0' }}>{s.productType}, {s.variety}, {s.area} m²</p>
               <p style={{ color: '#94a3b8', fontSize: 12 }}>{s.startDate}{s.endDate ? ` → ${s.endDate}` : ''}</p>
               {s.txHash && <p style={hashStyle}>TX: {s.txHash}</p>}
             </article>
