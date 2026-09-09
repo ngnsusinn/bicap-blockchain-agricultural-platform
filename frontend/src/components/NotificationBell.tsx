@@ -23,10 +23,9 @@ export default function NotificationBell() {
   useEffect(() => {
     if (!user) return;
 
-    // Fetch initial notifications
     const fetchNotifications = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/notifications/user/${user.id}`, {
+        const res = await fetch(`${API_BASE_URL}/notifications`, {
           headers: getAuthHeaders(),
         });
         if (res.ok) {
@@ -41,8 +40,11 @@ export default function NotificationBell() {
 
     fetchNotifications();
 
-    // Set up SSE
-    const sseUrl = `${API_BASE_URL}/notifications/stream/${user.id}`;
+    // EventSource cannot send Authorization headers — JWT via ?token= (JwtAuthenticationFilter)
+    const token = localStorage.getItem('accessToken');
+    const sseUrl = token
+      ? `${API_BASE_URL}/notifications/stream?token=${encodeURIComponent(token)}`
+      : `${API_BASE_URL}/notifications/stream`;
     const eventSource = new EventSource(sseUrl);
 
     eventSource.addEventListener('notification', (event) => {
@@ -57,7 +59,6 @@ export default function NotificationBell() {
 
     eventSource.onerror = (err) => {
       console.error("SSE Error:", err);
-      // EventSource automatically reconnects
     };
 
     return () => {

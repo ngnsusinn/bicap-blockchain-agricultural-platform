@@ -16,6 +16,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Order> findByDepositCode(String depositCode);
     List<Order> findByStatusAndAcceptedAtBefore(String status, LocalDateTime deadline);
 
+    /** BICAP-51 BR2: DELIVERED orders past the 48h confirmation window. */
+    List<Order> findByStatusAndDeliveredAtBefore(String status, LocalDateTime deadline);
+
     /**
      * Orders placed against products grown on farms owned by {@code userId} (BICAP-20).
      * The farm is resolved through Order → Product → FarmingSeason → Farm via explicit

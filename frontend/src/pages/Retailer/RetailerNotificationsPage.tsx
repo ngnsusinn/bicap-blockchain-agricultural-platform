@@ -66,7 +66,8 @@ export default function RetailerNotificationsPage() {
     const token = localStorage.getItem('accessToken');
     if (!token) return;
 
-    const sseUrl = `${API_BASE_URL}/notifications/stream`;
+    // EventSource cannot send Authorization headers — JWT via ?token=
+    const sseUrl = `${API_BASE_URL}/notifications/stream?token=${encodeURIComponent(token)}`;
     const es = new EventSource(sseUrl);
     eventSourceRef.current = es;
 
@@ -126,7 +127,7 @@ export default function RetailerNotificationsPage() {
         <div>
           <h1 style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 700 }}>Thông Báo</h1>
           <p style={{ margin: 0, color: '#94a3b8', fontSize: 13 }}>
-            BICAP-47 · Nhận thông báo từ Farm Manager và Shipper về đơn hàng của bạn.
+            Nhận cập nhật từ Farm Manager và người vận chuyển (đang giao, đã giao, sự cố).
           </p>
         </div>
         {unreadCount > 0 && (

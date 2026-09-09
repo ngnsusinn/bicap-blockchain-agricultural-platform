@@ -20,8 +20,10 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepositor
 import vn.courses.ut.edu.javaprogramming.bicap.repository.OrderRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ProductRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.service.LocalFileStorageService;
 import vn.courses.ut.edu.javaprogramming.bicap.service.NotificationService;
 import vn.courses.ut.edu.javaprogramming.bicap.service.OrderService;
+import vn.courses.ut.edu.javaprogramming.bicap.service.ReportService;
 
 import java.math.BigDecimal;
 import java.util.HashSet;
@@ -50,6 +52,10 @@ class OrderServiceTest {
     private FarmRepository farmRepository;
     @Mock
     private NotificationService notificationService;
+    @Mock
+    private LocalFileStorageService fileStorage;
+    @Mock
+    private ReportService reportService;
 
     @InjectMocks
     private OrderService orderService;
@@ -70,7 +76,8 @@ class OrderServiceTest {
                 .build();
         // Rebuild with the real SepayConfig via constructor to keep the injected mocks.
         orderService = new OrderService(orderRepository, userRepository, sepayConfig,
-                productRepository, seasonRepository, farmRepository, notificationService);
+                productRepository, seasonRepository, farmRepository, notificationService,
+                fileStorage, reportService);
     }
 
     private Order orderOwnedByRetailer() {
