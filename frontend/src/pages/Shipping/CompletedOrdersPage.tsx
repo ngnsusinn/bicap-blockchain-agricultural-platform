@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react';
 import { API_BASE_URL, getAuthHeaders } from '../../utils/auth';
 import {
-  panelStyle, titleStyle, cardStyle, badgeStyle, alertStyle, buttonStyle,
+  panelStyle, cardStyle, badgeStyle, alertStyle, buttonStyle,
 } from '../FarmManager/ui';
 
 type CompletedOrder = {

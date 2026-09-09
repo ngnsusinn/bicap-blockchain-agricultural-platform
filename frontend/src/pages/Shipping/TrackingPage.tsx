@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { API_BASE_URL, getAuthHeaders } from '../../utils/auth';
 import {
   panelStyle, titleStyle, badgeStyle, alertStyle, inputStyle, buttonStyle,
-  secondaryButtonStyle, cardStyle,
+  secondaryButtonStyle,
 } from '../FarmManager/ui';
 
 type TrackingPoint = {

@@ -212,7 +212,7 @@ const ShippingManagerPortal: React.FC<ShippingPortalProps> = ({ user, onLogout }
     setTab('shipments');
   };
 
-  const handleTrack = (shipment: ShipmentForTracking) => {
+  const handleTrack = (_shipment: ShipmentForTracking) => {
     setTab('tracking');
   };
 
