@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { API_BASE_URL } from '../../utils/auth';
 
-export type AuthRole = 'FARM_MANAGER' | 'RETAILER' | 'ADMIN';
+export type AuthRole = 'FARM_MANAGER' | 'RETAILER' | 'ADMIN' | 'SHIPPING_MGR';
 
 interface LoginFormProps {
   role: AuthRole;
@@ -13,12 +13,14 @@ const THEME: Record<AuthRole, { accent: string; accent2: string; grad: string; l
   FARM_MANAGER: { accent: '#10b981', accent2: '#34d399', grad: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', label: 'Farm Portal', title: 'Chủ Trang Trại (Farm Manager)' },
   RETAILER: { accent: '#06b6d4', accent2: '#38bdf8', grad: 'linear-gradient(135deg, #0284c7 0%, #06b6d4 100%)', label: 'Retailer Portal', title: 'Nhà Bán Lẻ (Retailer)' },
   ADMIN: { accent: '#8b5cf6', accent2: '#a78bfa', grad: 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)', label: 'Admin Portal', title: 'Quản Trị Viên (Admin)' },
+  SHIPPING_MGR: { accent: '#0284c7', accent2: '#38bdf8', grad: 'linear-gradient(135deg, #0369a1 0%, #0284c7 100%)', label: 'Shipping Portal', title: 'Quản Lý Vận Chuyển' },
 };
 
 const ENDPOINT: Record<AuthRole, string> = {
   FARM_MANAGER: '/auth/farm/login',
   RETAILER: '/auth/retailer/login',
   ADMIN: '/auth/admin/login',
+  SHIPPING_MGR: '/auth/shipping/login',
 };
 
 // Tài khoản test đã được seed sẵn trong DatabaseSeeder — bấm để điền nhanh.
@@ -35,6 +37,9 @@ const TEST_ACCOUNTS: Record<AuthRole, { id: string; pw: string; note: string }[]
     { id: 'superadmin@bicap.com', pw: 'Superadmin@2026', note: 'Super Admin (toàn quyền)' },
     { id: 'admin@bicap.com', pw: 'Adminpassword@2026', note: 'Admin (đọc/ghi)' },
     { id: 'moderator@bicap.com', pw: 'Moderator@2026', note: 'Moderator (chỉ đọc)' },
+  ],
+  SHIPPING_MGR: [
+    { id: 'shipping_mgr@bicap.com', pw: 'Shipping@2026', note: 'Quản lý vận chuyển' },
   ],
 };
 

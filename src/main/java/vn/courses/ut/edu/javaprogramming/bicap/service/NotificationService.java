@@ -1,8 +1,10 @@
 package vn.courses.ut.edu.javaprogramming.bicap.service;
 
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import vn.courses.ut.edu.javaprogramming.bicap.dto.BroadcastNotificationRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.NotificationListResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.NotificationResponse;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * In-app notification service (BICAP-77 / SRS-API-006).
@@ -44,4 +46,6 @@ public interface NotificationService {
      * {@code sendEmail} is set, also emails the user.
      */
     void sendNotification(Long userId, String type, String title, String content, boolean sendEmail);
+
+    int broadcast(BroadcastNotificationRequest request);
 }
