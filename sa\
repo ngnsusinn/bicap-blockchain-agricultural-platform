@@ -1,0 +1,628 @@
+[1mdiff --git a/.env.example b/.env.example[m
+[1mindex 23b27fc..4409873 100644[m
+[1m--- a/.env.example[m
+[1m+++ b/.env.example[m
+[36m@@ -48,8 +48,8 @@[m [mUPLOAD_DIR=uploads[m
+ # ------------------------------------------------------------------------[m
+ # Payment Gateway (Sepay) — REQUIRED, the backend will not start without it.[m
+ # ------------------------------------------------------------------------[m
+[31m-SEPAY_ACCOUNT_NO=123456789[m
+[31m-SEPAY_BANK_NAME=MBBank[m
+[32m+[m[32mSEPAY_ACCOUNT_NO=0362600223[m
+[32m+[m[32mSEPAY_BANK_NAME=VietinBank[m
+ SEPAY_API_KEY=replace-with-your-real-sepay-api-key[m
+ [m
+ # ------------------------------------------------------------------------[m
+[1mdiff --git a/admin-web/src/App.tsx b/admin-web/src/App.tsx[m
+[1mindex 7611b78..da34e5e 100644[m
+[1m--- a/admin-web/src/App.tsx[m
+[1m+++ b/admin-web/src/App.tsx[m
+[36m@@ -12,6 +12,7 @@[m [mimport { FarmManagementPage } from './components/FarmManagementPage';[m
+ import { SmartContractPage } from './components/SmartContractPage';[m
+ import { ProductMonitoringPage } from './components/ProductMonitoringPage';[m
+ import { ReportsPage } from './components/ReportsPage';[m
+[32m+[m[32mimport { ServicePackagesPage } from './components/ServicePackagesPage';[m
+ import { Toast } from './components/Toast';[m
+ import type { ToastMessage } from './components/Toast';[m
+ import { API_ORIGIN } from './utils/api';[m
+[36m@@ -328,6 +329,10 @@[m [mexport default function App() {[m
+             <FarmManagementPage currentSession={currentSession!} onToast={showToast} />[m
+           )}[m
+ [m
+[32m+[m[32m          {currentPortal === 'admin' && currentTab === 'packages' && ([m
+[32m+[m[32m            <ServicePackagesPage currentSession={currentSession!} onToast={showToast} />[m
+[32m+[m[32m          )}[m
+[32m+[m
+           {currentPortal === 'admin' && currentTab === 'contracts' && ([m
+             <SmartContractPage currentSession={currentSession!} onToast={showToast} />[m
+           )}[m
+[36m@@ -498,7 +503,7 @@[m [mexport default function App() {[m
+       {/* Footer */}[m
+       <footer style={{ textAlign: 'center', padding: '48px 20px 32px', color: 'var(--text-muted)', fontSize: '12px' }}>[m
+         <p>© 2025 BICAP — Blockchain-Integrated Clean Agricultural Platform</p>[m
+[31m-        <p style={{ marginTop: '4px' }}>UT Education · Java Programming · VeChainThor</p>[m
+[32m+[m[32m        <p style={{ marginTop: '4px' }}>UT Education, Java Programming, VeChainThor</p>[m
+       </footer>[m
+ [m
+       <Toast toasts={toasts} onClose={handleCloseToast} />[m
+[1mdiff --git a/admin-web/src/components/DashboardPage.tsx b/admin-web/src/components/DashboardPage.tsx[m
+[1mindex 4e2985a..45846c8 100644[m
+[1m--- a/admin-web/src/components/DashboardPage.tsx[m
+[1m+++ b/admin-web/src/components/DashboardPage.tsx[m
+[36m@@ -49,11 +49,11 @@[m [mexport const DashboardPage: React.FC<DashboardPageProps> = ({ currentSession, on[m
+ [m
+       {/* Stat cards */}[m
+       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', margin: '24px 0' }}>[m
+[31m-        <StatCard label="Tài khoản Admin" value={data?.admins} sub="SUPER_ADMIN · ADMIN · MODERATOR" accent="#a78bfa" onClick={() => onNavigateTab('admins')} />[m
+[31m-        <StatCard label="Nông trại" value={farms.TOTAL} sub={`Chờ duyệt: ${farms.PENDING ?? 0} · Hoạt động: ${farms.APPROVED ?? 0}`} accent="#34d399" onClick={() => onNavigateTab('farms')} />[m
+[31m-        <StatCard label="Sản phẩm" value={products.TOTAL} sub={`Đang bán: ${products.ACTIVE ?? 0} · Chờ duyệt: ${products.PENDING_REVIEW ?? 0}`} accent="#38bdf8" onClick={() => onNavigateTab('products')} />[m
+[31m-        <StatCard label="Đơn hàng" value={orders.TOTAL} sub={`Vận chuyển: ${orders.SHIPPING ?? 0} · Hoàn thành: ${orders.COMPLETED ?? 0}`} accent="#fbbf24" />[m
+[31m-        <StatCard label="Báo cáo người dùng" value={reports.TOTAL} sub={`Mới: ${reports.OPEN ?? 0} · Đang xử lý: ${reports.IN_PROGRESS ?? 0}`} accent="#f87171" onClick={() => onNavigateTab('reports')} />[m
+[32m+[m[32m        <StatCard label="Tài khoản Admin" value={data?.admins} sub="SUPER_ADMIN, ADMIN, MODERATOR" accent="#a78bfa" onClick={() => onNavigateTab('admins')} />[m
+[32m+[m[32m        <StatCard label="Nông trại" value={farms.TOTAL} sub={`Chờ duyệt: ${farms.PENDING ?? 0}, Hoạt động: ${farms.APPROVED ?? 0}`} accent="#34d399" onClick={() => onNavigateTab('farms')} />[m
+[32m+[m[32m        <StatCard label="Sản phẩm" value={products.TOTAL} sub={`Đang bán: ${products.ACTIVE ?? 0}, Chờ duyệt: ${products.PENDING_REVIEW ?? 0}`} accent="#38bdf8" onClick={() => onNavigateTab('products')} />[m
+[32m+[m[32m        <StatCard label="Đơn hàng" value={orders.TOTAL} sub={`Vận chuyển: ${orders.SHIPPING ?? 0}, Hoàn thành: ${orders.COMPLETED ?? 0}`} accent="#fbbf24" />[m
+[32m+[m[32m        <StatCard label="Báo cáo người dùng" value={reports.TOTAL} sub={`Mới: ${reports.OPEN ?? 0}, Đang xử lý: ${reports.IN_PROGRESS ?? 0}`} accent="#f87171" onClick={() => onNavigateTab('reports')} />[m
+       </div>[m
+ [m
+       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px', alignItems: 'start' }}>[m
+[36m@@ -69,7 +69,7 @@[m [mexport const DashboardPage: React.FC<DashboardPageProps> = ({ currentSession, on[m
+             <div key={f.id} style={rowStyle}>[m
+               <div style={{ minWidth: 0 }}>[m
+                 <div style={{ fontWeight: 600, fontSize: '13px', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</div>[m
+[31m-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{f.ownerName || '—'} · {formatDate(f.createdAt)} · {f.certificationCount > 0 ? `${f.certificationCount} chứng nhận` : 'Thiếu hồ sơ ⚠️'}</div>[m
+[32m+[m[32m                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{f.ownerName || '—'}, {formatDate(f.createdAt)}, {f.certificationCount > 0 ? `${f.certificationCount} chứng nhận` : 'Thiếu hồ sơ ⚠️'}</div>[m
+               </div>[m
+               <StatusBadge status={f.status} />[m
+             </div>[m
+[1mdiff --git a/admin-web/src/components/FarmManagementPage.tsx b/admin-web/src/components/FarmManagementPage.tsx[m
+[1mindex de96ceb..526ee73 100644[m
+[1m--- a/admin-web/src/components/FarmManagementPage.tsx[m
+[1m+++ b/admin-web/src/components/FarmManagementPage.tsx[m
+[36m@@ -416,7 +416,7 @@[m [mexport const FarmManagementPage: React.FC<FarmManagementPageProps> = ({ currentS[m
+                       <div style={{ minWidth: 0 }}>[m
+                         <div style={{ fontWeight: 600, fontSize: '13px', color: '#fff' }}>{s.name}</div>[m
+                         <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>[m
+[31m-                          {s.productType} · {s.variety}{s.area ? ` · ${s.area} ha` : ''} · {formatDate(s.startDate)}{s.endDate ? ` → ${formatDate(s.endDate)}` : ''}[m
+[32m+[m[32m                          {s.productType}, {s.variety}{s.area ? `, ${s.area} ha` : ''}, {formatDate(s.startDate)}{s.endDate ? ` → ${formatDate(s.endDate)}` : ''}[m
+                         </div>[m
+                       </div>[m
+                       <span[m
+[1mdiff --git a/admin-web/src/components/LoginPage.tsx b/admin-web/src/components/LoginPage.tsx[m
+[1mindex b516a78..fa1e865 100644[m
+[1m--- a/admin-web/src/components/LoginPage.tsx[m
+[1m+++ b/admin-web/src/components/LoginPage.tsx[m
+[36m@@ -336,7 +336,7 @@[m [mexport const LoginPage: React.FC<LoginPageProps> = ({[m
+                       onClick={() => { setIdentifier(a.id); setPassword(a.pw); setErrorMsg(null); }}[m
+                       style={{ textAlign: 'left', cursor: 'pointer', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '8px 10px' }}[m
+                     >[m
+[31m-                      <div style={{ fontSize: '12px', color: '#fff', fontFamily: 'monospace' }}>{a.id} · {a.pw}</div>[m
+[32m+[m[32m                      <div style={{ fontSize: '12px', color: '#fff', fontFamily: 'monospace' }}>{a.id}, {a.pw}</div>[m
+                       <div style={{ fontSize: '11px', color: 'var(--text-muted, #94a3b8)' }}>{a.note}</div>[m
+                     </button>[m
+                   ))}[m
+[1mdiff --git a/admin-web/src/components/ProductMonitoringPage.tsx b/admin-web/src/components/ProductMonitoringPage.tsx[m
+[1mindex 6e4a6fc..f8fa0a4 100644[m
+[1m--- a/admin-web/src/components/ProductMonitoringPage.tsx[m
+[1m+++ b/admin-web/src/components/ProductMonitoringPage.tsx[m
+[36m@@ -389,7 +389,7 @@[m [mexport const ProductMonitoringPage: React.FC<ProductMonitoringPageProps> = ({ cu[m
+               <div>[m
+                 <h2 style={{ margin: 0, color: '#fff', fontSize: '20px', fontWeight: 700 }}>{selectedProduct.name}</h2>[m
+                 <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>[m
+[31m-                  {selectedProduct.categoryName || '—'} · {CURRENCY.format(selectedProduct.price)}[m
+[32m+[m[32m                  {selectedProduct.categoryName || '—'}, {CURRENCY.format(selectedProduct.price)}[m
+                 </p>[m
+               </div>[m
+               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>[m
+[1mdiff --git a/admin-web/src/components/ReportsPage.tsx b/admin-web/src/components/ReportsPage.tsx[m
+[1mindex 0e025bb..a07e9ed 100644[m
+[1m--- a/admin-web/src/components/ReportsPage.tsx[m
+[1m+++ b/admin-web/src/components/ReportsPage.tsx[m
+[36m@@ -108,7 +108,7 @@[m [mexport const ReportsPage: React.FC<ReportsPageProps> = ({ currentSession, onToas[m
+       <div>[m
+         <h1 className="dashboard-title">Báo Cáo Từ Người Dùng</h1>[m
+         <p className="dashboard-subtitle">[m
+[31m-          Tiếp nhận và xử lý khiếu nại / phản hồi / sự cố từ Nông trại, Nhà bán lẻ, Vận chuyển (BICAP-27).[m
+[32m+[m[32m          Tiếp nhận và xử lý khiếu nại / phản hồi / sự cố từ Nông trại, Nhà bán lẻ, Vận chuyển.[m
+         </p>[m
+       </div>[m
+ [m
+[36m@@ -187,8 +187,8 @@[m [mexport const ReportsPage: React.FC<ReportsPageProps> = ({ currentSession, onToas[m
+               <div>[m
+                 <h2 style={{ margin: 0, color: '#fff', fontSize: '19px', fontWeight: 700 }}>{selected.subject}</h2>[m
+                 <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>[m
+[31m-                  {TYPE_LABELS[selected.type] || selected.type} · từ {selected.reporterName || `#${selected.reporterId}`} ({selected.reporterRole})[m
+[31m-                  {selected.relatedOrderId ? ` · Đơn #${selected.relatedOrderId}` : ''}[m
+[32m+[m[32m                  {TYPE_LABELS[selected.type] || selected.type}, từ {selected.reporterName || `#${selected.reporterId}`} ({selected.reporterRole})[m
+[32m+[m[32m                  {selected.relatedOrderId ? `, Đơn #${selected.relatedOrderId}` : ''}[m
+                 </p>[m
+               </div>[m
+               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>[m
+[1mdiff --git a/admin-web/src/components/ServicePackagesPage.tsx b/admin-web/src/components/ServicePackagesPage.tsx[m
+[1mnew file mode 100644[m
+[1mindex 0000000..d4fc875[m
+[1m--- /dev/null[m
+[1m+++ b/admin-web/src/components/ServicePackagesPage.tsx[m
+[36m@@ -0,0 +1,333 @@[m
+[32m+[m[32m/**[m
+[32m+[m[32m * Admin: Quản lý gói dịch vụ (CRUD).[m
+[32m+[m[32m * Endpoints: GET/POST/PUT/DELETE /api/service-packages/admin/*[m
+[32m+[m[32m */[m
+[32m+[m[32mimport React, { useState, useEffect, useCallback } from 'react';[m
+[32m+[m[32mimport type { UserSession } from '../types';[m
+[32m+[m
+[32m+[m[32minterface ServicePackage {[m
+[32m+[m[32m  id: number;[m
+[32m+[m[32m  name: string;[m
+[32m+[m[32m  description: string;[m
+[32m+[m[32m  price: number;[m
+[32m+[m[32m  durationDays: number;[m
+[32m+[m[32m  features: string;[m
+[32m+[m[32m  status: string;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32minterface FormState {[m
+[32m+[m[32m  name: string;[m
+[32m+[m[32m  description: string;[m
+[32m+[m[32m  price: string;[m
+[32m+[m[32m  durationDays: string;[m
+[32m+[m[32m  features: string;   // raw JSON string edited in textarea[m
+[32m+[m[32m  status: string;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mconst EMPTY_FORM: FormState = {[m
+[32m+[m[32m  name: '', description: '', price: '', durationDays: '', features: '[]', status: 'ACTIVE',[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32mconst STATUS_STYLE: Record<string, React.CSSProperties> = {[m
+[32m+[m[32m  ACTIVE:   { color:'#6ee7b7', background:'rgba(16,185,129,.15)', border:'1px solid rgba(16,185,129,.35)' },[m
+[32m+[m[32m  INACTIVE: { color:'#fca5a5', background:'rgba(239,68,68,.1)',   border:'1px solid rgba(239,68,68,.3)'  },[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32minterface Props { currentSession: UserSession; onToast: (msg: string, type: 'success'|'error'|'info') => void; }[m
+[32m+[m
+[32m+[m[32mexport const ServicePackagesPage: React.FC<Props> = ({ currentSession, onToast }) => {[m
+[32m+[m[32m  const [packages, setPackages]   = useState<ServicePackage[]>([]);[m
+[32m+[m[32m  const [loading, setLoading]     = useState(true);[m
+[32m+[m[32m  const [editItem, setEditItem]   = useState<ServicePackage | null>(null); // null = create[m
+[32m+[m[32m  const [showForm, setShowForm]   = useState(false);[m
+[32m+[m[32m  const [form, setForm]           = useState<FormState>(EMPTY_FORM);[m
+[32m+[m[32m  const [busy, setBusy]           = useState(false);[m
+[32m+[m[32m  const [deleteId, setDeleteId]   = useState<number | null>(null);[m
+[32m+[m[32m  const [featuresError, setFeaturesError] = useState('');[m
+[32m+[m
+[32m+[m[32m  const apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api')[m
+[32m+[m[32m    .replace(/\/api(?:\/.*)?$/, '') + '/api';[m
+[32m+[m
+[32m+[m[32m  const token = localStorage.getItem('bicap_token') || '';[m
+[32m+[m[32m  const headers = {[m
+[32m+[m[32m    'Content-Type': 'application/json',[m
+[32m+[m[32m    'X-Actor-Email': currentSession.email,[m
+[32m+[m[32m    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const load = useCallback(async () => {[m
+[32m+[m[32m    setLoading(true);[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const res = await fetch(`${apiBase}/service-packages/admin/all`, { headers });[m
+[32m+[m[32m      if (!res.ok) throw new Error(`HTTP ${res.status}`);[m
+[32m+[m[32m      setPackages(await res.json());[m
+[32m+[m[32m    } catch (e: any) {[m
+[32m+[m[32m      onToast(e.message || 'Không tải được danh sách gói dịch vụ.', 'error');[m
+[32m+[m[32m    } finally {[m
+[32m+[m[32m      setLoading(false);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  // eslint-disable-next-line react-hooks/exhaustive-deps[m
+[32m+[m[32m  }, [apiBase]);[m
+[32m+[m
+[32m+[m[32m  useEffect(() => { load(); }, [load]);[m
+[32m+[m
+[32m+[m[32m  const openCreate = () => {[m
+[32m+[m[32m    setEditItem(null);[m
+[32m+[m[32m    setForm(EMPTY_FORM);[m
+[32m+[m[32m    setFeaturesError('');[m
+[32m+[m[32m    setShowForm(true);[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const openEdit = (pkg: ServicePackage) => {[m
+[32m+[m[32m    setEditItem(pkg);[m
+[32m+[m[32m    setForm({[m
+[32m+[m[32m      name: pkg.name, description: pkg.description,[m
+[32m+[m[32m      price: String(pkg.price), durationDays: String(pkg.durationDays),[m
+[32m+[m[32m      features: pkg.features || '[]', status: pkg.status,[m
+[32m+[m[32m    });[m
+[32m+[m[32m    setFeaturesError('');[m
+[32m+[m[32m    setShowForm(true);[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const validateFeatures = (raw: string): boolean => {[m
+[32m+[m[32m    try { JSON.parse(raw); setFeaturesError(''); return true; }[m
+[32m+[m[32m    catch { setFeaturesError('Features phải là JSON mảng hợp lệ, ví dụ: ["Tính năng 1","Tính năng 2"]'); return false; }[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const submitForm = async (e: React.FormEvent) => {[m
+[32m+[m[32m    e.preventDefault();[m
+[32m+[m[32m    if (!validateFeatures(form.features)) return;[m
+[32m+[m[32m    setBusy(true);[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const body = {[m
+[32m+[m[32m        name: form.name.trim(),[m
+[32m+[m[32m        description: form.description.trim(),[m
+[32m+[m[32m        price: form.price,[m
+[32m+[m[32m        durationDays: form.durationDays,[m
+[32m+[m[32m        features: form.features,[m
+[32m+[m[32m        status: form.status,[m
+[32m+[m[32m      };[m
+[32m+[m[32m      const url    = editItem ? `${apiBase}/service-packages/admin/${editItem.id}` : `${apiBase}/service-packages/admin`;[m
+[32m+[m[32m      const method = editItem ? 'PUT' : 'POST';[m
+[32m+[m[32m      const res = await fetch(url, { method, headers, body: JSON.stringify(body) });[m
+[32m+[m[32m      if (!res.ok) {[m
+[32m+[m[32m        const err = await res.json().catch(() => ({}));[m
+[32m+[m[32m        throw new Error(err.message || `HTTP ${res.status}`);[m
+[32m+[m[32m      }[m
+[32m+[m[32m      onToast(editItem ? 'Cập nhật gói thành công!' : 'Tạo gói dịch vụ mới thành công!', 'success');[m
+[32m+[m[32m      setShowForm(false);[m
+[32m+[m[32m      await load();[m
+[32m+[m[32m    } catch (e: any) {[m
+[32m+[m[32m      onToast(e.message || 'Lưu thất bại.', 'error');[m
+[32m+[m[32m    } finally {[m
+[32m+[m[32m      setBusy(false);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const doDelete = async () => {[m
+[32m+[m[32m    if (deleteId == null) return;[m
+[32m+[m[32m    setBusy(true);[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const res = await fetch(`${apiBase}/service-packages/admin/${deleteId}`, { method: 'DELETE', headers });[m
+[32m+[m[32m      if (!res.ok) {[m
+[32m+[m[32m        const err = await res.json().catch(() => ({}));[m
+[32m+[m[32m        throw new Error(err.message || `HTTP ${res.status}`);[m
+[32m+[m[32m      }[m
+[32m+[m[32m      onToast('Đã xoá (hoặc ẩn) gói dịch vụ.', 'success');[m
+[32m+[m[32m      setDeleteId(null);[m
+[32m+[m[32m      await load();[m
+[32m+[m[32m    } catch (e: any) {[m
+[32m+[m[32m      onToast(e.message || 'Xoá thất bại.', 'error');[m
+[32m+[m[32m    } finally {[m
+[32m+[m[32m      setBusy(false);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const parseFeatureList = (raw: string): string[] => {[m
+[32m+[m[32m    try { return JSON.parse(raw); }[m
+[32m+[m[32m    catch { return raw.split(',').map(s => s.trim()).filter(Boolean); }[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const canEdit = ['SUPER_ADMIN', 'ADMIN'].includes(currentSession.role);[m
+[32m+[m
+[32m+[m[32m  return ([m
+[32m+[m[32m    <div>[m
+[32m+[m[32m      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:16, marginBottom:24 }}>[m
+[32m+[m[32m        <div>[m
+[32m+[m[32m          <h1 className="dashboard-title">Gói Dịch Vụ</h1>[m
+[32m+[m[32m          <p className="dashboard-subtitle">Quản lý danh mục gói đăng ký cho Farm Manager.</p>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m        {canEdit && ([m
+[32m+[m[32m          <button[m
+[32m+[m[32m            onClick={openCreate}[m
+[32m+[m[32m            className="btn btn-primary"[m
+[32m+[m[32m            style={{ marginTop:8 }}[m
+[32m+[m[32m          >➕ Tạo gói mới</button>[m
+[32m+[m[32m        )}[m
+[32m+[m[32m      </div>[m
+[32m+[m
+[32m+[m[32m      {loading && <div style={{ padding:40, textAlign:'center', color:'#8b5cf6' }}>Đang tải…</div>}[m
+[32m+[m
+[32m+[m[32m      {!loading && packages.length === 0 && ([m
+[32m+[m[32m        <div className="glass-panel" style={{ padding:32, textAlign:'center', color:'#64748b' }}>[m
+[32m+[m[32m          Chưa có gói dịch vụ nào.[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      )}[m
+[32m+[m
+[32m+[m[32m      {/* Package cards */}[m
+[32m+[m[32m      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))', gap:20 }}>[m
+[32m+[m[32m        {packages.map(pkg => ([m
+[32m+[m[32m          <div key={pkg.id} className="glass-panel" style={{ padding:24, display:'flex', flexDirection:'column', gap:12 }}>[m
+[32m+[m[32m            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>[m
+[32m+[m[32m              <h3 style={{ margin:0, fontSize:18, fontWeight:700, color:'#fff' }}>{pkg.name}</h3>[m
+[32m+[m[32m              <span style={{[m
+[32m+[m[32m                padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:700,[m
+[32m+[m[32m                ...(STATUS_STYLE[pkg.status] || STATUS_STYLE['INACTIVE']),[m
+[32m+[m[32m              }}>{pkg.status}</span>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m            <p style={{ margin:0, fontSize:13, color:'#94a3b8', lineHeight:1.6 }}>{pkg.description}</p>[m
+[32m+[m[32m            <div style={{ display:'flex', gap:20, fontSize:13 }}>[m
+[32m+[m[32m              <span style={{ color:'#6ee7b7', fontWeight:700, fontSize:18 }}>[m
+[32m+[m[32m                {Number(pkg.price).toLocaleString('vi-VN')} ₫[m
+[32m+[m[32m              </span>[m
+[32m+[m[32m              <span style={{ color:'#64748b', alignSelf:'flex-end' }}>/ {pkg.durationDays} ngày</span>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m            {parseFeatureList(pkg.features).length > 0 && ([m
+[32m+[m[32m              <ul style={{ margin:0, padding:0, listStyle:'none', display:'flex', flexDirection:'column', gap:5 }}>[m
+[32m+[m[32m                {parseFeatureList(pkg.features).slice(0, 4).map((f, i) => ([m
+[32m+[m[32m                  <li key={i} style={{ fontSize:12, color:'#94a3b8', display:'flex', gap:8 }}>[m
+[32m+[m[32m                    <span style={{ color:'#8b5cf6' }}>✦</span>{f}[m
+[32m+[m[32m                  </li>[m
+[32m+[m[32m                ))}[m
+[32m+[m[32m                {parseFeatureList(pkg.features).length > 4 && ([m
+[32m+[m[32m                  <li style={{ fontSize:11, color:'#475569' }}>+{parseFeatureList(pkg.features).length - 4} tính năng khác…</li>[m
+[32m+[m[32m                )}[m
+[32m+[m[32m              </ul>[m
+[32m+[m[32m            )}[m
+[32m+[m[32m            {canEdit && ([m
+[32m+[m[32m              <div style={{ display:'flex', gap:8, marginTop:4 }}>[m
+[32m+[m[32m                <button[m
+[32m+[m[32m                  onClick={() => openEdit(pkg)}[m
+[32m+[m[32m                  style={{[m
+[32m+[m[32m                    flex:1, padding:'8px 0', border:'1px solid #334155', borderRadius:8,[m
+[32m+[m[32m                    background:'rgba(255,255,255,.04)', color:'#cbd5e1',[m
+[32m+[m[32m                    fontWeight:600, cursor:'pointer', fontSize:13,[m
+[32m+[m[32m                  }}[m
+[32m+[m[32m                >✏️ Sửa</button>[m
+[32m+[m[32m                <button[m
+[32m+[m[32m                  onClick={() => setDeleteId(pkg.id)}[m
+[32m+[m[32m                  style={{[m
+[32m+[m[32m                    flex:1, padding:'8px 0', border:'1px solid rgba(239,68,68,.3)', borderRadius:8,[m
+[32m+[m[32m                    background:'rgba(239,68,68,.08)', color:'#f87171',[m
+[32m+[m[32m                    fontWeight:600, cursor:'pointer', fontSize:13,[m
+[32m+[m[32m                  }}[m
+[32m+[m[32m                >🗑️ Xoá</button>[m
+[32m+[m[32m              </div>[m
+[32m+[m[32m            )}[m
+[32m+[m[32m          </div>[m
+[32m+[m[32m        ))}[m
+[32m+[m[32m      </div>[m
+[32m+[m
+[32m+[m[32m      {/* Create / Edit form modal */}[m
+[32m+[m[32m      {showForm && ([m
+[32m+[m[32m        <div style={{[m
+[32m+[m[32m          position:'fixed', inset:0, background:'rgba(0,0,0,.75)', backdropFilter:'blur(6px)',[m
+[32m+[m[32m          display:'flex', alignItems:'center', justifyContent:'center', zIndex:9000,[m
+[32m+[m[32m        }}>[m
+[32m+[m[32m          <div className="glass-panel" style={{ width:'100%', maxWidth:520, maxHeight:'90vh', overflowY:'auto', padding:32, borderRadius:16 }}>[m
+[32m+[m[32m            <h3 style={{ color:'#fff', margin:'0 0 20px', fontSize:20 }}>[m
+[32m+[m[32m              {editItem ? `Sửa: ${editItem.name}` : 'Tạo gói dịch vụ mới'}[m
+[32m+[m[32m            </h3>[m
+[32m+[m[32m            <form onSubmit={submitForm}>[m
+[32m+[m[32m              {/* Name */}[m
+[32m+[m[32m              <label style={lbl}>Tên gói *</label>[m
+[32m+[m[32m              <input required maxLength={100} value={form.name}[m
+[32m+[m[32m                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}[m
+[32m+[m[32m                placeholder="VD: Gói Chuyên Nghiệp" style={inp} />[m
+[32m+[m
+[32m+[m[32m              {/* Description */}[m
+[32m+[m[32m              <label style={lbl}>Mô tả *</label>[m
+[32m+[m[32m              <textarea required rows={3} value={form.description}[m
+[32m+[m[32m                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}[m
+[32m+[m[32m                placeholder="Mô tả ngắn về gói…" style={{ ...inp, resize:'vertical' }} />[m
+[32m+[m
+[32m+[m[32m              {/* Price */}[m
+[32m+[m[32m              <label style={lbl}>Giá (VNĐ) *</label>[m
+[32m+[m[32m              <input required type="number" min="0" step="1000" value={form.price}[m
+[32m+[m[32m                onChange={e => setForm(f => ({ ...f, price: e.target.value }))}[m
+[32m+[m[32m                placeholder="500000" style={inp} />[m
+[32m+[m
+[32m+[m[32m              {/* Duration */}[m
+[32m+[m[32m              <label style={lbl}>Thời hạn (ngày) *</label>[m
+[32m+[m[32m              <input required type="number" min="1" value={form.durationDays}[m
+[32m+[m[32m                onChange={e => setForm(f => ({ ...f, durationDays: e.target.value }))}[m
+[32m+[m[32m                placeholder="30" style={inp} />[m
+[32m+[m
+[32m+[m[32m              {/* Features JSON */}[m
+[32m+[m[32m              <label style={lbl}>Tính năng (JSON mảng chuỗi) *</label>[m
+[32m+[m[32m              <textarea[m
+[32m+[m[32m                required rows={5} value={form.features}[m
+[32m+[m[32m                onChange={e => { setForm(f => ({ ...f, features: e.target.value })); validateFeatures(e.target.value); }}[m
+[32m+[m[32m                placeholder={'["Tính năng 1","Tính năng 2"]'}[m
+[32m+[m[32m                style={{ ...inp, resize:'vertical', fontFamily:'monospace', fontSize:12 }}[m
+[32m+[m[32m              />[m
+[32m+[m[32m              {featuresError && <p style={{ color:'#f87171', fontSize:12, margin:'4px 0 0' }}>{featuresError}</p>}[m
+[32m+[m
+[32m+[m[32m              {/* Status */}[m
+[32m+[m[32m              <label style={lbl}>Trạng thái</label>[m
+[32m+[m[32m              <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} style={inp}>[m
+[32m+[m[32m                <option value="ACTIVE">ACTIVE</option>[m
+[32m+[m[32m                <option value="INACTIVE">INACTIVE</option>[m
+[32m+[m[32m              </select>[m
+[32m+[m
+[32m+[m[32m              <div style={{ display:'flex', gap:10, marginTop:24 }}>[m
+[32m+[m[32m                <button type="submit" disabled={busy} className="btn btn-primary" style={{ flex:1 }}>[m
+[32m+[m[32m                  {busy ? 'Đang lưu…' : (editItem ? '💾 Cập nhật' : '➕ Tạo mới')}[m
+[32m+[m[32m                </button>[m
+[32m+[m[32m                <button type="button" onClick={() => setShowForm(false)}[m
+[32m+[m[32m                  style={{ flex:1, padding:'10px', border:'1px solid #334155', borderRadius:8, background:'rgba(255,255,255,.04)', color:'#cbd5e1', cursor:'pointer', fontWeight:600 }}>[m
+[32m+[m[32m                  Huỷ[m
+[32m+[m[32m                </button>[m
+[32m+[m[32m              </div>[m
+[32m+[m[32m            </form>[m
+[32m+[m[32m          </div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      )}[m
+[32m+[m
+[32m+[m[32m      {/* Delete confirm modal */}[m
+[32m+[m[32m      {deleteId != null && ([m
+[32m+[m[32m        <div style={{[m
+[32m+[m[32m          position:'fixed', inset:0, background:'rgba(0,0,0,.75)',[m
+[32m+[m[32m          display:'flex', alignItems:'center', justifyContent:'center', zIndex:9000,[m
+[32m+[m[32m        }}>[m
+[32m+[m[32m          <div className="glass-panel" style={{ width:'100%', maxWidth:380, padding:28, borderRadius:14 }}>[m
+[32m+[m[32m            <h3 style={{ color:'#fff', margin:'0 0 12px' }}>Xác nhận xoá gói #{deleteId}</h3>[m
+[32m+[m[32m            <p style={{ color:'#94a3b8', fontSize:13, marginBottom:20 }}>[m
+[32m+[m[32m              Nếu còn subscription đang hoạt động, gói sẽ được ẩn (INACTIVE) thay vì xoá cứng.[m
+[32m+[m[32m            </p>[m
+[32m+[m[32m            <div style={{ display:'flex', gap:10 }}>[m
+[32m+[m[32m              <button disabled={busy} onClick={doDelete}[m
+[32m+[m[32m                style={{ flex:1, padding:12, border:0, borderRadius:8, background:'#ef4444', color:'#fff', fontWeight:700, cursor:'pointer' }}>[m
+[32m+[m[32m                {busy ? 'Đang xoá…' : '🗑️ Xoá'}[m
+[32m+[m[32m              </button>[m
+[32m+[m[32m              <button onClick={() => setDeleteId(null)}[m
+[32m+[m[32m                style={{ flex:1, padding:12, border:'1px solid #334155', borderRadius:8, background:'rgba(255,255,255,.04)', color:'#cbd5e1', cursor:'pointer', fontWeight:600 }}>[m
+[32m+[m[32m                Huỷ[m
+[32m+[m[32m              </button>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m          </div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      )}[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m  );[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32m// ── Shared inline styles ──────────────────────────────────────────────────────[m
+[32m+[m[32mconst lbl: React.CSSProperties = {[m
+[32m+[m[32m  display:'block', color:'#cbd5e1', fontSize:13, margin:'13px 0 6px',[m
+[32m+[m[32m};[m
+[32m+[m[32mconst inp: React.CSSProperties = {[m
+[32m+[m[32m  width:'100%', boxSizing:'border-box', padding:'11px 12px',[m
+[32m+[m[32m  borderRadius:8, border:'1px solid #334155',[m
+[32m+[m[32m  background:'#111827', color:'#fff', fontSize:13,[m
+[32m+[m[32m};[m
+[1mdiff --git a/admin-web/src/components/Sidebar.tsx b/admin-web/src/components/Sidebar.tsx[m
+[1mindex f73d6ea..fbe5b5b 100644[m
+[1m--- a/admin-web/src/components/Sidebar.tsx[m
+[1m+++ b/admin-web/src/components/Sidebar.tsx[m
+[36m@@ -8,8 +8,9 @@[m [mconst MENU_ITEMS: Record<PortalType, { id: string; label: string; icon: string;[m
+     { id: 'admins', label: 'Admin Management', icon: '👤' },[m
+     { id: 'farms', label: 'Farm Approval', icon: '🚜' },[m
+     { id: 'farmmgmt', label: 'Farm Management', icon: '🏞️' },[m
+[32m+[m[32m    { id: 'packages', label: 'Gói Dịch Vụ', icon: '📦' },[m
+     { id: 'contracts', label: 'Smart Contracts', icon: '⛓️' },[m
+[31m-    { id: 'products', label: 'Giám Sát Sản Phẩm', icon: '📦' },[m
+[32m+[m[32m    { id: 'products', label: 'Giám Sát Sản Phẩm', icon: '🔍' },[m
+     { id: 'reports', label: 'Báo Cáo Người Dùng', icon: '📣' },[m
+     { id: 'iot', label: 'IoT Sensoring', icon: '🌡️', disabled: true },[m
+     { id: 'settings', label: 'System Settings', icon: '⚙️', disabled: true },[m
+[1mdiff --git a/docker-compose.db.yml b/docker-compose.db.yml[m
+[1mindex a8f4777..8cc0c1c 100644[m
+[1m--- a/docker-compose.db.yml[m
+[1m+++ b/docker-compose.db.yml[m
+[36m@@ -35,8 +35,8 @@[m [mservices:[m
+       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5174}[m
+       - UPLOAD_DIR=${UPLOAD_DIR:-uploads}[m
+       - SEPAY_API_KEY=${SEPAY_API_KEY}[m
+[31m-      - SEPAY_ACCOUNT_NO=${SEPAY_ACCOUNT_NO:-123456789}[m
+[31m-      - SEPAY_BANK_NAME=${SEPAY_BANK_NAME:-MBBank}[m
+[32m+[m[32m      - SEPAY_ACCOUNT_NO=${SEPAY_ACCOUNT_NO:-0362600223}[m
+[32m+[m[32m      - SEPAY_BANK_NAME=${SEPAY_BANK_NAME:-VietinBank}[m
+     volumes:[m
+       - bicap-uploads:/app/uploads[m
+     healthcheck:[m
+[1mdiff --git a/docs/bicap-blockchain-agricultural-platform.code-workspace b/docs/bicap-blockchain-agricultural-platform.code-workspace[m
+[1mnew file mode 100644[m
+[1mindex 0000000..bab1b7f[m
+[1m--- /dev/null[m
+[1m+++ b/docs/bicap-blockchain-agricultural-platform.code-workspace[m
+[36m@@ -0,0 +1,8 @@[m
+[32m+[m[32m{[m
+[32m+[m	[32m"folders": [[m
+[32m+[m		[32m{[m
+[32m+[m			[32m"path": ".."[m
+[32m+[m		[32m}[m
+[32m+[m	[32m],[m
+[32m+[m	[32m"settings": {}[m
+[32m+[m[32m}[m
+\ No newline at end of file[m
+[1mdiff --git a/frontend/src/App.tsx b/frontend/src/App.tsx[m
+[1mindex f082222..de67f33 100644[m
+[1m--- a/frontend/src/App.tsx[m
+[1m+++ b/frontend/src/App.tsx[m
+[36m@@ -28,6 +28,13 @@[m [mimport IotDashboard from './pages/FarmManager/IotDashboard';[m
+ import GuestEducation from './pages/Guest/GuestEducation';[m
+ import GuestProductSearch from './pages/Guest/GuestProductSearch';[m
+ import GuestNotifications from './pages/Guest/GuestNotifications';[m
+[32m+[m[32m// Shipping Manager pages (BICAP-54 → BICAP-62)[m
+[32m+[m[32mimport CompletedOrdersPage from './pages/Shipping/CompletedOrdersPage';[m
+[32m+[m[32mimport ShipmentsPage from './pages/Shipping/ShipmentsPage';[m
+[32m+[m[32mimport TrackingPage from './pages/Shipping/TrackingPage';[m
+[32m+[m[32mimport VehiclesPage from './pages/Shipping/VehiclesPage';[m
+[32m+[m[32mimport DriversPage from './pages/Shipping/DriversPage';[m
+[32m+[m[32mimport ShippingReportsPage from './pages/Shipping/ShippingReportsPage';[m
+ [m
+ /* ── Admin Portal redirect ──[m
+  * Tài khoản ADMIN dùng bảng điều khiển trong ứng dụng Admin Web (admin-web).[m
+[36m@@ -61,7 +68,7 @@[m [minterface SidebarProps {[m
+ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSubscription, user }) => {[m
+   const menuItems = [[m
+     { id: 'dashboard', label: 'Dashboard', icon: '📊', isProtected: false },[m
+[31m-    { id: 'guest-notifications', label: 'Thông Báo (BICAP-69)', icon: '🔔', isProtected: false },[m
+[32m+[m[32m    { id: 'guest-notifications', label: 'Thông Báo', icon: '🔔', isProtected: false },[m
+     { id: 'profile', label: 'Cập nhật hồ sơ', icon: '👤', isProtected: false },[m
+     { id: 'packages', label: 'Gói Dịch Vụ', icon: '📦', isProtected: false },[m
+     { id: 'farm-info', label: 'Nông Trại Của Tôi', icon: '🌾', isProtected: false },[m
+[36m@@ -73,10 +80,10 @@[m [mconst Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub[m
+     { id: 'shipments', label: 'Vận Chuyển', icon: '🚚', isProtected: true },[m
+     { id: 'retailers', label: 'Nhà Bán Lẻ', icon: '🤝', isProtected: true },[m
+     { id: 'iot', label: 'Giám Sát IoT', icon: '🌡️', isProtected: true },[m
+[31m-    { id: 'certificates', label: 'Chứng Nhận', icon: '📜', isProtected: false },[m
+[31m-    { id: 'reports', label: 'Báo Cáo Cho Admin', icon: '📣', isProtected: false },[m
+[31m-    { id: 'guest-education', label: 'Nội Dung Giáo Dục (BICAP-71)', icon: '📚', isProtected: false },[m
+[31m-    { id: 'guest-products', label: 'Tìm Kiếm Sản Phẩm (BICAP-70)', icon: '🔍', isProtected: false },[m
+[32m+[m[32m    { id: 'certificates', label: 'Chứng Nhận', icon: '📜', isProtected: true },[m
+[32m+[m[32m    { id: 'reports', label: 'Báo Cáo Cho Admin', icon: '📣', isProtected: true },[m
+[32m+[m[32m    { id: 'guest-education', label: 'Nội Dung Giáo Dục', icon: '📚', isProtected: false },[m
+[32m+[m[32m    { id: 'guest-products', label: 'Tìm Kiếm Sản Phẩm', icon: '🔍', isProtected: false },[m
+     { id: 'settings', label: 'Cài Đặt', icon: '⚙️', isProtected: false },[m
+   ];[m
+ [m
+[36m@@ -158,7 +165,7 @@[m [mconst Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub[m
+             {/* Edit Button next to Account Avatar (BICAP-8) */}[m
+             <button[m
+               onClick={() => onTabChange('profile')}[m
+[31m-              title="Cập nhật thông tin cá nhân (BICAP-8)"[m
+[32m+[m[32m              title="Cập nhật thông tin cá nhân"[m
+               style={{[m
+                 background: 'rgba(16, 185, 129, 0.15)',[m
+                 border: '1px solid rgba(16, 185, 129, 0.3)',[m
+[36m@@ -185,6 +192,167 @@[m [mconst Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub[m
+   );[m
+ };[m
+ [m
+[32m+[m[32m/* ── Shipping Manager Portal (BICAP-54 → BICAP-62) ── */[m
+[32m+[m[32mtype ShippingTab = 'orders' | 'shipments' | 'tracking' | 'vehicles' | 'drivers' | 'reports';[m
+[32m+[m
+[32m+[m[32minterface ShippingPortalProps {[m
+[32m+[m[32m  user: UserSession;[m
+[32m+[m[32m  onLogout: () => void;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mtype CompletedOrderForCreate = { id: number; status: string; productName?: string; retailerName?: string; deliveryAddr?: string; quantity?: number; price?: number; totalAmount?: number };[m
+[32m+[m[32mtype ShipmentForTracking = { id: number; status: string; orderId?: number; driverName?: string };[m
+[32m+[m
+[32m+[m[32mconst ShippingManagerPortal: React.FC<ShippingPortalProps> = ({ user, onLogout }) => {[m
+[32m+[m[32m  const [tab, setTab] = useState<ShippingTab>('orders');[m
+[32m+[m[32m  const [orderForCreate, setOrderForCreate] = useState<CompletedOrderForCreate | null>(null);[m
+[32m+[m
+[32m+[m[32m  const handleCreateShipment = (order: CompletedOrderForCreate) => {[m
+[32m+[m[32m    setOrderForCreate(order);[m
+[32m+[m[32m    setTab('shipments');[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const handleTrack = (shipment: ShipmentForTracking) => {[m
+[32m+[m[32m    setTab('tracking');[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const navItems: { id: ShippingTab; label: string; icon: string }[] = [[m
+[32m+[m[32m    { id: 'orders',    label: 'Đơn hàng chờ',     icon: '📋' },[m
+[32m+[m[32m    { id: 'shipments', label: 'Lô vận chuyển',     icon: '🚚' },[m
+[32m+[m[32m    { id: 'tracking',  label: 'Quy trình',          icon: '🗺️' },[m
+[32m+[m[32m    { id: 'vehicles',  label: 'Phương tiện',        icon: '🚛' },[m
+[32m+[m[32m    { id: 'drivers',   label: 'Tài xế',             icon: '🧑‍💼' },[m
+[32m+[m[32m    { id: 'reports',   label: 'Báo cáo',            icon: '📣' },[m
+[32m+[m[32m  ];[m
+[32m+[m
+[32m+[m[32m  return ([m
+[32m+[m[32m    <div className="app-container">[m
+[32m+[m[32m      {/* Sidebar */}[m
+[32m+[m[32m      <aside style={{[m
+[32m+[m[32m        width: 'var(--sidebar-width)',[m
+[32m+[m[32m        position: 'fixed', top: 0, left: 0, bottom: 0,[m
+[32m+[m[32m        background: 'rgba(15, 16, 22, 0.95)',[m
+[32m+[m[32m        borderRight: '1px solid var(--border-color)',[m
+[32m+[m[32m        display: 'flex', flexDirection: 'column',[m
+[32m+[m[32m        zIndex: 1000, padding: '24px 16px',[m
+[32m+[m[32m      }}>[m
+[32m+[m[32m        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px', paddingLeft: '8px' }}>[m
+[32m+[m[32m          <div style={{[m
+[32m+[m[32m            width: '36px', height: '36px', borderRadius: '10px',[m
+[32m+[m[32m            background: 'linear-gradient(135deg, #0284c7 0%, #7c3aed 100%)',[m
+[32m+[m[32m            color: '#fff', display: 'flex', alignItems: 'center', justifyContent

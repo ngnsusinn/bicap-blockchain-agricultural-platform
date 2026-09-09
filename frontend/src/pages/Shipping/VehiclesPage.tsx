@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { API_BASE_URL, getAuthHeaders } from '../../utils/auth';
 import {
-  panelStyle, titleStyle, cardStyle, badgeStyle, alertStyle, successStyle,
+  panelStyle, titleStyle, badgeStyle, alertStyle, successStyle,
   buttonStyle, labelStyle, inputStyle, secondaryButtonStyle,
 } from '../FarmManager/ui';
 
