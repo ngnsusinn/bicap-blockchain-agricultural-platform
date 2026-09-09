@@ -35,6 +35,7 @@ import TrackingPage from './pages/Shipping/TrackingPage';
 import VehiclesPage from './pages/Shipping/VehiclesPage';
 import DriversPage from './pages/Shipping/DriversPage';
 import ShippingReportsPage from './pages/Shipping/ShippingReportsPage';
+import ShippingNotificationsPage from './pages/Shipping/ShippingNotificationsPage';
 
 /* ── Admin Portal redirect ──
  * Tài khoản ADMIN dùng bảng điều khiển trong ứng dụng Admin Web (admin-web).
@@ -193,7 +194,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSub
 };
 
 /* ── Shipping Manager Portal (BICAP-54 → BICAP-62) ── */
-type ShippingTab = 'orders' | 'shipments' | 'tracking' | 'vehicles' | 'drivers' | 'reports';
+type ShippingTab = 'orders' | 'shipments' | 'tracking' | 'vehicles' | 'drivers' | 'reports' | 'notifications';
 
 interface ShippingPortalProps {
   user: UserSession;
@@ -223,6 +224,7 @@ const ShippingManagerPortal: React.FC<ShippingPortalProps> = ({ user, onLogout }
     { id: 'vehicles',  label: 'Phương tiện',        icon: '🚛' },
     { id: 'drivers',   label: 'Tài xế',             icon: '🧑‍💼' },
     { id: 'reports',   label: 'Báo cáo',            icon: '📣' },
+    { id: 'notifications', label: 'Thông báo',      icon: '🔔' },
   ];
 
   return (
@@ -347,6 +349,7 @@ const ShippingManagerPortal: React.FC<ShippingPortalProps> = ({ user, onLogout }
           {tab === 'vehicles' && <VehiclesPage />}
           {tab === 'drivers' && <DriversPage />}
           {tab === 'reports' && <ShippingReportsPage />}
+          {tab === 'notifications' && <ShippingNotificationsPage />}
         </main>
       </div>
     </div>

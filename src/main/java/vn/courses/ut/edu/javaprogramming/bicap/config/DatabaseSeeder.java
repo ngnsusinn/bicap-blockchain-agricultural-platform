@@ -15,25 +15,37 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmCertification;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmingSeason;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Notification;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Order;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Permission;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Product;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Report;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Role;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.ServicePackage;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Shipment;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.ShipmentTracking;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Subscription;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.SubscriptionStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Vehicle;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.CategoryRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.DriverRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmCertificationRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.NotificationRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.OrderRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.PermissionRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ProductRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.ReportRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.RoleRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ServicePackageRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.ShipmentRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.ShipmentTrackingRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.SubscriptionRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.VehicleRepository;
 
 @Component
 @SuppressWarnings("null")
@@ -51,6 +63,12 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final FarmingSeasonRepository farmingSeasonRepository;
     private final ProductRepository productRepository;
     private final DriverRepository driverRepository;
+        private final VehicleRepository vehicleRepository;
+        private final ShipmentRepository shipmentRepository;
+        private final ShipmentTrackingRepository shipmentTrackingRepository;
+        private final OrderRepository orderRepository;
+        private final ReportRepository reportRepository;
+        private final NotificationRepository notificationRepository;
 
     public DatabaseSeeder(PermissionRepository permissionRepository, RoleRepository roleRepository, UserRepository userRepository,
                           FarmRepository farmRepository, FarmCertificationRepository farmCertificationRepository,
@@ -59,7 +77,13 @@ public class DatabaseSeeder implements CommandLineRunner {
                           SubscriptionRepository subscriptionRepository,
                           FarmingSeasonRepository farmingSeasonRepository,
                           ProductRepository productRepository,
-                          DriverRepository driverRepository) {
+                          DriverRepository driverRepository,
+                          VehicleRepository vehicleRepository,
+                          ShipmentRepository shipmentRepository,
+                          ShipmentTrackingRepository shipmentTrackingRepository,
+                          OrderRepository orderRepository,
+                          ReportRepository reportRepository,
+                          NotificationRepository notificationRepository) {
         this.permissionRepository = permissionRepository;
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
@@ -72,6 +96,12 @@ public class DatabaseSeeder implements CommandLineRunner {
         this.farmingSeasonRepository = farmingSeasonRepository;
         this.productRepository = productRepository;
         this.driverRepository = driverRepository;
+        this.vehicleRepository = vehicleRepository;
+        this.shipmentRepository = shipmentRepository;
+        this.shipmentTrackingRepository = shipmentTrackingRepository;
+        this.orderRepository = orderRepository;
+        this.reportRepository = reportRepository;
+        this.notificationRepository = notificationRepository;
     }
 
     @Override
@@ -109,7 +139,9 @@ public class DatabaseSeeder implements CommandLineRunner {
         // Seed Shipping test users (BICAP-76)
         seedUser("shipping_mgr@bicap.com", "Shipping@2026", "Shipping Manager Test", "0988000001", shippingMgrRole);
         User driverUser = seedUser("driver@bicap.com", "Driver@2026", "Shipping Driver Test", "0988000002", shipDriverRole);
-        seedDriverProfile(driverUser, "012345678901", "B2-000001");
+        User driverUser2 = seedUser("driver2@bicap.com", "Driver@2026", "Shipping Driver Available", "0988000003", shipDriverRole);
+        Driver seededDriver = seedDriverProfile(driverUser, "012345678901", "B2-000001");
+        Driver availableDriver = seedDriverProfile(driverUser2, "012345678902", "B2-000002");
 
         // 4. Seed Sample Farm Registrations (BICAP-3 — admin approval queue; BICAP-4 — management list)
         seedFarm(farmOwner1.getId(), "Trang Trại Xanh Đồng Nai", "Xã Long An, Huyện Long Thành, Đồng Nai",
@@ -153,10 +185,12 @@ public class DatabaseSeeder implements CommandLineRunner {
         Category rauCategory = categoryRepository.findByName("Rau ăn lá")
                 .orElse(categoryRepository.findAll().stream().findFirst().orElse(null));
         if (rauCategory != null && season != null) {
-            seedProduct(season.getId(), rauCategory.getId(),
+            Product seededProduct = seedProduct(season.getId(), rauCategory.getId(),
                     "Cải xanh hữu cơ BICAP",
                     "Cải xanh trồng theo chuẩn hữu cơ, không sử dụng thuốc bảo vệ thực vật. Nguồn gốc rõ ràng, có chứng nhận VietGAP.",
                     15000.0, 500.0);
+            seedShippingTestData(seededProduct, farmOwner1, seedUserByEmail("retailer@bicap.com"),
+                    seededDriver, availableDriver, seedUserByEmail("shipping_mgr@bicap.com"));
         }
     }
 
@@ -367,38 +401,161 @@ public class DatabaseSeeder implements CommandLineRunner {
      * Seeds one Product ACTIVE per unique (seasonId + name).
      * Dung cho BICAP-75 test data: Retailer co the dat mua ngay.
      */
-    private void seedProduct(Long seasonId, Long categoryId, String name,
-                             String description, double price, double quantity) {
-        boolean exists = productRepository.findAll().stream()
-                .anyMatch(p -> seasonId.equals(p.getSeasonId()) && name.equals(p.getName()));
-        if (!exists) {
-            Product p = new Product();
-            p.setSeasonId(seasonId);
-            p.setCategoryId(categoryId);
-            p.setName(name);
-            p.setDescription(description);
-            p.setPrice(new BigDecimal(String.valueOf(price)));
-            p.setQuantity(quantity);
-            p.setStatus("ACTIVE");
-            productRepository.save(p);
-        }
+        private Product seedProduct(Long seasonId, Long categoryId, String name,
+                                                                String description, double price, double quantity) {
+                return productRepository.findAll().stream()
+                                .filter(p -> seasonId.equals(p.getSeasonId()) && name.equals(p.getName()))
+                                .findFirst()
+                                .orElseGet(() -> {
+                                        Product p = new Product();
+                                        p.setSeasonId(seasonId);
+                                        p.setCategoryId(categoryId);
+                                        p.setName(name);
+                                        p.setDescription(description);
+                                        p.setPrice(new BigDecimal(String.valueOf(price)));
+                                        p.setQuantity(quantity);
+                                        p.setStatus("ACTIVE");
+                                        return productRepository.save(p);
+                                });
     }
 
     /**
      * Seeds a Driver profile linked to the given User.
      * Only creates the driver record if one does not already exist for this user (BICAP-76).
      */
-    private void seedDriverProfile(User user, String citizenId, String licenseNumber) {
-        if (user == null) return;
-        if (driverRepository.existsByUserId(user.getId())) return;
-        if (driverRepository.existsByCitizenId(citizenId)) return;
-        if (driverRepository.existsByLicenseNumber(licenseNumber)) return;
+        private Driver seedDriverProfile(User user, String citizenId, String licenseNumber) {
+                if (user == null) return null;
+                Driver existing = driverRepository.findByUserId(user.getId()).orElse(null);
+                if (existing != null) return existing;
+                if (driverRepository.existsByCitizenId(citizenId)
+                                || driverRepository.existsByLicenseNumber(licenseNumber)) return null;
 
         Driver driver = new Driver();
         driver.setUserId(user.getId());
         driver.setCitizenId(citizenId);
         driver.setLicenseNumber(licenseNumber);
         driver.setStatus(Driver.STATUS_IDLE);
-        driverRepository.save(driver);
+                return driverRepository.save(driver);
     }
+
+        private User seedUserByEmail(String email) {
+                return userRepository.findByEmail(email).orElse(null);
+        }
+
+        /** Creates a complete, repeatable Shipping demo dataset for BICAP-54 through BICAP-62. */
+        private void seedShippingTestData(Product product, User farmOwner, User retailer,
+                                                                          Driver seededDriver, Driver availableDriver, User shippingManager) {
+                if (product == null || retailer == null || seededDriver == null || availableDriver == null) return;
+
+                Vehicle assignedVehicle = seedVehicle("51A-00001", "Xe tải", 2.5, Vehicle.STATUS_IN_USE);
+                seedVehicle("51A-00002", "Xe van", 1.5, Vehicle.STATUS_AVAILABLE);
+                seededDriver.setVehicleId(assignedVehicle.getId());
+                seededDriver.setStatus(Driver.STATUS_ON_TRIP);
+                driverRepository.save(seededDriver);
+                availableDriver.setVehicleId(null);
+                availableDriver.setStatus(Driver.STATUS_IDLE);
+                driverRepository.save(availableDriver);
+
+                seedShippingOrder(product, retailer, "SHIP-DEMO-WAITING", Order.STATUS_DEPOSIT_PAID);
+                Order activeOrder = seedShippingOrder(product, retailer, "SHIP-DEMO-ACTIVE", Order.STATUS_IN_TRANSIT);
+                Shipment shipment = shipmentRepository.findByOrderId(activeOrder.getId()).orElseGet(() -> {
+                        Shipment created = new Shipment();
+                        created.setOrderId(activeOrder.getId());
+                        created.setDriverId(seededDriver.getId());
+                        created.setVehicleId(assignedVehicle.getId());
+                        created.setStatus(Shipment.STATUS_PICKING_UP);
+                        created.setRouteSummary("Kho Sông Hồng → Trung tâm phân phối Hà Nội");
+                        return shipmentRepository.save(created);
+                });
+
+                seedTracking(shipment.getId(), "PICKUP_CONFIRMED", 21.1223, 105.6813, "Tài xế đã nhận hàng tại trang trại.");
+                seedTracking(shipment.getId(), "REPORT_DELAY", 21.0285, 105.8542, "Giao thông đông, dự kiến trễ 30 phút.");
+
+                if (shippingManager != null) {
+                        seedReport(shippingManager.getId(), "SHIPPING_MGR", "INCIDENT", "Cập nhật lô vận chuyển demo",
+                                        "Lô demo đang được theo dõi để kiểm thử quy trình vận chuyển.", activeOrder.getId());
+                }
+                seedNotification(farmOwner, "Cập nhật vận chuyển", "Lô hàng demo đã được tiếp nhận và đang trên đường giao.");
+                seedNotification(retailer, "Cập nhật đơn hàng", "Đơn hàng demo đã được bàn giao cho đơn vị vận chuyển.");
+        }
+
+        private Vehicle seedVehicle(String licensePlate, String type, double capacity, String status) {
+                return vehicleRepository.findByLicensePlate(licensePlate).orElseGet(() -> {
+                        Vehicle vehicle = new Vehicle();
+                        vehicle.setLicensePlate(licensePlate);
+                        vehicle.setType(type);
+                        vehicle.setCapacity(capacity);
+                        vehicle.setStatus(status);
+                        return vehicleRepository.save(vehicle);
+                });
+        }
+
+        private Order seedShippingOrder(Product product, User retailer, String marker, String status) {
+                return orderRepository.findAll().stream()
+                                .filter(order -> marker.equals(order.getDepositCode()))
+                                .findFirst()
+                                .orElseGet(() -> {
+                                        Order order = new Order();
+                                        order.setProductId(product.getId());
+                                        order.setRetailerId(retailer.getId());
+                                        order.setQuantity(20.0);
+                                        order.setPrice(product.getPrice());
+                                        order.setDepositRate(0.3);
+                                        order.setDepositAmount(product.getPrice().multiply(BigDecimal.valueOf(20.0)).multiply(BigDecimal.valueOf(0.3)));
+                                        order.setDepositCode(marker);
+                                        order.setStatus(status);
+                                        order.setDeliveryAddr("12 Trần Duy Hưng, Hà Nội");
+                                        order.setDesiredDeliveryDate(LocalDate.now().plusDays(3));
+                                        order.setNotes("Dữ liệu demo Shipping để kiểm thử.");
+                                        order.setAcceptedAt(java.time.LocalDateTime.now().minusHours(2));
+                                        return orderRepository.save(order);
+                                });
+        }
+
+        private void seedTracking(Long shipmentId, String status, double lat, double lng, String notes) {
+                boolean exists = shipmentTrackingRepository.findAll().stream()
+                                .anyMatch(t -> shipmentId.equals(t.getShipmentId()) && status.equals(t.getStatus()));
+                if (!exists) {
+                        ShipmentTracking tracking = new ShipmentTracking();
+                        tracking.setShipmentId(shipmentId);
+                        tracking.setStatus(status);
+                        tracking.setGpsLat(lat);
+                        tracking.setGpsLng(lng);
+                        tracking.setNotes(notes);
+                        shipmentTrackingRepository.save(tracking);
+                }
+        }
+
+        private void seedReport(Long reporterId, String role, String type, String subject,
+                                                        String content, Long relatedOrderId) {
+                boolean exists = reportRepository.findAll().stream()
+                                .anyMatch(r -> reporterId.equals(r.getReporterId()) && subject.equals(r.getSubject()));
+                if (!exists) {
+                        Report report = new Report();
+                        report.setReporterId(reporterId);
+                        report.setReporterRole(role);
+                        report.setType(type);
+                        report.setSubject(subject);
+                        report.setContent(content);
+                        report.setRelatedOrderId(relatedOrderId);
+                        report.setStatus(Report.STATUS_OPEN);
+                        reportRepository.save(report);
+                }
+        }
+
+        private void seedNotification(User recipient, String title, String content) {
+                if (recipient == null) return;
+                boolean exists = notificationRepository.findByUserIdOrderByCreatedAtDesc(recipient.getId()).stream()
+                                .anyMatch(n -> title.equals(n.getTitle()));
+                if (!exists) {
+                        notificationRepository.save(Notification.builder()
+                                        .userId(recipient.getId())
+                                        .type("SHIPPING")
+                                        .title(title)
+                                        .content(content)
+                                        .channel("IN_APP")
+                                        .isRead(false)
+                                        .build());
+                }
+        }
 }

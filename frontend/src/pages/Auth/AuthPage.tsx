@@ -21,6 +21,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
   const isFarm = role === 'FARM_MANAGER';
   const isAdmin = role === 'ADMIN';
+  const isShipping = role === 'SHIPPING_MGR';
   // Accent used for the active role's theming (farm=green, retailer=cyan, admin=purple).
   const accent = isAdmin ? '#8b5cf6' : isFarm ? '#10b981' : '#06b6d4';
   const accent2 = isAdmin ? '#a78bfa' : isFarm ? '#34d399' : '#38bdf8';
@@ -28,7 +29,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const selectRole = (next: AuthRole) => {
     setRole(next);
     // Admin không tự đăng ký → luôn trở về chế độ đăng nhập.
-    if (next === 'ADMIN') setMode('login');
+    if (next === 'ADMIN' || next === 'SHIPPING_MGR') setMode('login');
   };
 
   const handleSuccess = (data: { token?: string; refreshToken?: string; user?: any; pendingVerification?: boolean }) => {
@@ -218,6 +219,26 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               </button>
 
               <button
+                id="tab-shipping"
+                role="tab"
+                aria-selected={isShipping}
+                aria-controls="auth-form-panel"
+                onClick={() => selectRole('SHIPPING_MGR')}
+                style={{
+                  flex: 1, padding: '10px 8px', borderRadius: '8px', border: 'none',
+                  background: isShipping ? 'rgba(2, 132, 199, 0.2)' : 'transparent',
+                  color: isShipping ? '#38bdf8' : 'var(--text-secondary, #cbd5e1)',
+                  fontWeight: isShipping ? 700 : 500, fontSize: '13px', cursor: 'pointer',
+                  transition: 'all 0.2s ease', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', gap: '6px',
+                  boxShadow: isShipping ? '0 2px 8px rgba(2, 132, 199, 0.2)' : 'none',
+                }}
+              >
+                <span>🚚</span>
+                <span>Shipping</span>
+              </button>
+
+              <button
                 id="tab-admin"
                 role="tab"
                 aria-selected={isAdmin}
@@ -247,7 +268,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             </div>
 
             {/* 2. Mode Switcher (Login vs Register) — Admin chỉ đăng nhập, không tự đăng ký */}
-            {!isAdmin && (
+            {!isAdmin && !isShipping && (
             <div
               role="tablist"
               aria-label="Chọn Chế độ Xác thực"
@@ -305,7 +326,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
             {/* 3. Form Content Panel */}
             <div id="auth-form-panel" role="tabpanel" tabIndex={0} style={{ outline: 'none' }}>
-              {mode === 'login' || isAdmin ? (
+              {mode === 'login' || isAdmin || isShipping ? (
                 <LoginForm
                   role={role}
                   onSuccess={handleSuccess}
