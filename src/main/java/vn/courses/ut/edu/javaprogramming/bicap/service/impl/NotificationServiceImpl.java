@@ -1,15 +1,11 @@
 package vn.courses.ut.edu.javaprogramming.bicap.service.impl;
 
-import vn.courses.ut.edu.javaprogramming.bicap.dto.NotificationListResponse;
-import vn.courses.ut.edu.javaprogramming.bicap.dto.NotificationResponse;
-import vn.courses.ut.edu.javaprogramming.bicap.entity.Notification;
-import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
-import vn.courses.ut.edu.javaprogramming.bicap.exception.ForbiddenException;
-import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundException;
-import vn.courses.ut.edu.javaprogramming.bicap.repository.NotificationRepository;
-import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
-import vn.courses.ut.edu.javaprogramming.bicap.service.NotificationService;
-import vn.courses.ut.edu.javaprogramming.bicap.service.VerificationEmailService;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,10 +13,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
+import vn.courses.ut.edu.javaprogramming.bicap.common.security.CurrentUser;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.BroadcastNotificationRequest;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.NotificationListResponse;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.NotificationResponse;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Notification;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
+import vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException;
+import vn.courses.ut.edu.javaprogramming.bicap.exception.ForbiddenException;
+import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundException;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.NotificationRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.service.NotificationService;
+import vn.courses.ut.edu.javaprogramming.bicap.service.VerificationEmailService;
 
 /**
  * In-app notification service backed by {@link NotificationRepository} for persistence,
@@ -129,6 +135,30 @@ public class NotificationServiceImpl implements NotificationService {
         if (sendEmail) {
             sendAlertEmail(userId, title, content);
         }
+    }
+
+    @Override
+    @Transactional
+    public int broadcast(BroadcastNotificationRequest request) {
+        User actor = CurrentUser.get();
+        boolean shippingManager = actor.getRoles().stream()
+                .anyMatch(role -> "SHIPPING_MGR".equalsIgnoreCase(role.getName()));
+        if (!shippingManager) {
+            throw new ForbiddenException("Only Shipping Managers can broadcast notifications");
+        }
+
+        Set<String> targets = switch (request.getTarget().trim().toUpperCase()) {
+            case "FARM_MANAGER" -> Set.of("FARM_MANAGER");
+            case "RETAILER" -> Set.of("RETAILER");
+            case "BOTH", "ALL" -> Set.of("FARM_MANAGER", "RETAILER");
+            default -> throw new BadRequestException("Target must be FARM_MANAGER, RETAILER, or BOTH");
+        };
+        List<User> recipients = userRepository.findDistinctByRoles_NameIn(targets).stream()
+                .filter(user -> user.getStatus() == UserStatus.ACTIVE)
+                .toList();
+        recipients.forEach(user -> sendNotification(
+                user.getId(), "SHIPPING", request.getTitle().trim(), request.getContent().trim(), request.isSendEmail()));
+        return recipients.size();
     }
 
     /**
