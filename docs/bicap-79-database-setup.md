@@ -278,6 +278,18 @@ CREATE TABLE IF NOT EXISTS `farming_processes` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- -----------------------------------------------------
+-- Table: categories
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `categories` (
+  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(100) NOT NULL UNIQUE,
+  `description` VARCHAR(500) NULL,
+  `icon` VARCHAR(10) NULL COMMENT 'emoji icon for display',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- -----------------------------------------------------
 -- Table: qrcodes
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `qrcodes` (
@@ -295,15 +307,19 @@ CREATE TABLE IF NOT EXISTS `qrcodes` (
 CREATE TABLE IF NOT EXISTS `products` (
   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
   `season_id` BIGINT NOT NULL,
-  `category_id` BIGINT NOT NULL, -- References Category (e.g. Fruit, Vegetable, Grain)
+  `export_id` BIGINT NULL, -- Nguồn lô hàng xuất kho khi đăng sản phẩm lên sàn (BICAP-18 / SRS-FM-012)
+  `category_id` BIGINT NOT NULL, -- References categories (e.g. Rau, Củ quả, Trái cây)
   `name` VARCHAR(255) NOT NULL,
   `description` TEXT NULL,
+  `images` TEXT NULL, -- JSON array of product image URLs (BICAP-18 / SRS-FM-012: 1-10 ảnh)
   `price` DECIMAL(12,2) NOT NULL,
   `quantity` DOUBLE NOT NULL,
   `qr_code_id` BIGINT NULL,
-  `status` VARCHAR(20) NOT NULL DEFAULT 'AVAILABLE', -- AVAILABLE, OUT_OF_STOCK, INACTIVE
+  `status` VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', -- ACTIVE, INACTIVE, PENDING_REVIEW (BICAP-5 / SRS-ADM-004)
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT `fk_products_season` FOREIGN KEY (`season_id`) REFERENCES `farming_seasons` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_products_export` FOREIGN KEY (`export_id`) REFERENCES `season_exports` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_products_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`),
   CONSTRAINT `fk_products_qrcode` FOREIGN KEY (`qr_code_id`) REFERENCES `qrcodes` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -316,9 +332,12 @@ CREATE TABLE IF NOT EXISTS `orders` (
   `retailer_id` BIGINT NOT NULL, -- References users(id) with RETAILER role
   `quantity` DOUBLE NOT NULL,
   `price` DECIMAL(12,2) NOT NULL, -- Snapshotted unit price
-  `status` VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, CONFIRMED, PAID, SHIPPING, COMPLETED, CANCELLED
+  `status` VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, ACCEPTED, REJECTED, DEPOSIT_PAID, SHIPPING, DELIVERED, COMPLETED, CANCELLED
   `delivery_addr` VARCHAR(500) NOT NULL,
-  `deposit_rate` DOUBLE NOT NULL DEFAULT 0.0,
+  `deposit_rate` DOUBLE NOT NULL DEFAULT 0.3, -- Deposit ratio (30%)
+  `deposit_code` VARCHAR(30) NULL UNIQUE, -- Transfer memo for deposit verification
+  `deposit_amount` DECIMAL(12,2) NULL, -- Expected deposit amount
+  `reject_reason` VARCHAR(1000) NULL, -- Reason when Farm Manager rejects (BICAP-20 / SRS-FM-014)
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT `fk_orders_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`),
   CONSTRAINT `fk_orders_retailer` FOREIGN KEY (`retailer_id`) REFERENCES `users` (`id`)
@@ -429,6 +448,44 @@ CREATE TABLE IF NOT EXISTS `iot_data` (
   `measured_at` TIMESTAMP NOT NULL,
   CONSTRAINT `fk_iot_farm` FOREIGN KEY (`farm_id`) REFERENCES `farms` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- -----------------------------------------------------
+-- Seed default permissions
+-- -----------------------------------------------------
+INSERT INTO `permissions` (`id`, `code`, `description`) VALUES
+(1, 'ADMIN_CREATE', 'Permission to create admin accounts'),
+(2, 'ADMIN_READ', 'Permission to view admin accounts'),
+(3, 'ADMIN_UPDATE', 'Permission to update admin accounts'),
+(4, 'ADMIN_DELETE', 'Permission to delete admin accounts')
+ON DUPLICATE KEY UPDATE `description` = VALUES(`description`);
+
+-- -----------------------------------------------------
+-- Seed default roles
+-- -----------------------------------------------------
+INSERT INTO `roles` (`id`, `name`, `description`) VALUES
+(1, 'SUPER_ADMIN', 'Super Administrator with full access'),
+(2, 'ADMIN', 'Administrator with read/write access'),
+(3, 'MODERATOR', 'Moderator with read-only access'),
+(4, 'FARM_MANAGER', 'Farm Manager for managing farms, seasons, and exports'),
+(5, 'RETAILER', 'Retailer for purchasing products and tracking orders'),
+(6, 'SHIPPING_MGR', 'Shipping Manager for coordinating deliveries'),
+(7, 'SHIP_DRIVER', 'Shipping Driver for executing shipments'),
+(8, 'GUEST', 'Guest user for browsing products and educational content')
+ON DUPLICATE KEY UPDATE `description` = VALUES(`description`);
+
+-- -----------------------------------------------------
+-- Seed default role-permission mappings
+-- -----------------------------------------------------
+INSERT INTO `role_permissions` (`role_id`, `permission_id`) VALUES
+(1, 1), -- SUPER_ADMIN can create admins
+(1, 2), -- SUPER_ADMIN can read admins
+(1, 3), -- SUPER_ADMIN can update admins
+(1, 4), -- SUPER_ADMIN can delete admins
+(2, 1), -- ADMIN can create admins
+(2, 2), -- ADMIN can read admins
+(2, 3), -- ADMIN can update admins
+(3, 2)  -- MODERATOR can read admins
+ON DUPLICATE KEY UPDATE `role_id` = VALUES(`role_id`);
 
 -- Re-enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 1;

@@ -1,5 +1,7 @@
 package vn.courses.ut.edu.javaprogramming.bicap.service;
 
+import vn.courses.ut.edu.javaprogramming.bicap.common.security.ActorAuthorizer;
+import vn.courses.ut.edu.javaprogramming.bicap.common.util.SearchUtils;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.AdminCreateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.AdminResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.AdminUpdateRequest;
@@ -8,15 +10,13 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ConflictException;
-import vn.courses.ut.edu.javaprogramming.bicap.exception.ForbiddenException;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundException;
-import vn.courses.ut.edu.javaprogramming.bicap.exception.UnauthorizedException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.PermissionRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.RoleRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,27 +24,27 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Service
-@RequiredArgsConstructor
 @Transactional
+@SuppressWarnings("null")
 public class AdminService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public AdminService(UserRepository userRepository, RoleRepository roleRepository,
+                        PermissionRepository permissionRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
+        this.permissionRepository = permissionRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     private static final String PASSWORD_PATTERN = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&_#^()+=.-])[A-Za-z\\d@$!%*?&_#^()+=.-]{8,}$";
 
     private void checkSuperAdmin(String actorEmail) {
-        if (actorEmail == null || actorEmail.trim().isEmpty()) {
-            throw new UnauthorizedException("Actor email header is missing");
-        }
-        User actor = userRepository.findByEmail(actorEmail)
-                .orElseThrow(() -> new UnauthorizedException("Actor not found"));
-        boolean isSuperAdmin = actor.getRoles().stream()
-                .anyMatch(role -> "SUPER_ADMIN".equalsIgnoreCase(role.getName()));
-        if (!isSuperAdmin) {
-            throw new ForbiddenException("Only SUPER_ADMIN is authorized for this operation");
-        }
+        ActorAuthorizer.requireSuperAdmin(userRepository, actorEmail);
     }
 
     private void validatePasswordStrength(String password) {
@@ -54,13 +54,17 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AdminResponse> getAdmins(UserStatus status, String role, String search, Pageable pageable) {
-        return userRepository.findAdminsFiltered(status, role, search, pageable)
+    public Page<AdminResponse> getAdmins(UserStatus status, String role, String search, Pageable pageable, String actorEmail) {
+        // H-2: even read-only admin listings are restricted — a retailer/farm user must not
+        // enumerate admin accounts.
+        ActorAuthorizer.requireAdminView(userRepository, actorEmail);
+        return userRepository.findAdminsFiltered(status, role, SearchUtils.escapeLike(search), pageable)
                 .map(AdminResponse::fromUser);
     }
 
     @Transactional(readOnly = true)
-    public AdminResponse getAdminById(Long id) {
+    public AdminResponse getAdminById(Long id, String actorEmail) {
+        ActorAuthorizer.requireAdminView(userRepository, actorEmail);
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
         return AdminResponse.fromUser(user);
@@ -110,7 +114,7 @@ public class AdminService {
 
         User user = User.builder()
                 .email(request.getEmail())
-                .password(request.getPassword()) // Storing plaintext as mock security for now (no full JWT / password encoder requested)
+                .password(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
                 .phone(request.getPhone())
                 .status(statusVal)
@@ -127,8 +131,14 @@ public class AdminService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
 
-        user.setFullName(request.getFullName());
-        user.setPhone(request.getPhone());
+        // Partial updates (M-11): null fields are left untouched so a partial payload
+        // never wipes existing data (e.g. phone).
+        if (request.getFullName() != null && !request.getFullName().trim().isEmpty()) {
+            user.setFullName(request.getFullName().trim());
+        }
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone().trim());
+        }
 
         if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
             try {

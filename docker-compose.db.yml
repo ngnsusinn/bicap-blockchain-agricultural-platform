@@ -17,6 +17,34 @@ services:
       - SPRING_REDIS_PORT=${SPRING_REDIS_PORT}
       - SPRING_REDIS_PASSWORD=${SPRING_REDIS_PASSWORD}
       - SPRING_REDIS_SSL=${SPRING_REDIS_SSL}
+      # Schema mode — 'validate' (default in app) needs migrations; the compose
+      # fallback lets existing cloud DBs boot while Hibernate updates them.
+      - DDL_AUTO=${DDL_AUTO:-update}
+      # Required secrets — the backend refuses to start when these are unset.
+      - JWT_SECRET=${JWT_SECRET}
+      - RETAILER_ACCESS_EXPIRATION_MS=${RETAILER_ACCESS_EXPIRATION_MS:-900000}
+      - REFRESH_TOKEN_EXPIRATION_MS=${REFRESH_TOKEN_EXPIRATION_MS:-604800000}
+      - VERIFICATION_TOKEN_EXPIRATION_MS=${VERIFICATION_TOKEN_EXPIRATION_MS:-86400000}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_AUTH=${SMTP_AUTH:-true}
+      - SMTP_STARTTLS=${SMTP_STARTTLS:-true}
+      - MAIL_FROM=${MAIL_FROM}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5174}
+      - UPLOAD_DIR=${UPLOAD_DIR:-uploads}
+      - SEPAY_API_KEY=${SEPAY_API_KEY}
+      - SEPAY_ACCOUNT_NO=${SEPAY_ACCOUNT_NO:-0362600223}
+      - SEPAY_BANK_NAME=${SEPAY_BANK_NAME:-VietinBank}
+    volumes:
+      - bicap-uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
     networks:
       - bicap-network
     restart: unless-stopped
@@ -32,6 +60,33 @@ services:
       - "3001:80"
     environment:
       - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    networks:
+      - bicap-network
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------------
+  # BICAP Farm Manager Portal React Frontend
+  # ------------------------------------------------------------------------
+  farm-portal:
+    build:
+      context: ./frontend
+    container_name: bicap-farm-portal
+    ports:
+      - "3002:80"
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
     networks:
       - bicap-network
     restart: unless-stopped
@@ -72,6 +127,9 @@ networks:
   bicap-network:
     name: bicap-network
     driver: bridge
+
+volumes:
+  bicap-uploads:
 
 # volumes:
 #   bicap-mysql-data:

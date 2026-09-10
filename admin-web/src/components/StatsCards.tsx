@@ -1,7 +1,8 @@
 import React from 'react';
+import type { AdminUser } from '../types';
 
 interface StatsProps {
-  admins: any[];
+  admins: AdminUser[];
 }
 
 export const StatsCards: React.FC<StatsProps> = ({ admins }) => {

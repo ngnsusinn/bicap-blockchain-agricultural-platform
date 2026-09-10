@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import type { AdminUser } from '../types';
 
 interface AdminModalProps {
-  admin: any | null; // Null if creating
+  admin: AdminUser | null; // Null if creating
   onClose: () => void;
   onSave: (adminData: any) => void;
 }
@@ -31,6 +32,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }
   const [status, setStatus] = useState('ACTIVE');
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   // Sync state if edit mode
   const resolveAdminRole = (adminData: any) => {
@@ -117,7 +119,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }
     return Object.keys(tempErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
@@ -134,7 +136,12 @@ export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }
       data.password = password;
     }
 
-    onSave(data);
+    setSubmitting(true);
+    try {
+      await onSave(data);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -282,8 +289,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }
             <button type="button" onClick={onClose} className="btn btn-secondary">
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
-              {isEdit ? 'Save Changes' : 'Create Admin'}
+            <button type="submit" disabled={submitting} className="btn btn-primary" style={{ opacity: submitting ? 0.6 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>
+              {submitting ? 'Đang lưu...' : isEdit ? 'Save Changes' : 'Create Admin'}
             </button>
           </div>
         </form>
