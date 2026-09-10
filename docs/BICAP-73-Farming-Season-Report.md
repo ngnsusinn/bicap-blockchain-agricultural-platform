@@ -55,7 +55,7 @@ Toàn bộ các tác vụ quan trọng làm thay đổi trạng thái của Mùa
 ## 3. Kết quả & Đóng gói
 - **Tính năng hoàn thiện 100%**: Code đã được test và build thành công.
 - **Tương thích hoàn toàn**: Không phát sinh conflict trên nhánh `feature/BICAP-73-farming-season-api`.
-- **Tài liệu kiểm thử**: Đã tạo và đính kèm bộ collection Postman hoàn chỉnh (`docs/BICAP-73-Farming-Season-API.postman_collection.json`) chứa toàn bộ quy trình test từ Login đến Export.
+- **Tài liệu kiểm thử**: Bộ collection Postman mô tả toàn bộ quy trình test từ Login đến Export đã được tạo trong quá trình phát triển, nhưng **không còn được lưu trong repository** (file `docs/BICAP-73-Farming-Season-API.postman_collection.json` không tồn tại ở bản hiện tại).
 - Cấu hình tự động đồng bộ Schema CSDL (`DDL_AUTO=update`) đảm bảo các bảng mới (`exports`) tự động được tạo tại môi trường thật.
 
 ---

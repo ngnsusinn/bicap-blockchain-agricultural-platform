@@ -11,6 +11,11 @@
 | **Ngày tạo** | 23/07/2026 |
 | **Trạng thái** | Bản nháp (Draft) |
 
+> **Ghi chú phạm vi triển khai hiện tại (repo sau refactor):** Tài liệu này giữ nguyên toàn bộ yêu cầu nghiệp vụ gốc, không xoá yêu cầu nào. Trong repo hiện tại:
+> - Module UI `mobile-app/` (EPIC-5 — Shipping Driver Mobile App) **đã được gỡ khỏi repo**; backend **vẫn giữ** `DriverMobileController` và các API `/api/driver/**`.
+> - Các ứng dụng web được gộp thành **một app React duy nhất** trong `web/` (`/admin*` → admin dashboard; còn lại → portal Farm/Retailer/Shipping/Guest).
+> - Repo **không còn dùng Docker**: `Dockerfile`, `docker-compose.db.yml` và các bước Docker/Nginx trong CI đã bị gỡ. CI gồm 2 job: `web-ci` (`web/`) và `backend-ci` (`backend/`). Cổng còn dùng: 8080 (backend) và 5174 (dev web).
+
 ---
 
 ## Mục lục
@@ -80,6 +85,8 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 | EPIC-8 | Build – Deploy – Test | Hạ tầng, triển khai và kiểm thử toàn hệ thống | DevOps / QA |
 | EPIC-9 | Project Documentation | Tài liệu dự án: SRS, thiết kế, kiểm thử, hướng dẫn cài đặt & sử dụng | Documentation |
 
+> **Ghi chú phạm vi:** EPIC-5 (Shipping Driver Mobile App — BICAP-63→68): UI mobile đã gỡ khỏi repo ở bản hiện tại, backend vẫn còn API `/api/driver/**`; các yêu cầu của Epic vẫn giữ nguyên giá trị đặc tả. Các Epic còn lại giữ nguyên; các Web App (EPIC-1→4, EPIC-6) hiện được phục vụ bởi app hợp nhất `web/`.
+
 ### 2.2. Các sản phẩm phần mềm
 
 | STT | Sản phẩm | Nền tảng | Người dùng |
@@ -91,6 +98,8 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 | 5 | Mobile App tài xế vận chuyển | Mobile Application | Shipping Driver (Tài xế) |
 | 6 | Mobile App / Web App khách | Mobile / Web Application | Guest (Khách) |
 | 7 | Web API hệ thống | Backend API | Tất cả các module |
+
+> **Ghi chú phạm vi:** sản phẩm #5 (Mobile App tài xế vận chuyển) đã gỡ phần UI khỏi repo ở bản hiện tại; backend vẫn cung cấp API `/api/driver/**`. Sản phẩm #1–#4 và phần web của #6 hiện được gộp trong một app `web/` (portal `/` và admin `/admin`); #7 là `backend/` (Java Spring Boot).
 
 ### 2.3. Sơ đồ tổng quan hệ thống
 
@@ -125,6 +134,8 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 └──────────────────────────────────────────────────────────────────┘
 ```
 
+> **Chú thích sơ đồ:** khối `Ship Driver Mobile App` (và phần mobile của `Guest Mobile/Web`) là đặc tả/định hướng gốc — bản triển khai hiện tại đã gỡ UI mobile khỏi repo, chỉ giữ backend API `/api/driver/**`. Ở bản hiện tại, Admin cùng Farm/Retailer/Shipping được phục vụ bởi **cùng một web app `web/`** (portal tại `/`, admin tại `/admin`), không còn tách `frontend/` và `admin-web/`.
+
 ---
 
 ## 3. Các bên liên quan và vai trò người dùng
@@ -142,6 +153,8 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 | **Backend/API** | API | Backend/API | Nhóm phát triển backend, xây dựng API cho toàn hệ thống | — |
 | **DevOps/QA** | DQ | DevOps/QA | Nhóm hạ tầng, triển khai và kiểm thử | — |
 | **Documentation** | DOC | Documentation | Nhóm biên soạn tài liệu dự án | — |
+
+> **Ghi chú phạm vi:** vai trò **Shipping Driver (SD)** — nền tảng mobile đã gỡ khỏi repo ở bản hiện tại; backend vẫn cung cấp API `/api/driver/**`. Vai trò **Guest (GS)** hiện dùng bản web trong `web/`.
 
 ---
 
@@ -293,6 +306,8 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 ### 4.5. EPIC-5: Shipping Driver Mobile App
 
 > **Mô tả Epic:** Ứng dụng Mobile dành cho Tài xế vận chuyển: cập nhật hành trình, xác nhận giao nhận.
+>
+> **⚠️ Ghi chú phạm vi triển khai hiện tại:** module UI `mobile-app/` đã được gỡ khỏi repo. Backend **vẫn giữ** `DriverMobileController` cùng các API `/api/driver/**`, nên toàn bộ yêu cầu BICAP-63→68 dưới đây **vẫn giữ nguyên giá trị đặc tả** (không có yêu cầu nào bị xoá).
 
 | Mã YC | Tên yêu cầu (Jira Summary) | Mô tả chi tiết | Component | Độ ưu tiên | Labels |
 |-------|---------------------------|-----------------|-----------|------------|--------|
@@ -308,6 +323,8 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 ### 4.6. EPIC-6: Guest App
 
 > **Mô tả Epic:** Ứng dụng Web/Mobile dành cho Khách: tra cứu, tìm kiếm sản phẩm, nội dung giáo dục.
+>
+> **Ghi chú phạm vi:** phần Mobile của Guest đã gỡ khỏi repo ở bản hiện tại; Guest được phục vụ qua bản web trong `web/`. Các yêu cầu BICAP-69→71 giữ nguyên giá trị đặc tả.
 
 | Mã YC | Tên yêu cầu (Jira Summary) | Mô tả chi tiết | Component | Độ ưu tiên | Labels |
 |-------|---------------------------|-----------------|-----------|------------|--------|
@@ -356,6 +373,8 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 | **BICAP-89** | Kiểm thử bảo mật blockchain & phân quyền truy cập | Thực hiện kiểm thử bảo mật cho hệ thống blockchain và cơ chế phân quyền truy cập (RBAC) để đảm bảo dữ liệu được bảo vệ đúng cách. | DevOps/QA | High | qa, security |
 | **BICAP-90** | User Acceptance Testing (UAT) | Thực hiện kiểm thử chấp nhận người dùng (UAT) với các stakeholders và người dùng cuối để xác nhận hệ thống đáp ứng yêu cầu nghiệp vụ. | DevOps/QA | Medium | qa |
 
+> **Ghi chú phạm vi triển khai hiện tại:** BICAP-82 (Docker/Redis hạ tầng) giữ nguyên như định hướng — repo hiện **không dùng Docker**. BICAP-84 (Web App) nay chỉ còn **một app `web/`** (portal `/` + admin `/admin`), BICAP-85 (Mobile App) đã gỡ UI khỏi repo (chỉ còn API `/api/driver/**`). BICAP-83 (CI/CD) hiện chạy 2 job `web-ci` (`web/`) và `backend-ci` (`backend/`).
+
 ---
 
 ## 7. Yêu cầu tài liệu dự án
@@ -388,6 +407,8 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 | **NFR-001** | Mở rộng linh hoạt | Hệ thống phải có khả năng mở rộng linh hoạt để xử lý số lượng lớn người dùng và truy vấn dữ liệu từ nhiều nguồn khác nhau. Các thành phần như AWS/Google Cloud, Docker và Redis 8.6 phải được cấu hình để hỗ trợ scaling liền mạch (horizontal scaling). | BDT-UR-001 |
 | **NFR-002** | Xử lý giao dịch đồng thời trên Blockchain | Blockchain VeChainThor phải hỗ trợ xử lý nhiều giao dịch đồng thời khi khối lượng dữ liệu IoT tăng hoặc khi có nhiều yêu cầu truy xuất thông tin sản phẩm cùng lúc. | API-UR-009 |
 
+> **Ghi chú phạm vi hiện tại:** NFR-001 nêu Docker như **định hướng mở rộng tương lai**; repo hiện tại **không dùng Docker** (đã gỡ `Dockerfile`, `docker-compose.db.yml` và các bước Docker/Nginx trong CI). Yêu cầu NFR-001 giữ nguyên giá trị đặc tả.
+
 ### 8.2. Bảo mật (Security)
 
 | Mã YC | Yêu cầu | Mô tả chi tiết | Jira Cross-ref |
@@ -408,6 +429,8 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 |-------|---------|-----------------|----------------|
 | **NFR-007** | Giao diện thân thiện | Giao diện người dùng phải thân thiện, dễ sử dụng, phù hợp với nhiều đối tượng người dùng (bao gồm nông dân có hạn chế về kỹ năng công nghệ). | BDT-UR-009 |
 | **NFR-008** | Responsive Design | Web App phải hiển thị tốt trên nhiều kích thước màn hình (desktop, tablet). Mobile App phải tương thích với cả Android và iOS. | BDT-UR-003, BDT-UR-004 |
+
+> **Ghi chú phạm vi:** yêu cầu Mobile App trong NFR-008 giữ nguyên như đặc tả; bản triển khai hiện tại chỉ có Web App (`web/`, responsive desktop/tablet), UI mobile đã gỡ khỏi repo.
 
 ### 8.5. Khả năng tích hợp (Integration)
 
@@ -433,6 +456,12 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 | **Blockchain Dev Tools** | VeChain ToolChain, VeChain Sync, VeChain Stats |
 | **Scripting / Build** | Java (JDK 21), TypeScript / JavaScript, Maven / Gradle |
 | **Infrastructure** | AWS / Google Cloud, Docker |
+
+> **Ghi chú phạm vi triển khai hiện tại:**
+> - **Mobile App (React Native)** — UI đã gỡ khỏi repo; backend vẫn giữ API `/api/driver/**`.
+> - **Infrastructure / Docker** — repo hiện **không dùng Docker**: `Dockerfile`, `docker-compose.db.yml` và Docker/Nginx trong CI đã bị gỡ. AWS/Google Cloud và Docker được giữ như **định hướng tương lai**, không phải trạng thái triển khai hiện tại.
+> - **Web Client** — hiện là **một app React 19 + TypeScript + Vite** trong `web/` (gộp `frontend/` + `admin-web/` cũ), dev cổng 5174, build tĩnh `web/dist` phục vụ cùng backend ở cổng 8080.
+> - **Backend** — Java Spring Boot (Maven) trong `backend/`, chạy `cd backend && mvn spring-boot:run` (cổng 8080).
 
 ### 9.2. Quy trình phát triển
 
@@ -484,6 +513,8 @@ Dự án tận dụng công nghệ Blockchain để cung cấp giải pháp theo
 | security | Story liên quan đến bảo mật | 2 |
 | nfr | Story triển khai yêu cầu phi chức năng | 4 |
 | database | Story liên quan đến cơ sở dữ liệu | 1 |
+
+> **Ghi chú phạm vi:** 9 story gắn label `mobile-app` (EPIC-5: BICAP-63→68 và phần mobile của EPIC-6: BICAP-69→71) có UI mobile đã gỡ khỏi repo ở bản hiện tại; phần backend API tương ứng vẫn được giữ.
 
 ### 10.4. Quy ước ký hiệu
 

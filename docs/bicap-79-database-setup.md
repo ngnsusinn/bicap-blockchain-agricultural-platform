@@ -2,7 +2,7 @@
 
 This document provides instructions for deploying and configuring the database and caching tiers for the Blockchain Agricultural Platform (BICAP). It contains:
 1. **Online/Cloud Deployment Configurations** for MySQL (e.g. Supabase, AWS RDS, Aiven, Clever Cloud) and Redis (e.g. Upstash, Redis Labs).
-2. **Local Docker Compose Setup** for MySQL 5.7.41 and Redis 8.6.
+2. **Local MySQL 5.7.41 & Redis 8.6 Setup** (native install, a managed cloud instance, or Docker containers you run yourself).
 3. **Complete MySQL 5.7.41 DDL scripts** for all 23 system tables.
 4. **MySQL Indexing Strategy** for high-performance query optimization.
 5. **Redis 8.6 Caching Configurations** (eviction policies, memory limits, network security, and key patterns).
@@ -31,59 +31,58 @@ To deploy your databases on the cloud, follow these recommendations and use the 
 
 ---
 
-## 2. Alternative: Local Docker Compose Setup
+## 2. Alternative: Local MySQL & Redis Setup
 
-Use the following configuration to deploy MySQL and Redis services locally or in your dev/staging environment. Save this as `docker-compose.db.yml`.
+Install MySQL 5.7.41 and Redis 8.6 directly, use a managed cloud instance (Section 1), or run them as Docker containers. The repository **no longer ships a `docker-compose.db.yml` file**, so if you prefer Docker you must create your own compose file (or use the `docker run` examples below).
 
-```yaml
-version: '3.8'
+### 2.1. Option A — Native install (recommended for local development)
 
-services:
-  mysql:
-    image: mysql:5.7.41
-    container_name: bicap-mysql
-    ports:
-      - "3306:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: root_secure_password
-      MYSQL_DATABASE: bicap_db
-      MYSQL_USER: bicap_user
-      MYSQL_PASSWORD: bicap_password
-    volumes:
-      - bicap-mysql-data:/var/lib/mysql
-    networks:
-      - bicap-network
-    restart: unless-stopped
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+1. **MySQL 5.7.41**: install the server for your OS, start it, then create the database and application user:
 
-  redis:
-    image: redis:8.6-rc2-alpine # Or stable 8.x when officially released
-    container_name: bicap-redis
-    ports:
-      - "6379:6379"
-    command: redis-server --requirepass redis_secure_password --maxmemory 512mb --maxmemory-policy allkeys-lru --tls-port 0 # For local dev (TLS disabled). Enable TLS for staging/production.
-    volumes:
-      - bicap-redis-data:/data
-    networks:
-      - bicap-network
-    restart: unless-stopped
+   ```sql
+   CREATE DATABASE IF NOT EXISTS bicap_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE USER IF NOT EXISTS 'bicap_user'@'%' IDENTIFIED BY 'bicap_password';
+   GRANT ALL PRIVILEGES ON bicap_db.* TO 'bicap_user'@'%';
+   FLUSH PRIVILEGES;
+   ```
 
-networks:
-  bicap-network:
-    name: bicap-network
-    driver: bridge
+   Start the server with `--character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci`.
 
-volumes:
-  bicap-mysql-data:
-    driver: local
-  bicap-redis-data:
-    driver: local
-```
+2. **Redis 8.6**: install and start `redis-server`, then apply the parameters in **Section 4.1** (`requirepass`, `maxmemory 512mb`, `maxmemory-policy allkeys-lru`) to your `redis.conf`.
 
-To run the services:
+3. **Point the backend at them** with the environment variables from **Section 1** (local values):
+   * `SPRING_DATASOURCE_URL`: `jdbc:mysql://localhost:3306/bicap_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true`
+   * `SPRING_DATASOURCE_USERNAME`: `bicap_user`
+   * `SPRING_DATASOURCE_PASSWORD`: `bicap_password`
+   * `SPRING_REDIS_HOST`: `localhost`
+   * `SPRING_REDIS_PORT`: `6379`
+   * `SPRING_REDIS_PASSWORD`: `redis_secure_password`
+
+### 2.2. Option B — Docker containers (you provide the compose file)
+
+If you prefer Docker over a native install, the old compose setup is equivalent to the following containers:
+
 ```bash
-docker-compose -f docker-compose.db.yml up -d
+docker network create bicap-network
+
+docker run -d --name bicap-mysql --network bicap-network -p 3306:3306 \
+  -e MYSQL_ROOT_PASSWORD=root_secure_password \
+  -e MYSQL_DATABASE=bicap_db \
+  -e MYSQL_USER=bicap_user \
+  -e MYSQL_PASSWORD=bicap_password \
+  -v bicap-mysql-data:/var/lib/mysql \
+  --restart unless-stopped \
+  mysql:5.7.41 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+docker run -d --name bicap-redis --network bicap-network -p 6379:6379 \
+  -v bicap-redis-data:/data \
+  --restart unless-stopped \
+  redis:8.6-rc2-alpine \
+  redis-server --requirepass redis_secure_password --maxmemory 512mb \
+  --maxmemory-policy allkeys-lru --tls-port 0
 ```
+
+> `--tls-port 0` disables TLS for local development only; enable TLS for staging/production. If you prefer Compose, create your own `docker-compose.db.yml` with the same two services and run `docker compose -f docker-compose.db.yml up -d`. Stop the containers with `docker rm -f bicap-mysql bicap-redis`.
 
 ---
 

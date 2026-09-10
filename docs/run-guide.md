@@ -1,6 +1,6 @@
 # BICAP - Running and Deployment Guide
 
-This document contains step-by-step instructions to run the Blockchain Agricultural Platform (BICAP) backend API and React admin dashboard.
+This document contains step-by-step instructions to run the Blockchain Agricultural Platform (BICAP) backend API and the unified React web app (Farm/Retailer/Shipping/Guest portal **and** admin dashboard).
 
 ---
 
@@ -8,75 +8,108 @@ This document contains step-by-step instructions to run the Blockchain Agricultu
 
 Ensure you have the following installed on your machine:
 *   **Java JDK 21**
-*   **Node.js (v20 or newer)** & **npm**
+*   **Node.js v22.22.2+ (or v24.15.0+)** & **npm** — jsdom 30/undici 8 no longer support Node 20
 *   **IntelliJ IDEA** (Optional, recommended for development)
-*   **Docker & Docker Compose** (Optional, for containerized deployments)
 
 ---
 
 ## 2. Configuration (`.env`)
 
-We have created a `.env` file at the root of the project with the credentials for the online databases (MySQL and Redis). 
-For local runs, the application will use the environment variables defined in this file.
+A template `.env.example` is provided at the root of the project. Copy it to `.env` and fill in the values you need:
 
-*   **Database Configs**: Connects to the host `free02.123host.vn`.
-*   **Redis Caching**: Connects to the host `foamy-ship-mind-96497.db.redis.io`.
-*   **Frontend API URL**: Pointed to `http://localhost:8080/api/admins`.
+```bat
+copy .env.example .env
+```
+
+For local development you do **not** have to edit anything: the backend defaults to an H2 in-memory database, blockchain `mock` mode and an in-memory cache. Real `JWT_SECRET` and `SEPAY_API_KEY` values are required only when deploying (the app fails fast on missing/weak defaults).
+
+*   **Database Configs** (`SPRING_DATASOURCE_*`): H2 in-memory by default; set them to your MySQL host to use a shared/cloud database.
+*   **Redis Caching** (`SPRING_REDIS_*`): connects to the Redis host when provided, otherwise the app automatically falls back to an in-memory cache.
+*   **Web API URL** (`VITE_API_BASE_URL`, a build-time variable of `web/`): points the web app to the backend, `http://localhost:8080`.
 
 ---
 
 ## 3. Running the Backend API (Spring Boot)
 
+The Maven project lives in the `backend/` directory.
+
 ### Option A: Running in IntelliJ IDEA (Recommended)
-1. Open the project in IntelliJ IDEA.
-2. IntelliJ will detect the Maven configurations automatically.
-3. Open `src/main/java/vn/courses/ut/edu/javaprogramming/bicap/Application.java` and click the green **Run** button.
+1. Open the repository (or the `backend/` folder) in IntelliJ IDEA.
+2. IntelliJ will detect the Maven configuration from `backend/pom.xml` automatically.
+3. Open `backend/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/Application.java` and click the green **Run** button.
 4. To pass the environment variables from the `.env` file, install the **EnvFile** plugin in IntelliJ or set them in the Run Configuration settings.
+
+The backend starts on **port 8080** with H2 in-memory by default.
 
 ### Option B: Running via Terminal (PowerShell)
 If Maven (`mvn`) is not registered in your global system `PATH`, you can use the Maven executable bundled with your IntelliJ installation:
 
-1. Open PowerShell.
-2. Export the database environment variables to your session:
+1. Open PowerShell and change to the backend directory:
    ```powershell
-   $env:SPRING_DATASOURCE_URL="jdbc:mysql://free02.123host.vn:3306/roacqgfa_bicap?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
-   $env:SPRING_DATASOURCE_USERNAME="roacqgfa_bicap"
-   $env:SPRING_DATASOURCE_PASSWORD="laptrinhjavahahaha"
-   $env:SPRING_REDIS_HOST="foamy-ship-mind-96497.db.redis.io"
-   $env:SPRING_REDIS_PORT="16599"
-   $env:SPRING_REDIS_PASSWORD="6eYWXsUsc9rPuDhQmrQClml4HZfqFX87"
+   cd backend
+   ```
+2. Export the database environment variables to your session (only needed when connecting to an external MySQL/Redis instead of the H2 default). Lấy giá trị thật từ file `.env` — **không ghi thông tin đăng nhập thật vào tài liệu**:
+   ```powershell
+   $env:SPRING_DATASOURCE_URL="jdbc:mysql://<mysql-host>:3306/<database>?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+   $env:SPRING_DATASOURCE_USERNAME="<db-user>"
+   $env:SPRING_DATASOURCE_PASSWORD="<db-password>"
+   $env:SPRING_REDIS_HOST="<redis-host>"
+   $env:SPRING_REDIS_PORT="<redis-port>"
+   $env:SPRING_REDIS_PASSWORD="<redis-password>"
    $env:SPRING_REDIS_SSL="true"
    ```
-3. Run the Spring Boot application using the IntelliJ Maven bundle path:
+3. Run the Spring Boot application from the `backend/` directory:
+   ```powershell
+   mvn spring-boot:run
+   ```
+   If `mvn` is not on `PATH`, use the IntelliJ Maven bundle path instead:
    ```powershell
    & "C:\Program Files\JetBrains\IntelliJ IDEA 2026.2\plugins\maven-plugin\lib\maven3\bin\mvn.cmd" spring-boot:run
    ```
 
+Other backend commands (run from `backend/`):
+
+```bash
+mvn test                        # 251 tests
+mvn clean package -DskipTests   # → backend/target/*.jar
+```
+
 ---
 
-## 4. Single-Port Mode — Spring Boot phục vụ cả 2 frontend (Khuyên dùng cho demo/test)
+## 4. Single-Port Mode — Spring Boot phục vụ app web (Khuyên dùng cho demo/test)
 
 Toàn bộ hệ thống chạy trên **một port duy nhất 8080**:
 
 | URL | Nội dung |
 |---|---|
-| `http://localhost:8080/` | Farm Portal (`frontend`) — đăng nhập Farm / Retailer / Admin |
-| `http://localhost:8080/admin/` | Admin Web (`admin-web`) — bảng điều khiển quản trị |
+| `http://localhost:8080/` | Portal (`web/`) — đăng nhập Farm / Retailer / Shipping / Guest |
+| `http://localhost:8080/admin` | Admin dashboard (`web/src/admin`) — bảng điều khiển quản trị |
 | `http://localhost:8080/api/**` | Backend API |
 
-Cách chạy (Windows):
+Cách chạy:
 
-1. Build và lắp 2 app React vào JAR:
-   ```bat
-   build-web.bat
+1. Build app web (`web/`) rồi copy `web/dist` vào static resources của backend:
+   ```bash
+   cd web
+   npm install
+   npm run build
+
+   cd ..
+   rm -rf backend/src/main/resources/static
+   mkdir -p backend/src/main/resources/static
+   cp -r web/dist/. backend/src/main/resources/static/
    ```
-   (script chạy `npm run build` cho cả `frontend` và `admin-web`, rồi copy `dist/` vào `src/main/resources/static/` — thư mục này được gitignore vì là build artifact)
-2. Chạy backend như mục 3 (`run-backend.bat` hoặc `mvn spring-boot:run`).
-3. Mở `http://localhost:8080/` — không cần chạy thêm server React nào.
+   (thư mục `backend/src/main/resources/static/` được gitignore vì là build artifact)
+2. Chạy backend như mục 3:
+   ```bash
+   cd backend
+   mvn spring-boot:run
+   ```
+3. Mở `http://localhost:8080/` (portal) hoặc `http://localhost:8080/admin` (quản trị) — không cần chạy thêm server React nào.
 
-Deep-link SPA (`/trace/<hash>`, `/admin/farm`, `/admin/retail`…) đã được `SpaForwardController` forward về đúng `index.html`, refresh không bị 404.
+Deep-link SPA (`/trace/<hash>`, `/admin/...`) đã được `SpaForwardController` forward về đúng `index.html`, refresh không bị 404.
 
-> **Dev hot-reload:** nếu vẫn muốn sửa code React và thấy ngay, chạy riêng `npm run dev` trong từng thư mục (farm 5174, admin 5173 — vào `http://localhost:5173/admin/`). Hai chế độ này song song, không ảnh hưởng nhau.
+> **Dev hot-reload:** nếu vẫn muốn sửa code React và thấy ngay, chạy `npm run dev` trong `web/` (port 5174) — portal ở `http://localhost:5174/`, admin ở `http://localhost:5174/admin`. Hai chế độ này song song, không ảnh hưởng nhau.
 
 ### Tài khoản test (đã seed sẵn — trên trang login có nút điền nhanh)
 
@@ -94,34 +127,33 @@ Deep-link SPA (`/trace/<hash>`, `/admin/farm`, `/admin/retail`…) đã được
 
 ## 5. Running the Frontend Dashboard (React Vite)
 
-The frontend client must run on **port 3001** to align with the CORS policy allowed by the backend.
+The unified web app lives in the `web/` directory (portal at `/` and admin dashboard at `/admin` in a single React 19 + TypeScript + Vite app). The dev server must run on **port 5174** to align with the CORS policy allowed by the backend.
 
 1. Open a new terminal window.
-2. Navigate to the `admin-web` directory:
+2. Navigate to the `web` directory:
    ```bash
-   cd admin-web
+   cd web
    ```
 3. Install the dependencies:
    ```bash
    npm install
    ```
-4. Run the development server specifying port 3001:
+4. Run the development server on port 5174:
    ```bash
-   npm run dev -- --port 3001
+   npm run dev
    ```
-5. Open your browser and navigate to `http://localhost:3001`.
+5. Open your browser and navigate to:
+   * Portal (Farm / Retailer / Shipping / Guest): `http://localhost:5174/`
+   * Admin dashboard: `http://localhost:5174/admin`
 
----
+The portal and the admin dashboard share one session, stored in `localStorage` (`accessToken`, `currentUser`, `refreshToken`); tokens are **not** passed through the URL (`?token=`).
 
-## 6. Running via Docker Compose (Production/Contanerized)
+Other web commands (run from `web/`):
 
-We configured a unified multi-container docker compose setup inside `docker-compose.db.yml` to launch both the backend API and the React web application:
-
-1. Ensure Docker is running.
-2. From the root directory, build and launch the containers:
-   ```bash
-   docker-compose -f docker-compose.db.yml up -d --build
-   ```
-3. This spins up:
-   *   **Backend (`bicap-api`)**: Running on `http://localhost:8080` and connecting to the online MySQL/Redis.
-   *   **Frontend (`bicap-admin-web`)**: Running on `http://localhost:3001` inside Nginx with Single Page Application routing support.
+```bash
+npm ci              # clean install from package-lock.json (used by CI)
+npm run lint        # oxlint
+npm test            # vitest run — 28 tests
+npm run build       # tsc -b && vite build → web/dist
+npm run preview     # preview the production build on port 5174
+```

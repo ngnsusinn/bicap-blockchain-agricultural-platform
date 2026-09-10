@@ -4,8 +4,8 @@
 |---|---|
 | **Dự án** | BICAP |
 | **Mã ticket** | BICAP-98 |
-| **Phiên bản** | 1.0 — 30/08/2026 |
-| **URL hệ thống (bản 1-port)** | Farm/Retailer/Guest: `http://<server>:8080/` · Admin: `http://<server>:8080/admin/` |
+| **Phiên bản** | 1.1 — 10/09/2026 |
+| **URL hệ thống (bản 1-port)** | Farm/Retailer/Shipping/Guest (portal): `http://<server>:8080/` · Admin dashboard: `http://<server>:8080/admin` |
 
 ## 0. Đăng nhập & tài khoản demo
 Trang chủ có 3 tab: **🌾 Farm · 🛒 Retailer · 🛡️ Admin**. Mỗi tab có hộp **🧪 Tài khoản test — bấm để điền nhanh**.
