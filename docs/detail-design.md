@@ -39,11 +39,11 @@
    - 3.4. [Redis Cache Schema](#34-redis-cache-schema)
 4. [Thiết kế chi tiết Frontend Web Apps](#4-thiết-kế-chi-tiết-frontend-web-apps)
    - 4.1. [Cấu trúc Component tổng quan](#41-cấu-trúc-component-tổng-quan)
-   - 4.2. [Admin Web App](#42-admin-web-app)
+   - 4.2. [Admin Dashboard (`/admin`)](#42-admin-dashboard-admin)
    - 4.3. [Farm Management Web App](#43-farm-management-web-app)
    - 4.4. [Retailer Web App](#44-retailer-web-app)
    - 4.5. [Shipping Management Web App](#45-shipping-management-web-app)
-   - 4.6. [Shipping Driver Mobile App](#46-shipping-driver-mobile-app)
+   - 4.6. Shipping Driver Mobile App — Ngoài phạm vi triển khai (UI mobile đã gỡ khỏi repo)
    - 4.7. [Guest App](#47-guest-app)
 5. [Thiết kế chi tiết Smart Contract](#5-thiết-kế-chi-tiết-smart-contract)
    - 5.1. [FarmingSeasonContract](#51-farmingseasoncontract)
@@ -870,7 +870,7 @@ vn.courses.ut.edu.javaprogramming.bicap/
 │  └─────────────────────────────────────────────────────────────────────────────────┘ │
 │                                                                                       │
 │  ┌─────────────────────────────────────────────────────────────────────────────────┐ │
-│  │            DriverMobileController (Planned) — for mobile app                     │ │
+│  │            DriverMobileController (đã có) — API cho tài xế (UI mobile đã gỡ)     │ │
 │  │  /api/driver                                                                      │ │
 │  │─────────────────────────────────────────────────────────────────────────────────│ │
 │  │  GET    /api/driver/shipments    → getMyShipments(Pageable, status filter)        │ │
@@ -1619,110 +1619,51 @@ CREATE INDEX `idx_qr_season` ON `qrcodes` (`season_id`);
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────┐
-│                         FRONTEND MONOREPO STRUCTURE                                    │
-│                                                                                       │
-│  bicap-frontend/                                                                      │
-│  ├── packages/                                                                        │
-│  │   ├── shared/                          # Shared components, hooks, utils           │
-│  │   │   ├── components/                                                              │
-│  │   │   │   ├── Layout/                  # AppLayout, Sidebar, Header, Footer        │
-│  │   │   │   ├── Form/                    # FormInput, FormSelect, FormUpload         │
-│  │   │   │   ├── DataDisplay/             # DataTable, StatCard, StatusBadge          │
-│  │   │   │   ├── Feedback/                # Toast, Modal, ConfirmDialog, Loading     │
-│  │   │   │   └── Auth/                    # LoginForm, RegisterForm, ProtectedRoute   │
-│  │   │   ├── hooks/                                                                   │
-│  │   │   │   ├── useAuth.ts               # Auth state, login/logout                  │
-│  │   │   │   ├── useApi.ts                # Axios instance, interceptors              │
-│  │   │   │   ├── usePagination.ts         # Pagination logic                          │
-│  │   │   │   ├── useWebSocket.ts          # STOMP WebSocket client                    │
-│  │   │   │   └── useNotification.ts       # Notification polling/badge                │
-│  │   │   ├── utils/                                                                   │
-│  │   │   │   ├── auth.ts                  # Token storage, JWT decode                 │
-│  │   │   │   ├── format.ts               # Date, currency, number formatters         │
-│  │   │   │   └── validators.ts           # Form validation rules                     │
-│  │   │   └── types/                                                                   │
-│  │   │       ├── api.ts                   # API response types                        │
-│  │   │       ├── models.ts                # Domain model types                        │
-│  │   │       └── enums.ts                 # Enum types                                │
-│  │   │                                                                                │
-│  │   ├── admin-web/                       # Admin Web App (port 3001)                 │
-│  │   │   ├── pages/                                                                   │
-│  │   │   │   ├── Dashboard/               # System overview & stats                   │
-│  │   │   │   ├── AccountManagement/       # Admin CRUD (BICAP-1)                      │
-│  │   │   │   ├── FarmApproval/            # Farm registration approval (BICAP-3)     │
-│  │   │   │   ├── FarmManagement/          # Farm details management (BICAP-4)        │
-│  │   │   │   ├── ProductMonitoring/       # Product monitoring (BICAP-5)              │
-│  │   │   │   ├── SmartContractManagement/ # Smart contract deploy/manage (BICAP-6)   │
-│  │   │   │   └── ReportManagement/        # Admin report center                       │
-│  │   │   └── App.tsx                                                                  │
-│  │   │                                                                                │
-│  │   ├── farm-web/                        # Farm Management Web App (port 3002)       │
-│  │   │   ├── pages/                                                                   │
-│  │   │   │   ├── Dashboard/               # Farm overview                             │
-│  │   │   │   ├── Profile/                 # Profile & business docs (BICAP-8,9)      │
-│  │   │   │   ├── ServicePackages/         # Buy service packages (BICAP-10,11)       │
-│  │   │   │   ├── Seasons/                 # Season list & detail (BICAP-12,13)       │
-│  │   │   │   ├── SeasonCreate/            # Create season + blockchain (BICAP-14)    │
-│  │   │   │   ├── SeasonProcess/           # Update processes + blockchain (BICAP-15) │
-│  │   │   │   ├── Export/                  # Export + QR Code (BICAP-16,17)           │
-│  │   │   │   ├── TradingFloor/            # Push to marketplace (BICAP-18,19)        │
-│  │   │   │   ├── Orders/                  # Order processing (BICAP-20)              │
-│  │   │   │   ├── Retailers/               # Retailer info (BICAP-21)                 │
-│  │   │   │   ├── Shipping/                # Track shipments (BICAP-22,23)            │
-│  │   │   │   └── Notifications/           # Notifications (BICAP-24,25,26)           │
-│  │   │   └── App.tsx                                                                  │
-│  │   │                                                                                │
-│  │   ├── retailer-web/                    # Retailer Web App (port 3003)               │
-│  │   │   ├── pages/                                                                   │
-│  │   │   │   ├── Dashboard/               # Retailer dashboard                         │
-│  │   │   │   ├── Profile/                 # Profile & business docs (BICAP-37,38)    │
-│  │   │   │   ├── Marketplace/             # Product search & browse (BICAP-39,40)    │
-│  │   │   │   ├── ProductDetail/           # Product detail + QR scan (BICAP-41)      │
-│  │   │   │   ├── OrderCreate/             # Create purchase order (BICAP-42)         │
-│  │   │   │   ├── Payments/                # Deposit payment (BICAP-43)               │
-│  │   │   │   ├── Orders/                  # Order history (BICAP-45,46)              │
-│  │   │   │   ├── Shipping/                # Track deliveries (BICAP-49,50)           │
-│  │   │   │   └── Notifications/           # Notifications (BICAP-47,48)              │
-│  │   │   └── App.tsx                                                                  │
-│  │   │                                                                                │
-│  │   └── shipping-web/                    # Shipping Management Web App (port 3004)    │
-│  │       ├── pages/                                                                   │
-│  │       │   ├── Dashboard/               # Shipping overview                         │
-│  │       │   ├── Orders/                  # Completed orders (BICAP-54)               │
-│  │       │   ├── Shipments/               # Create & manage shipments (BICAP-55,56)  │
-│  │       │   ├── Tracking/                # Track shipments (BICAP-57)                │
-│  │       │   ├── Vehicles/                # Vehicle CRUD (BICAP-58)                  │
-│  │       │   ├── Drivers/                 # Driver CRUD (BICAP-59)                   │
-│  │       │   └── Reports/                 # Reports & notifications (BICAP-60,61,62) │
-│  │       └── App.tsx                                                                  │
-│  │                                                                                    │
-│  └── apps/                                                                             │
-│      ├── driver-mobile/                   # Shipping Driver Mobile App (React Native)  │
-│      │   ├── screens/                                                                 │
-│      │   │   ├── LoginScreen.tsx           # Driver login                              │
-│      │   │   ├── ShipmentListScreen.tsx    # My shipments (BICAP-63)                   │
-│      │   │   ├── ShipmentDetailScreen.tsx  # Shipment detail                           │
-│      │   │   ├── QRScanScreen.tsx          # QR scan at farm (BICAP-65)                │
-│      │   │   ├── PickupConfirmScreen.tsx   # Confirm pickup (BICAP-66)                 │
-│      │   │   ├── DeliveryConfirmScreen.tsx # Confirm delivery (BICAP-67)               │
-│      │   │   ├── TrackingUpdateScreen.tsx  # Update status + GPS (BICAP-64)            │
-│      │   │   └── ReportScreen.tsx          # Send report (BICAP-68)                    │
-│      │   └── App.tsx                                                                   │
-│      │                                                                                 │
-│      └── guest-app/                       # Guest App (React Native / Next.js)         │
-│          ├── screens/                                                                  │
-│          │   ├── HomeScreen.tsx            # Home page with featured products           │
-│          │   ├── ProductSearchScreen.tsx   # Search & filter (BICAP-70)                │
-│          │   ├── ProductDetailScreen.tsx   # Product detail                            │
-│          │   ├── QRScanScreen.tsx          # Scan QR for traceability                  │
-│          │   ├── TraceResultScreen.tsx     # Full traceability display                 │
-│          │   ├── ArticleListScreen.tsx     # Educational articles (BICAP-71)           │
-│          │   └── ArticleDetailScreen.tsx   # Article detail                            │
-│          └── App.tsx                                                                   │
+│                         REPOSITORY STRUCTURE (backend/ + web/ + dev/ + docs/)        │
+│                                                                                      │
+│  backend/                              # Spring Boot API (Maven, Java 21)            │
+│  ├── pom.xml                                                                         │
+│  └── src/                                                                            │
+│      ├── main/java/vn/courses/ut/edu/javaprogramming/bicap/                          │
+│      │   ├── controller/  service/  repository/  entity/  dto/                       │
+│      │   ├── config/      common/   exception/                                       │
+│      │   └── ...                       # DriverMobileController + /api/driver/** giữ │
+│      ├── main/resources/application.properties                                       │
+│      ├── main/resources/static/        # Bundle web build (copy từ web/dist)         │
+│      └── test/                                                                       │
+│                                                                                      │
+│  web/                                  # MỘT app React 19 + TypeScript + Vite        │
+│  ├── index.html  vite.config.ts  package.json                                        │
+│  ├── public/                                                                         │
+│  ├── dist/                             # Build output                                │
+│  └── src/                                                                            │
+│      ├── App.tsx                       # /admin* → AdminApp, còn lại → PortalApp     │
+│      ├── main.tsx  index.css           # Design system dùng chung                    │
+│      ├── shared/session.ts             # Session + API base dùng chung               │
+│      ├── portal/                       # Cổng Farm / Retailer / Shipping / Guest     │
+│      │   ├── PortalApp.tsx                                                           │
+│      │   ├── components/               # Auth, PaymentModal, NotificationBell        │
+│      │   ├── pages/                    # Auth, Farm, Retailer, Shipping, Guest       │
+│      │   └── utils/                                                                  │
+│      └── admin/                        # Bảng điều khiển tại /admin                  │
+│          ├── AdminApp.tsx                                                            │
+│          ├── components/               # Dashboard, FarmApproval, ...                │
+│          ├── utils/                                                                  │
+│          └── types.ts                                                                │
+│                                                                                      │
+│  dev/                                  # Công cụ phát triển (không thuộc build)      │
+│  ├── blockchain/contracts/Traceability.sol                                           │
+│  ├── loadtest/                                                                       │
+│  └── tools/                                                                          │
+│                                                                                      │
+│  docs/                                 # Tài liệu thiết kế, SQL, hướng dẫn           │
+│  .github/workflows/ci.yml              # CI 2 job: web-ci + backend-ci               │
 └──────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.2. Admin Web App — Component Tree
+### 4.2. Admin Dashboard (`/admin`) — Component Tree
+
+> Admin dashboard là một phần của app web gộp `web/`, mã nguồn tại `web/src/admin/` và được mount tại route `/admin*` (xem §4.1).
 
 ```
 App (AdminWeb)
@@ -2015,53 +1956,22 @@ App (ShippingWeb)
 │           └── ReportDetail (from drivers, resolve actions)
 ```
 
-### 4.6. Shipping Driver Mobile App — Component Tree
+### 4.6. Shipping Driver Mobile App — Ngoài phạm vi triển khai
 
-```
-App (DriverMobile - React Native)
-├── AuthProvider
-│   └── LoginScreen
-│       └── LoginForm (email + password)
-│
-├── Navigation (Bottom Tabs)
-│   ├── Tab 1: Shipments
-│   │   ├── ShipmentListScreen
-│   │   │   ├── StatusFilter (PICKING_UP | IN_TRANSIT | DELIVERED)
-│   │   │   └── ShipmentCard (order info, addresses, status badge)
-│   │   │
-│   │   └── ShipmentDetailScreen
-│   │       ├── OrderInfoSection
-│   │       ├── RouteMap (Google Maps / MapBox)
-│   │       ├── ActionButtons
-│   │       │   ├── Scan QR at Farm (BICAP-65)
-│   │       │   ├── Confirm Pickup (BICAP-66)
-│   │       │   ├── Update Status (BICAP-64)
-│   │       │   └── Confirm Delivery (BICAP-67)
-│   │       └── TrackingHistoryTimeline
-│   │
-│   ├── Tab 2: QR Scanner
-│   │   └── QRScanScreen
-│   │       ├── CameraView (react-native-camera)
-│   │       ├── ScanResultOverlay
-│   │       │   ├── ProductInfo
-│   │       │   ├── FarmInfo
-│   │       │   └── BlockchainVerificationBadge
-│   │       └── ConfirmPickupButton
-│   │
-│   ├── Tab 3: Profile
-│   │   ├── DriverInfo (name, license, vehicle)
-│   │   └── LogoutButton
-│   │
-│   └── Tab 4: Reports
-│       ├── MyReportsList
-│       └── CreateReportScreen
-│           ├── FormSelect (report type)
-│           ├── FormTextArea (description)
-│           ├── ImageCapture (camera)
-│           └── SubmitButton
-│
-└── NotificationHandler (push notification listener)
-```
+> **Ghi chú refactor:** UI mobile của tài xế (`mobile-app/`) **đã được gỡ bỏ hoàn toàn** khỏi repo trong lần tái cấu trúc gần nhất, nên mục này chỉ còn là **thiết kế tham chiếu (reference design)** — không nằm trong phạm vi triển khai hiện tại. Backend **vẫn giữ** `DriverMobileController` và toàn bộ endpoint `/api/driver/**` để sẵn sàng cho một client di động trong tương lai.
+
+Thiết kế tham chiếu (không triển khai): một app driver (React Native) gồm 4 tab — Shipments, QR Scanner, Profile, Reports — với các màn hình gắn với yêu cầu nghiệp vụ:
+
+| Màn hình tham chiếu | Yêu cầu nghiệp vụ |
+|---------------------|-------------------|
+| ShipmentListScreen / ShipmentDetailScreen | Danh sách & chi tiết chuyến giao (BICAP-63) |
+| TrackingUpdateScreen (trạng thái + GPS) | Cập nhật trạng thái vận chuyển (BICAP-64) |
+| QRScanScreen (quét QR tại nông trại) | Xác nhận lấy hàng bằng QR (BICAP-65) |
+| PickupConfirmScreen | Xác nhận lấy hàng (BICAP-66) |
+| DeliveryConfirmScreen | Xác nhận giao hàng (BICAP-67) |
+| ReportScreen (báo cáo sự cố) | Gửi báo cáo (BICAP-68) |
+
+Các endpoint backend tương ứng vẫn tồn tại trong `DriverMobileController`: `GET /api/driver/shipments`, `GET /api/driver/shipments/{id}`, `POST /api/driver/shipments/{id}/tracking`, `POST /api/driver/shipments/{id}/pickup`, `POST /api/driver/shipments/{id}/deliver`, `POST /api/driver/reports`.
 
 ### 4.7. Guest App — Component Tree
 
@@ -2988,10 +2898,10 @@ vi về farm của user đang đăng nhập.
 | Security | `common/security/JwtAuthenticationFilter.java` | Auth | ✅ Implemented |
 | Config | `config/SecurityConfig.java` | Auth | ✅ Implemented |
 | Config | `config/DatabaseSeeder.java` | DB | ✅ Implemented |
-| Frontend | `frontend/src/components/Auth/LoginForm.tsx` | Auth UI | ✅ Implemented |
-| Frontend | `frontend/src/components/Auth/RegisterForm.tsx` | Auth UI | ✅ Implemented |
-| Frontend | `frontend/src/pages/Auth/AuthPage.tsx` | Auth UI | ✅ Implemented |
-| Frontend | `frontend/src/pages/FarmManager/ServicePackages.tsx` | Farm UI | ✅ Implemented |
+| Frontend | `web/src/portal/components/Auth/LoginForm.tsx` | Auth UI | ✅ Implemented |
+| Frontend | `web/src/portal/components/Auth/RegisterForm.tsx` | Auth UI | ✅ Implemented |
+| Frontend | `web/src/portal/pages/Auth/AuthPage.tsx` | Auth UI | ✅ Implemented |
+| Frontend | `web/src/portal/pages/FarmManager/ServicePackages.tsx` | Farm UI | ✅ Implemented |
 
 ### 9.4. Trạng thái triển khai
 

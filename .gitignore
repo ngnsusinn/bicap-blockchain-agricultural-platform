@@ -34,7 +34,7 @@ replay_pid*
 .mvn/timing.properties
 !.mvn/wrapper/maven-wrapper.jar
 
-# ── Node.js / Frontend Build Outputs (admin-web, frontend, etc.) ──
+# ── Node.js / Web Build Outputs (web/) ──
 node_modules/
 **/node_modules/
 dist/
@@ -86,8 +86,8 @@ coverage.json
 # Runtime uploads (BICAP-37/38)
 uploads/
 
-# Frontend bundles assembled into the Spring Boot JAR by build-web.bat (single-port mode)
-src/main/resources/static/
+# Web app bundle assembled into the Spring Boot JAR (single-port mode)
+backend/src/main/resources/static/
 
-# BIP39 mnemonic for local key derivation (tools/MnemonicToKey.java) — NEVER commit
+# BIP39 mnemonic for local key derivation (dev/tools/MnemonicToKey.java) — NEVER commit
 mnemonic.txt

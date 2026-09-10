@@ -60,6 +60,8 @@ o Retailer (Web App)
 • Send reports to the admin.
 
 o Ship Driver (Mobile App)
+> **Implementation note (current repository):** the Shipping Driver mobile UI (`mobile-app/`) has been removed from the repo; the backend still keeps `DriverMobileController` and exposes the driver APIs under `/api/driver/**`. The functional requirements below are retained unchanged as specification.
+
 • View and view detail of your shipments.
 • Update the processes of shipments.
 • Scan QR Code to track information of products when completely come farms.
@@ -94,6 +96,7 @@ o Shipping Manager (Web App)
 ○ The system should be able to scale flexibly to handle a large number of users and data queries from multiple sources. Components like AWS/Google Cloud, Docker, and Redis 8.6 should be configured for seamless scaling.
 ○ The blockchain (VeChainThor) should support multiple concurrent transactions as IoT data volume increases or when product information requests surge.
 ○ The blockchain must ensure transparency and immutability of product origin data. VeChainThor encryption standards should be used to secure information, with access restricted based on roles (admin, retailer, transporter).
+> **Implementation note (current repository):** the current deliverable does **not** use Docker in the repo — all `Dockerfile`, `docker-compose.db.yml` and Docker/Nginx steps in CI have been removed. The backend runs directly with Maven (`cd backend && mvn spring-boot:run`, port 8080) and the web app is built with Vite (`cd web && npm run build`, dev port 5174). AWS/Google Cloud, Docker and Redis remain retained above as future/optional scaling directions, not as the present deployment state.
 (*) 3.2. Main proposal content (including result and product)
 a. Theory and practice (document):
 ● Students should apply the software development process and UML 2.0 in the modeling system.
@@ -113,6 +116,7 @@ b. Products:
 ○ Mobile application for Shipping Driver, Guest
 ○ Web API for System.
 ○ Web app for Admin, Farm Manager, Retailer, Shipping Manager.
+> **Implementation note (current repository):** the current deliverable ships only the **Web API** (`backend/`) and a **single unified React web app** (`web/`) that serves both the portal roles (Farm/Retailer/Shipping/Guest) on `/` and the Admin dashboard on `/admin`. The mobile application UI has been removed from the repo; the Shipping Driver capability is retained as backend API `/api/driver/**`. The product list above is kept unchanged as the original requirement.
 c. Proposed Tasks:
 ○ Task package 1: Develop the Web application for the Admin system.
 ○ Task package 2: Develop the Web application for the Farm Management.
@@ -123,3 +127,4 @@ c. Proposed Tasks:
 ○ Task package 7: Develop the Web API for the system.
 ○ Task package 8: Build – Deploy and Test the system.
 ○ Task package 9: Prepare all the required documents: System analysis and Design, Test plan, Installation manual, User manual.
+> **Implementation note (current repository):** Task packages 5 and 6 (App Mobile for Shipping Driver / Guest) had their mobile UI removed from the current repo; their backend APIs are retained. Task packages 1–4 are delivered as one web app (`web/`, routes `/` and `/admin`), task package 7 as `backend/`, and task package 8 runs through the two CI jobs `web-ci` (web/) and `backend-ci` (backend/) without Docker.

@@ -14,9 +14,9 @@
 | Tầng | Loại | Công cụ | Phạm vi | Tần suất |
 |---|---|---|---|---|
 | Đơn vị (backend) | Unit | JUnit 5 + Mockito | Service/Controller/security/crypto | Mỗi commit (CI `mvn test`) |
-| Đơn vị (frontend) | Unit/Component | Vitest + Testing Library + jsdom | Session helpers, LoginForm, badge styles, API helpers, StatusBadge, DashboardPage | Mỗi commit (`npm test`) |
+| Đơn vị (frontend/web) | Unit/Component | Vitest + Testing Library + jsdom | `web/` hợp nhất (portal + admin): session dùng chung, LoginForm, badge styles, API helpers, StatusBadge, DashboardPage | Mỗi commit (`npm test`) |
 | Tích hợp | Integration | `@SpringBootTest` + MockMvc (full filter chain) | Luồng liên module end-to-end | Mỗi commit |
-| Hiệu năng | Load/Stress | k6 (`loadtest/k6-loadtest.js`) + node runner | Read-path có/không cache, JWT | Trước release |
+| Hiệu năng | Load/Stress | k6 (`dev/loadtest/k6-loadtest.js`) + node runner | Read-path có/không cache, JWT | Trước release |
 | Bảo mật | Security | Unit + integration | RBAC endpoint, JWT, rate limit, secrets fail-fast, chữ ký tx | Mỗi commit |
 | Chấp nhận | UAT | Checklist thủ công (BICAP-90) | Theo vai trò, trên bản 1-port | Trước nghiệm thu |
 
@@ -24,13 +24,12 @@
 
 ## 2. Kết quả kiểm thử chức năng (BICAP-86/87)
 
-### 2.1 Tổng hợp — chạy ngày 30/08/2026
+### 2.1 Tổng hợp — chạy ngày 30/08/2026 (số liệu cập nhật theo cấu trúc repo sau refactor: `backend/` + `web/`)
 | Suite | Số test | Kết quả |
 |---|---|---|
-| Backend (`mvn test`, 33 lớp test) | **241** | ✅ 241 pass / 0 fail / 0 skip |
-| Farm Portal (`npm test`) | **17** | ✅ pass |
-| Admin Web (`npm test`) | **11** | ✅ pass |
-| **Tổng** | **269** | ✅ **PASS** |
+| Backend (`cd backend && mvn test`) | **251** | ✅ 251 pass / 0 fail / 0 skip |
+| Web hợp nhất (`cd web && npm test`, 6 file test) | **28** | ✅ 28 pass (portal 17 + admin 11) |
+| **Tổng** | **279** | ✅ **PASS** |
 
 ### 2.2 Ánh xạ test theo module (trích các lớp chính)
 | Module / Ticket | Test class | Số TC | Vùng kiểm tra chính |
@@ -48,8 +47,7 @@
 | Notification (BICAP-77) | `NotificationServiceTest`, `NotificationControllerTest` | 17 | unread count, đánh dấu đọc, SSE |
 | Blockchain (BICAP-6/74/80/81) | `BlockchainServiceTest`, `VeChainCryptoTest`, `BlockchainSecurityTest` | 22 | RLP vectors, RFC6979 deterministic, low-s, recovery id, địa chỉ ví/contract, RBAC tx |
 | Thanh toán (BICAP-78) | `SepayServiceTest`, `SubscriptionServiceTest` | 16 | Webhook chữ ký, kích hoạt gói |
-| Frontend farm | `auth.test.ts`, `LoginForm.test.tsx`, `ui.test.ts` | 17 | Phiên localStorage, quick-fill 3 role, validation, endpoint mapping |
-| Frontend admin | `api.test.ts`, `StatusBadge.test.tsx`, `DashboardPage.test.tsx` | 11 | API_ORIGIN, header, format date, dashboard render + error toast |
+| Frontend web (`web/`, gộp portal + admin) | `auth.test.ts`, `LoginForm.test.tsx`, `ui.test.ts`, `api.test.ts`, `StatusBadge.test.tsx`, `DashboardPage.test.tsx` | 28 | Phiên localStorage dùng chung (`shared/session.ts`), quick-fill 3 role, validation, endpoint mapping, API_ORIGIN, header, format date, dashboard render + error toast |
 
 ### 2.3 Kịch bản tích hợp end-to-end (`FullLifecycleIntegrationTest`)
 12 bước trên context thật (security filter + JWT + H2 + seeder):
@@ -75,7 +73,7 @@
 
 ## 3. Kết quả kiểm thử hiệu năng (BICAP-88)
 
-Chạy `loadtest/node-loadtest.mjs` trên bản 1-port (H2, cache in-memory, máy dev cá nhân):
+Chạy `dev/loadtest/node-loadtest.mjs` trên bản 1-port (H2, cache in-memory, máy dev cá nhân):
 
 ### 3.1 Load — 20 VUs × 200 req/pha
 | Kịch bản | Req | Lỗi | TB | p50 | p95 | p99 |
@@ -84,7 +82,7 @@ Chạy `loadtest/node-loadtest.mjs` trên bản 1-port (H2, cache in-memory, má
 | B — GET /api/marketplace/products | 200 | 0 | 74.3ms | 50.3 | 189.3 | 356.3 |
 | C — GET /api/service-packages | 200 | 0 | 27.2ms | 25.4 | 44.6 | 104.5 |
 
-### 3.2 Stress — 100 VUs × 500 req/pha (file `loadtest/results-stress-100vu.json`)
+### 3.2 Stress — 100 VUs × 500 req/pha (file `dev/loadtest/results-stress-100vu.json`)
 | Kịch bản | Req | Lỗi | TB | p95 | p99 |
 |---|---|---|---|---|---|
 | A — categories (cache) | 500 | 0 | 133.4ms | 239.9 | 248.8 |
@@ -92,7 +90,7 @@ Chạy `loadtest/node-loadtest.mjs` trên bản 1-port (H2, cache in-memory, má
 | C — service-packages | 500 | 0 | 81.8ms | 111.7 | 127.5 |
 | **Tổng** | **1500** | **0 (0%)** | — | — | **~625 req/s** |
 
-**Kết luận:** đạt ngưỡng thoát (p95 < 800ms, error 0%). Thị trường thật với MySQL + Redis cache kỳ vọng tốt hơn H2/in-memory. Chạy k6: `k6 run loadtest/k6-loadtest.js -e BASE_URL=…`.
+**Kết luận:** đạt ngưỡng thoát (p95 < 800ms, error 0%). Thị trường thật với MySQL + Redis cache kỳ vọng tốt hơn H2/in-memory. Chạy k6: `k6 run dev/loadtest/k6-loadtest.js -e BASE_URL=…`.
 
 ## 4. Kết quả kiểm thử bảo mật (BICAP-89)
 
@@ -124,9 +122,11 @@ Kế hoạch + kịch bản + biên bản mẫu: xem `docs/uat-plan.md`.
 
 ## 7. Phụ lục — cách chạy
 ```bash
-mvn test                                   # backend 241 TC
-cd frontend  && npm test                   # 17 TC
-cd admin-web && npm test                   # 11 TC
-node loadtest/node-loadtest.mjs --vus 100 --requests 500   # stress
-k6 run loadtest/k6-loadtest.js             # k6 (cài k6 trước)
+cd backend && mvn test                # backend 251 TC (port 8080 khi chạy app)
+cd web     && npm test                # web 28 TC (hợp nhất portal + admin)
+node dev/loadtest/node-loadtest.mjs --vus 100 --requests 500   # stress
+k6 run dev/loadtest/k6-loadtest.js    # k6 (cài k6 trước)
 ```
+
+> **Chạy 1 port (mặc định):** `cd web && npm install && npm run build` → copy `web/dist/*` vào `backend/src/main/resources/static/` → `cd backend && mvn spring-boot:run` → mở `http://localhost:8080/` (portal) và `http://localhost:8080/admin` (admin dashboard).
+> **Chế độ dev:** `cd web && npm run dev` (5174) + `cd backend && mvn spring-boot:run` (8080).

@@ -4,12 +4,12 @@
 |---|---|
 | **Phiên bản** | 1.0 — 30/08/2026 |
 | **Đối tượng tham gia** | Giảng viên hướng dẫn (PO), trưởng nhóm (PM), đại diện từng vai trò kỹ thuật |
-| **Môi trường** | Bản 1-port: `build-web.bat` + `run-backend.bat` → `http://localhost:8080` (H2 + seed) hoặc staging MySQL/Redis |
+| **Môi trường** | Bản 1-port: `cd web && npm install && npm run build` → copy `web/dist/*` vào `backend/src/main/resources/static/` → `cd backend && mvn spring-boot:run` → `http://localhost:8080` (portal) và `http://localhost:8080/admin` (admin). Chế độ dev: `cd web && npm run dev` (5174) + backend 8080. (H2 + seed) hoặc staging MySQL/Redis |
 | **Dữ liệu** | Tài khoản test đã seed (xem `docs/user-manual.md` §0) |
 | **Thời lượng dự kiến** | 1 buổi ~2 giờ |
 
 ## 1. Điều kiện vào/ra
-- **Điều kiện vào:** CI xanh (241 backend + 28 frontend test pass); smoke test `docs/installation-guide.md` §4 đạt; tài liệu user-manual phát cho người test.
+- **Điều kiện vào:** CI xanh (251 backend + 28 web test pass); smoke test `docs/installation-guide.md` §4 đạt; tài liệu user-manual phát cho người test.
 - **Điều kiện ra:** ≥90% ca UAT PASS; không còn lỗi Severity Cao/Trung chưa xử lý; chữ ký xác nhận của các bên.
 
 ## 2. Kịch bản UAT theo vai trò
@@ -60,7 +60,7 @@
 | UAT-E1 | Đăng nhập sai 5 lần | Tài khoản khóa tạm, thông báo rõ |
 | UAT-E2 | F5 mọi deep-link (/, /admin/, /admin/farm, /trace/x) | Không 404 |
 | UAT-E3 | Logout ở 1 cổng | Thoát cả 2 cổng (chung origin) |
-| UAT-E4 | Chạy `node loadtest/node-loadtest.mjs` | p95 < 800ms, error 0% |
+| UAT-E4 | Chạy `node dev/loadtest/node-loadtest.mjs` | p95 < 800ms, error 0% |
 | UAT-E5 | Blockchain live smoke (nếu có testnet key) | Tx PENDING → CONFIRMED trong ~1 phút, thấy trên explorer |
 
 ## 3. Mẫu biên bản từng ca
@@ -95,7 +95,15 @@ Ghi chú/tần suất lỗi: ______________________________
 | Đại diện Frontend | | | |
 
 ## 6. Hướng dẫn thực hiện nhanh cho người test
-1. Chạy hệ thống: `build-web.bat` → `run-backend.bat` → mở `http://localhost:8080/`.
+1. Chạy hệ thống (bản 1-port):
+   ```bash
+   cd web && npm install && npm run build
+   mkdir -p ../backend/src/main/resources/static
+   cp -r dist/* ../backend/src/main/resources/static/
+   cd ../backend && mvn spring-boot:run
+   ```
+   → mở `http://localhost:8080/` (portal: Farm/Retailer/Shipping/Guest) và `http://localhost:8080/admin` (admin dashboard).
+   *Chế độ dev:* `cd web && npm run dev` (5174) + `cd backend && mvn spring-boot:run` (8080); khi đó mở `http://localhost:5174/` và `http://localhost:5174/admin`.
 2. Mỗi vai trò dùng **nút điền nhanh tài khoản test** trên form login.
 3. Thực hiện theo thứ tự nhóm A → B → C (một luồng xuyên suốt: farm tạo hàng → retailer mua → admin duyệt) → D → E.
 4. Ghi biên bản từng ca vào mẫu §3, nộp về PM tổng hợp vào §5.

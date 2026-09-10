@@ -59,6 +59,8 @@ Tài liệu bao gồm đặc tả cho **toàn bộ 7 sản phẩm phần mềm**
 | 6 | Guest App | Web / Mobile Application | Khách truy cập (Guest) |
 | 7 | Backend Web API | Backend Service | Tất cả các module |
 
+> **Ghi chú phạm vi triển khai hiện tại (repo sau refactor):** Tài liệu SRS này giữ nguyên toàn bộ đặc tả gốc. Trong repo hiện tại, UI mobile (`mobile-app/`, sản phẩm #5) **đã được gỡ khỏi repo**; backend **vẫn giữ** `DriverMobileController` và các API `/api/driver/**`. Các Web App (#1–#4 và phần web của #6) được gộp thành **một app React duy nhất** trong `web/` (`/admin*` → admin dashboard; còn lại → portal Farm/Retailer/Shipping/Guest). Repo **không còn dùng Docker** (`Dockerfile`, `docker-compose.db.yml`, Docker/Nginx trong CI đã bị gỡ).
+
 ### 1.3. Đối tượng đọc tài liệu
 
 | Đối tượng | Mục đích sử dụng |
@@ -184,6 +186,8 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
+> **Chú thích sơ đồ (trạng thái hiện tại):** khối `MOBILE APPLICATIONS` (`Ship Driver Mobile App`, `Guest Mobile/Web`) là đặc tả/định hướng gốc — bản triển khai hiện tại đã gỡ UI mobile khỏi repo, chỉ còn backend API `/api/driver/**`. Các khối Web App nay được phục vụ bởi **một app `web/`** (portal `/`, admin `/admin`) thay cho `frontend/` + `admin-web/` tách rời.
+
 ### 2.4. Vai trò người dùng (Actors)
 
 | Vai trò | Mã | Nền tảng | Mô tả chi tiết |
@@ -194,6 +198,8 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 | **Shipping Manager** | SM | Web App | Quản lý vận chuyển — tạo lô vận chuyển, quản lý phương tiện và tài xế |
 | **Shipping Driver** | SD | Mobile App | Tài xế — cập nhật hành trình, xác nhận giao nhận, quét QR Code |
 | **Guest** | GS | Web / Mobile | Khách truy cập — tra cứu sản phẩm, xem nội dung giáo dục |
+
+> **Ghi chú phạm vi:** actor **Shipping Driver (SD)** hiện không có UI mobile trong repo (đã gỡ); chỉ còn API backend `/api/driver/**`. Actor **Guest (GS)** hiện dùng bản web trong `web/`.
 
 ### 2.5. Luồng nghiệp vụ chính (Main Business Flow)
 
@@ -267,6 +273,8 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 | **Navigation** | Sidebar menu + Breadcrumb navigation |
 | **Thông báo** | Real-time notification bell + Toast messages |
 
+> **Ghi chú phạm vi:** bản hiện tại gộp các Web App thành **một app React 19 + TypeScript + Vite** trong `web/` (không dùng Next.js), phục vụ portal và admin dashboard trên cùng một build tĩnh.
+
 #### 3.1.2. Mobile Application (Shipping Driver, Guest)
 
 | Thuộc tính | Đặc tả |
@@ -277,6 +285,8 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 | **GPS** | Hỗ trợ theo dõi vị trí tài xế (Shipping Driver) |
 | **Offline** | Hỗ trợ cache dữ liệu cơ bản khi mất kết nối |
 | **Push Notification** | Hỗ trợ FCM (Firebase Cloud Messaging) |
+
+> **Ghi chú phạm vi triển khai hiện tại:** module UI mobile (`mobile-app/`) đã gỡ khỏi repo nên đặc tả trong bảng này **không còn thành phần UI tương ứng**; backend vẫn cung cấp API `/api/driver/**` cho các nghiệp vụ tài xế. Đặc tả giữ nguyên giá trị.
 
 ### 3.2. Giao diện phần cứng (Hardware Interface)
 
@@ -1520,6 +1530,8 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 ### 4.5. Module Shipping Driver Mobile App (EPIC-5)
 
 > **Mô tả module:** Ứng dụng Mobile dành cho Tài xế vận chuyển — cập nhật hành trình, xác nhận giao nhận.
+>
+> **⚠️ Ghi chú phạm vi triển khai hiện tại:** phần UI mobile của module này **đã được gỡ khỏi repo**. Backend **vẫn giữ** `DriverMobileController` và các API `/api/driver/**`, nên các đặc tả SRS-SD-001→006 dưới đây vẫn giữ nguyên giá trị đặc tả (không xoá yêu cầu nào).
 
 ---
 
@@ -1634,6 +1646,8 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 ### 4.6. Module Guest App (EPIC-6)
 
 > **Mô tả module:** Ứng dụng Web/Mobile dành cho Khách — tra cứu sản phẩm, xem nội dung giáo dục.
+>
+> **Ghi chú phạm vi:** phần Mobile của Guest đã gỡ khỏi repo ở bản hiện tại; Guest được phục vụ qua bản web trong `web/`. Các đặc tả SRS-GS-001→003 giữ nguyên giá trị.
 
 ---
 
@@ -1887,6 +1901,8 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 | **NFR-001** | Mở rộng linh hoạt (Horizontal Scaling) | Hệ thống phải mở rộng linh hoạt xử lý số lượng lớn người dùng. Sử dụng Docker container orchestration, Redis 8.6 cluster, load balancer. | Hệ thống tự động scale khi CPU > 70% hoặc RAM > 80% |
 | **NFR-002** | Xử lý giao dịch Blockchain đồng thời | VeChainThor phải hỗ trợ xử lý nhiều giao dịch đồng thời khi dữ liệu IoT tăng hoặc khi có nhiều request truy xuất sản phẩm. | Xử lý tối thiểu 100 giao dịch/phút |
 
+> **Ghi chú phạm vi hiện tại:** NFR-001 nêu Docker container orchestration như **định hướng mở rộng tương lai**; repo hiện tại **không dùng Docker** — `Dockerfile`, `docker-compose.db.yml` và Docker/Nginx trong CI đã bị gỡ. Backend chạy trực tiếp bằng Maven (cổng 8080), web build bằng Vite (`web/`). NFR-001 giữ nguyên giá trị đặc tả.
+
 ### 5.2. Bảo mật (Security)
 
 | Mã | Yêu cầu | Đặc tả chi tiết | Tiêu chí đo lường |
@@ -1911,6 +1927,8 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 |----|---------|------------------|--------------------|
 | **NFR-007** | Giao diện thân thiện | Giao diện dễ sử dụng, phù hợp với nông dân có hạn chế kỹ năng công nghệ. Sử dụng icon trực quan, font chữ rõ ràng, contrast tốt. | SUS (System Usability Scale) score ≥ 70 |
 | **NFR-008** | Responsive Design | Web App hiển thị tốt trên Desktop (≥1024px) và Tablet (≥768px). Mobile App tương thích Android ≥ 8.0 và iOS ≥ 14.0. | Không có lỗi layout trên các thiết bị mục tiêu |
+
+> **Ghi chú phạm vi:** yêu cầu Mobile App trong NFR-008 giữ nguyên như đặc tả; bản triển khai hiện tại chỉ có Web App (`web/`, responsive desktop/tablet), UI mobile đã gỡ khỏi repo.
 
 ### 5.5. Khả năng tích hợp (Integration)
 
@@ -2001,6 +2019,12 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 | Infrastructure | AWS / Google Cloud | — |
 | Containerization | Docker | 20+ |
 | Container Orchestration | Docker Compose / Kubernetes | — |
+
+> **Ghi chú phạm vi triển khai hiện tại (đối chiếu repo):**
+> - **Mobile App (React Native):** UI đã gỡ khỏi repo; backend vẫn giữ API `/api/driver/**`.
+> - **Containerization / Orchestration (Docker, Docker Compose/Kubernetes):** **không còn dùng trong repo** — đã gỡ toàn bộ Docker (`Dockerfile`, `docker-compose.db.yml`) và Docker/Nginx trong CI. Giữ lại trong bảng như **định hướng tương lai**, không phải trạng thái hiện tại.
+> - **Web Client:** thực tế là **một app React 19 + TypeScript + Vite** trong `web/` (gộp `frontend/` + `admin-web/` cũ), dev cổng 5174, build tĩnh `web/dist`; không dùng Next.js ở bản hiện tại.
+> - **Backend:** Java Spring Boot (Maven) trong `backend/`, chạy `cd backend && mvn spring-boot:run` (cổng 8080); test `cd backend && mvn test` (251 test pass). Web test: `cd web && npm test` (28 test pass). CI gồm 2 job `web-ci` (`web/`) và `backend-ci` (`backend/`).
 
 ### 7.2. Quy trình phát triển
 
@@ -2117,6 +2141,8 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 | Yêu cầu phi chức năng | 16 | — | — | — |
 | **TỔNG CỘNG** | **86** | — | — | — |
 
+> **Ghi chú phạm vi:** dòng *Shipping Driver Mobile App* (6 yêu cầu SRS-SD-001→006) giữ nguyên số hiệu & giá trị đặc tả; trong repo hiện tại UI mobile đã gỡ, chỉ còn backend API `/api/driver/**`. Các yêu cầu web còn lại được phục vụ bởi app hợp nhất `web/`.
+
 ---
 
 ## 9. Phụ lục
@@ -2143,6 +2169,8 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 | Articles / Content | `/api/articles/*` | 5 |
 | **Tổng** | | **~130** |
 
+> **Ghi chú:** backend hiện **vẫn cung cấp** nhóm API `/api/driver/**` (`DriverMobileController`) phục vụ nghiệp vụ tài xế, mặc dù UI mobile đã được gỡ khỏi repo.
+
 ### 9.2. Quy ước mã yêu cầu
 
 | Tiền tố | Ý nghĩa | Ví dụ |
@@ -2162,6 +2190,7 @@ Tận dụng công nghệ Blockchain (VeChainThor) để xây dựng nền tản
 |-----------|------|----------------|-----------------|
 | 1.0 | 23/07/2026 | Team BICAP | Phiên bản đầu tiên — đặc tả đầy đủ từ User Requirements v2.0 |
 | 1.1 | 23/07/2026 | Team BICAP | Cập nhật Backend: Java (Spring Boot 3.x) & Frontend: React Ecosystem (ReactJS/Next.js cho Web, React Native cho Mobile) |
+| 1.2 | 10/09/2026 | Team BICAP | Đồng bộ với repo sau refactor: gộp `frontend/` + `admin-web/` thành một app `web/` (React 19 + Vite), backend chuyển vào `backend/` (Maven, cổng 8080), gỡ UI `mobile-app/` (giữ backend API `/api/driver/**`), gỡ Docker khỏi repo, cập nhật số test (backend 251, web 28) và đường dẫn `dev/loadtest/`. Các yêu cầu gốc (EPIC-5, Docker trong NFR) được giữ nguyên kèm ghi chú phạm vi. |
 
 ---
 

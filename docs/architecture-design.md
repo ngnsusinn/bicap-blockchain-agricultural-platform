@@ -65,10 +65,10 @@ Tài liệu Thiết kế Kiến trúc này mô tả toàn bộ kiến trúc kỹ
 
 Hệ thống BICAP được thiết kế theo kiến trúc **Client-Server 3 tầng** (Three-Tier Architecture), kết hợp tích hợp Blockchain VeChainThor để đảm bảo tính minh bạch và bất biến dữ liệu truy xuất nguồn gốc nông sản. Hệ thống bao gồm:
 
-- **4 ứng dụng Web** (Admin, Farm Management, Retailer, Shipping Management) xây dựng bằng ReactJS/Next.js
-- **2 ứng dụng Mobile** (Shipping Driver, Guest) xây dựng bằng React Native
+- **1 ứng dụng Web hợp nhất** (`web/`) xây dựng bằng React 19 + TypeScript + Vite, gồm Admin Dashboard (`/admin`) và các portal Farm Management, Retailer, Shipping, Guest (`/`)
+- **Actor Shipping Driver** vẫn là yêu cầu nghiệp vụ; UI mobile đã gỡ khỏi repo, chỉ còn backend API `/api/driver/**` phục vụ tích hợp
 - **1 Backend API** trung tâm (Java Spring Boot 3.x) kết nối với MySQL, Redis và VeChainThor Blockchain
-- **Hạ tầng cloud** (AWS/Google Cloud) với Docker containerization
+- **Triển khai một port**: Spring Boot phục vụ static bundle của web app (mặc định 8080); Docker không còn được dùng trong repo
 
 Kiến trúc được thiết kế để đáp ứng yêu cầu phi chức năng: thời gian phản hồi < 2 giây, 500 người dùng đồng thời, uptime ≥ 99.5%, và xử lý ≥ 100 giao dịch blockchain/phút.
 
@@ -98,7 +98,7 @@ Kiến trúc được thiết kế để đáp ứng yêu cầu phi chức năng
                     │  │                             │   │
                     │  │  ┌───────────────────────┐  │   │
                     │  │  │  Presentation Tier    │  │   │
-                    │  │  │  (Web Apps + Mobile)  │  │   │
+                    │  │  │  (Portal + Admin)      │  │   │
                     │  │  └───────────┬───────────┘  │   │
                     │  │              │               │   │
                     │  │  ┌───────────┴───────────┐  │   │
@@ -138,37 +138,25 @@ Kiến trúc được thiết kế để đáp ứng yêu cầu phi chức năng
 │                                                                                  │
 │  ┌────────────────────── PRESENTATION TIER ────────────────────────────────────┐ │
 │  │                                                                             │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────────────┐  │ │
-│  │  │   Admin     │  │    Farm     │  │  Retailer   │  │    Shipping      │  │ │
-│  │  │   Web App   │  │  Mgmt App  │  │   Web App   │  │   Mgmt Web App   │  │ │
-│  │  │             │  │            │  │             │  │                  │  │ │
-│  │  │  ReactJS/   │  │  ReactJS/  │  │  ReactJS/   │  │   ReactJS/       │  │ │
-│  │  │  Next.js    │  │  Next.js   │  │  Next.js    │  │   Next.js        │  │ │
-│  │  │  TypeScript │  │  TypeScript│  │  TypeScript │  │   TypeScript     │  │ │
-│  │  └──────┬──────┘  └──────┬─────┘  └──────┬──────┘  └────────┬─────────┘  │ │
-│  │         │                │               │                   │            │ │
-│  │  ┌──────┴───────────┐  ┌┴────────────────┴──┐                │            │ │
-│  │  │  Shipping Driver │  │     Guest App      │                │            │ │
-│  │  │  Mobile App      │  │   (Web / Mobile)   │                │            │ │
-│  │  │                  │  │                    │                │            │ │
-│  │  │  React Native    │  │   React Native     │                │            │ │
-│  │  │  TypeScript      │  │   TypeScript       │                │            │ │
-│  │  └────────┬─────────┘  └──────────┬─────────┘                │            │ │
-│  └───────────┼───────────────────────┼──────────────────────────┼────────────┘ │
-│              │                       │                          │              │
-│              └───────────────────────┼──────────────────────────┘              │
+│  │                                                                           │ │
+│  │  ┌────────────────────────────────────────────────────────────────────┐   │ │
+│  │  │  Web App duy nhất — web/   (React 19 · TypeScript · Vite)          │   │ │
+│  │  │  • PortalApp  ( / )       → Farm · Retailer · Shipping · Guest     │   │ │
+│  │  │  • AdminApp   ( /admin )  → Dashboard quản trị                     │   │ │
+│  │  └────────────────────────────────┬─────────────────────────────────┘     │ │
+│  │                                   │                                       │ │
+│  │  Chú thích: Actor Shipping Driver (SD) vẫn là yêu cầu nghiệp vụ;          │ │
+│  │  UI mobile đã gỡ khỏi repo, chỉ còn backend API /api/driver/**.           │ │
+│  │                                                                           │ │
+│  └───────────────────────────────────┼───────────────────────────────────────┘ │
 │                                      │                                        │
 │                              HTTPS / WebSocket                                │
 │                                      │                                        │
 │  ┌───────────────────────── APPLICATION TIER ─────────────────────────────────┐│
 │  │                                   │                                        ││
 │  │                     ┌─────────────┴─────────────┐                          ││
-│  │                     │    API GATEWAY / NGINX     │                          ││
-│  │                     │    (Reverse Proxy + LB)    │                          ││
-│  │                     └─────────────┬─────────────┘                          ││
-│  │                                   │                                        ││
-│  │                     ┌─────────────┴─────────────┐                          ││
-│  │                     │    SPRING BOOT API         │                          ││
+│  │                     │    SPRING BOOT (1 port)    │                          ││
+│  │                     │  REST API + Static Bundle  │                          ││
 │  │                     │    (Java 21 / JDK 21)      │                          ││
 │  │                     │                            │                          ││
 │  │                     │  ┌──────────────────────┐  │                          ││
@@ -215,21 +203,23 @@ Kiến trúc được thiết kế để đáp ứng yêu cầu phi chức năng
 
 | # | Thành phần | Công nghệ | Vai trò | Giao thức |
 |---|-----------|-----------|---------|-----------|
-| 1 | Admin Web App | ReactJS/Next.js (TS) | Quản trị hệ thống | HTTPS |
-| 2 | Farm Management Web App | ReactJS/Next.js (TS) | Quản lý trang trại & mùa vụ | HTTPS |
-| 3 | Retailer Web App | ReactJS/Next.js (TS) | Mua bán nông sản trên sàn | HTTPS |
-| 4 | Shipping Mgmt Web App | ReactJS/Next.js (TS) | Quản lý vận chuyển | HTTPS |
-| 5 | Shipping Driver Mobile App | React Native (TS) | Cập nhật hành trình, QR scan | HTTPS + FCM |
-| 6 | Guest App | React Native / Web (TS) | Tra cứu sản phẩm, giáo dục | HTTPS |
-| 7 | API Gateway / Nginx | Nginx | Reverse proxy, load balancing, SSL | HTTPS |
+| 1 | Admin Dashboard | React 19 + Vite (TS) — `web/src/admin` | Quản trị hệ thống | HTTPS |
+| 2 | Farm Management Portal | React 19 + Vite (TS) — `web/src/portal` | Quản lý trang trại & mùa vụ | HTTPS |
+| 3 | Retailer Portal | React 19 + Vite (TS) — `web/src/portal` | Mua bán nông sản trên sàn | HTTPS |
+| 4 | Shipping Mgmt Portal | React 19 + Vite (TS) — `web/src/portal` | Quản lý vận chuyển | HTTPS |
+| 5 | Shipping Driver (actor) | UI mobile đã gỡ khỏi repo | Cập nhật hành trình, QR scan qua API `/api/driver/**` | HTTPS |
+| 6 | Guest Portal | React 19 + Vite (TS) — `web/src/portal` | Tra cứu sản phẩm, giáo dục | HTTPS |
+| 7 | Static Bundle Serving | Spring Boot (static resources) | Phục vụ web app một port (`/`, `/admin`) | HTTPS |
 | 8 | Backend API | Java Spring Boot 3.x (JDK 21) | Logic nghiệp vụ trung tâm | REST + WebSocket |
 | 9 | MySQL Database | MySQL 5.7.41 | Lưu trữ dữ liệu quan hệ | JDBC |
 | 10 | Redis Cache | Redis 8.6 | Cache, session, rate limiting | Redis Protocol |
 | 11 | VeChainThor Blockchain | VeChainThor + Solidity | Dữ liệu truy xuất bất biến | Thor REST API |
 | 12 | Payment Gateway | VNPay / MoMo | Xử lý thanh toán | REST API |
 | 13 | Email Service | SMTP / SendGrid | Gửi thông báo email | SMTP |
-| 14 | Firebase Cloud Messaging | FCM | Push notification cho mobile | FCM API |
+| 14 | Firebase Cloud Messaging | FCM | Push notification (kênh ngoài) | FCM API |
 | 15 | IoT Gateway | MQTT Broker | Nhận dữ liệu cảm biến | MQTT / REST |
+
+> **Ghi chú:** `web/` là **một ứng dụng React duy nhất** (React 19 + TypeScript + Vite); Admin Dashboard và các portal Farm/Retailer/Shipping/Guest là các route trong cùng bundle (`/admin*` → AdminApp, còn lại → PortalApp). Không còn API Gateway/Nginx riêng — Spring Boot vừa phục vụ REST API vừa phục vụ static bundle.
 
 ---
 
@@ -260,14 +250,14 @@ Kiến trúc được thiết kế để đáp ứng yêu cầu phi chức năng
 
 ---
 
-#### ADR-003: ReactJS/Next.js cho Web Frontend
+#### ADR-003: React (Vite SPA) cho Web Frontend
 
 | Thuộc tính | Chi tiết |
 |------------|----------|
-| **Quyết định** | Sử dụng **ReactJS / Next.js (TypeScript)** cho tất cả Web App |
-| **Bối cảnh** | Cần xây dựng 4 Web App với UX nhất quán; yêu cầu dự án chỉ định ReactJS |
-| **Lý do chọn** | ① Ràng buộc từ yêu cầu dự án ② Component-based architecture phù hợp tái sử dụng UI ③ Next.js hỗ trợ SSR/SSG tối ưu SEO cho Guest App ④ TypeScript đảm bảo type safety |
-| **Đánh đổi** | Đường cong học tập cho team mới; cần quản lý state cẩn thận |
+| **Quyết định** | Sử dụng **React 19 + TypeScript + Vite (SPA)** cho một ứng dụng Web hợp nhất (`web/`) |
+| **Bối cảnh** | Cần nhiều portal (Farm, Retailer, Shipping, Guest) và Admin Dashboard với UX nhất quán; yêu cầu dự án chỉ định ReactJS |
+| **Lý do chọn** | ① Ràng buộc từ yêu cầu dự án ② Component-based architecture phù hợp tái sử dụng UI ③ Vite cho dev server/build nhanh, bundle tĩnh phục vụ một port ④ TypeScript đảm bảo type safety ⑤ Gộp nhiều portal vào một codebase, dùng chung session & design system |
+| **Đánh đổi** | Đường cong học tập cho team mới; cần quản lý state cẩn thận; bundle dùng chung nên phải tách route rõ ràng |
 
 ---
 
@@ -278,6 +268,7 @@ Kiến trúc được thiết kế để đáp ứng yêu cầu phi chức năng
 | **Quyết định** | Sử dụng **React Native (TypeScript)** cho ứng dụng Mobile |
 | **Bối cảnh** | Cần phát triển cho cả Android và iOS; chia sẻ logic với Web App |
 | **Lý do chọn** | ① Ràng buộc từ yêu cầu dự án ② Cross-platform, một codebase cho 2 nền tảng ③ Chia sẻ kiến thức React giữa Web và Mobile team ④ Hỗ trợ tốt camera (QR scan), GPS |
+| **Trạng thái hiện tại** | Sau refactor, **UI mobile đã gỡ khỏi repo**; chỉ giữ backend API `/api/driver/**` phục vụ actor Shipping Driver (yêu cầu nghiệp vụ) |
 
 ---
 
@@ -316,7 +307,7 @@ Kiến trúc được thiết kế để đáp ứng yêu cầu phi chức năng
 | Quality Attribute | Quyết định kiến trúc | Ảnh hưởng |
 |---|---|---|
 | **Performance** | Redis cache, connection pooling, pagination | Response < 2s |
-| **Scalability** | Docker containerization, horizontal scaling, load balancer | 500 concurrent users |
+| **Scalability** | Spring Boot horizontal scaling, static bundle serving, load balancer | 500 concurrent users |
 | **Security** | JWT + RBAC, bcrypt, HTTPS/TLS 1.2+, OWASP Top 10 | Zero unauthorized access |
 | **Availability** | Health check, auto-restart, cloud deployment | Uptime ≥ 99.5% |
 | **Integrity** | VeChainThor blockchain, immutable data records | 100% dữ liệu blockchain bất biến |
@@ -335,16 +326,10 @@ Hệ thống BICAP được thiết kế theo mô hình **kiến trúc phân l�
 ┌──────────────────────────────────────────────────────────────────────┐
 │                      PRESENTATION TIER                                │
 │   ┌────────────────────────────────────────────────────────────┐     │
-│   │  Web Applications (ReactJS/Next.js)                        │     │
-│   │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐ │     │
-│   │  │  Admin   │ │   Farm   │ │ Retailer │ │  Shipping    │ │     │
-│   │  │  SPA     │ │  Mgmt    │ │   SPA    │ │  Mgmt SPA    │ │     │
-│   │  └──────────┘ └──────────┘ └──────────┘ └──────────────┘ │     │
-│   ├────────────────────────────────────────────────────────────┤     │
-│   │  Mobile Applications (React Native)                       │     │
-│   │  ┌──────────────┐  ┌──────────────┐                      │     │
-│   │  │  Ship Driver │  │    Guest     │                      │     │
-│   │  └──────────────┘  └──────────────┘                      │     │
+│   │  Web App hợp nhất — web/ (React 19 + TypeScript + Vite)    │     │
+│   │    • PortalApp  ( / )     → Farm·Retailer·Shipping·Guest   │     │
+│   │    • AdminApp   ( /admin )→ Dashboard quản trị             │     │
+│   │  Ghi chú: Actor Shipping Driver: API /api/driver/**        │     │
 │   └────────────────────────────────────────────────────────────┘     │
 │                               │                                      │
 │                       HTTPS / WebSocket                              │
@@ -401,12 +386,12 @@ Hệ thống BICAP được thiết kế theo mô hình **kiến trúc phân l�
 
 | Đặc điểm | Chi tiết |
 |-----------|----------|
-| **Kiến trúc** | Single Page Application (SPA) cho Web; Native app cho Mobile |
-| **State Management** | Redux Toolkit / Zustand (Web), React Context + AsyncStorage (Mobile) |
-| **HTTP Client** | Axios với interceptors cho JWT token management |
-| **Routing** | React Router (Web), React Navigation (Mobile) |
-| **UI Framework** | Ant Design / Material UI (Web), React Native Paper (Mobile) |
-| **Real-time** | WebSocket client (SockJS + STOMP) |
+| **Kiến trúc** | Một Single Page Application (SPA) duy nhất (`web/`); UI mobile đã gỡ khỏi repo |
+| **State Management** | React state/context; session dùng chung qua `web/src/shared/session.ts` + `localStorage` |
+| **HTTP Client** | `fetch` + `VITE_API_BASE_URL` (mặc định `http://localhost:8080`) |
+| **Routing** | Điều hướng bằng state + History API; `App.tsx`: `/admin*` → AdminApp, còn lại → PortalApp |
+| **UI Framework** | Design system chung (`web/src/index.css`) |
+| **Real-time** | SSE (`/api/notifications/stream`) cho thông báo in-app |
 | **Caching** | SWR / React Query cho server state caching |
 
 #### 4.2.2. Application Tier (Tầng ứng dụng)
@@ -683,7 +668,7 @@ vn.courses.ut.edu.javaprogramming.bicap/
 │  │  WebSocket    │  │  FCM Push      │  │  Email (SMTP /    │ │
 │  │  Channel      │  │  Channel       │  │  SendGrid)        │ │
 │  │               │  │                │  │                   │ │
-│  │  • In-app     │  │  • Mobile push │  │  • Verification   │ │
+│  │  • In-app     │  │  • Push (FCM)  │  │  • Verification   │ │
 │  │  • Real-time  │  │  • Background  │  │  • Notifications  │ │
 │  │  • Toast msg  │  │    alerts      │  │  • Invoices       │ │
 │  │               │  │                │  │                   │ │
@@ -977,7 +962,7 @@ Khi nhiều giao dịch blockchain được gửi đồng thời (VD: nhiều Fa
 | **Backup Node** | Node dự phòng, tự động chuyển khi primary timeout > 10 giây | `VECHAIN_NODE_URL_BACKUP` |
 | **Health Check** | Kiểm tra node status mỗi 60 giây (`/blocks/best`) | Scheduled task |
 | **Circuit Breaker** | Ngắt kết nối node lỗi sau 3 failures liên tiếp, thử lại sau 5 phút | Resilience4j CircuitBreaker |
-| **Self-hosted Backup** | VeChain Thor node self-hosted (Docker) làm backup cuối cùng | `vechain/thor:latest` |
+| **Self-hosted Backup** | VeChain Thor node self-hosted làm backup cuối cùng | VeChainThor node (không dùng Docker trong repo) |
 
 ---
 
@@ -1272,95 +1257,72 @@ bicap/iot/{farmId}/all            → Combined sensor data (JSON)
 ### 9.1. Deployment Diagram
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                      CLOUD INFRASTRUCTURE (AWS / Google Cloud)               │
-│                                                                              │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │                        LOAD BALANCER (ALB / Cloud LB)                │   │
-│  │                    ┌──────────┐                                      │   │
-│  │        ┌──────────►│  HTTPS   │◄───────────┐                        │   │
-│  │        │           │ :443     │             │                        │   │
-│  │        │           └────┬─────┘             │                        │   │
-│  │        │                │                   │                        │   │
-│  └────────┼────────────────┼───────────────────┼────────────────────────┘   │
-│           │                │                   │                            │
-│  ┌────────┼────────────────┼───────────────────┼────────────────────────┐   │
-│  │        │      DOCKER HOST / KUBERNETES CLUSTER                       │   │
-│  │        │                │                   │                        │   │
-│  │   ┌────┴──────────┐ ┌──┴───────────┐ ┌─────┴──────────┐            │   │
-│  │   │  NGINX        │ │  NGINX       │ │  NGINX         │            │   │
-│  │   │  (Web Static) │ │  (Reverse    │ │  (Web Static)  │            │   │
-│  │   │  Container    │ │   Proxy)     │ │  Container     │            │   │
-│  │   │               │ │  Container   │ │                │            │   │
-│  │   │  Admin App    │ │              │ │  Farm/Retailer │            │   │
-│  │   │  :80          │ │  → API :8080 │ │  /Shipping App │            │   │
-│  │   └───────────────┘ │  → WS  :8080 │ │  :80           │            │   │
-│  │                     └──────┬───────┘ └────────────────┘            │   │
-│  │                            │                                       │   │
-│  │                     ┌──────┴───────┐                               │   │
-│  │                     │ Spring Boot  │  ← Có thể scale N instances  │   │
-│  │                     │ API Container│                               │   │
-│  │                     │              │                               │   │
-│  │                     │  :8080       │                               │   │
-│  │                     │  JDK 21      │                               │   │
-│  │                     └──────┬───────┘                               │   │
-│  │                            │                                       │   │
-│  │              ┌─────────────┼──────────────┐                       │   │
-│  │              │             │              │                       │   │
-│  │       ┌──────┴──────┐ ┌───┴──────┐ ┌─────┴───────┐              │   │
-│  │       │  MySQL      │ │  Redis   │ │  MQTT       │              │   │
-│  │       │  Container  │ │  Container│ │  Broker     │              │   │
-│  │       │             │ │          │ │  Container  │              │   │
-│  │       │  :3306      │ │  :6379   │ │  :1883      │              │   │
-│  │       │             │ │          │ │             │              │   │
-│  │       │  Volume:    │ │  Volume: │ │             │              │   │
-│  │       │  /data/mysql│ │  /data/  │ │             │              │   │
-│  │       │             │ │  redis   │ │             │              │   │
-│  │       └─────────────┘ └──────────┘ └─────────────┘              │   │
-│  │                                                                   │   │
-│  └───────────────────────────────────────────────────────────────────┘   │
-│                                                                          │
-│  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │                     EXTERNAL CONNECTIONS                           │  │
-│  │                                                                    │  │
-│  │  ┌────────────────────┐  ┌──────────────────┐                     │  │
-│  │  │  VeChainThor       │  │  Payment Gateway │                     │  │
-│  │  │  (Testnet/Mainnet) │  │  (VNPay/MoMo)    │                     │  │
-│  │  │  External Network  │  │  External API    │                     │  │
-│  │  └────────────────────┘  └──────────────────┘                     │  │
-│  │                                                                    │  │
-│  │  ┌────────────────────┐  ┌──────────────────┐                     │  │
-│  │  │  Firebase (FCM)    │  │  SendGrid /      │                     │  │
-│  │  │  Push Notification │  │  SMTP Server     │                     │  │
-│  │  └────────────────────┘  └──────────────────┘                     │  │
-│  └────────────────────────────────────────────────────────────────────┘  │
-│                                                                          │
-│  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │                     MOBILE DISTRIBUTION                            │  │
-│  │                                                                    │  │
-│  │  ┌──────────────────┐  ┌──────────────────┐                       │  │
-│  │  │  Google Play     │  │  Apple App Store │                       │  │
-│  │  │  Store           │  │                  │                       │  │
-│  │  │  (Ship Driver)   │  │  (Ship Driver)   │                       │  │
-│  │  │  (Guest App)     │  │  (Guest App)     │                       │  │
-│  │  └──────────────────┘  └──────────────────┘                       │  │
-│  └────────────────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│                 CLOUD INFRASTRUCTURE (AWS / Google Cloud)                  │
+│                                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                    LOAD BALANCER (ALB / Cloud LB)                    │  │
+│  │                              HTTPS :443                              │  │
+│  └──────────────────────────────────┬───────────────────────────────────┘  │
+│                                     │                                      │
+│  ┌──────────────────────────────────┬───────────────────────────────────┐  │
+│  │                     CLOUD HOST / VM (EC2 / GCE)                      │  │
+│  │                                                                      │  │
+│  │  ┌────────────────────────────────────────────┐                      │  │
+│  │  │         Spring Boot — 1 port :8080         │                      │  │
+│  │  │                 • REST API                 │                      │  │
+│  │  │          • Static bundle web/dist          │                      │  │
+│  │  │        • SSE /api/notifications/**         │                      │  │
+│  │  │                   JDK 21                   │                      │  │
+│  │  └──────────────────┬─────────────────────────┘                      │  │
+│  │                                    │                                 │  │
+│  │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐    │  │
+│  │  │      MySQL       │  │      Redis       │  │   MQTT Broker    │    │  │
+│  │  │      :3306       │  │      :6379       │  │   :8883 (TLS)    │    │  │
+│  │  │   self-hosted    │  │   self-hosted    │  │   self-hosted    │    │  │
+│  │  └──────────────────┘  └──────────────────┘  └──────────────────┘    │  │
+│  │                                                                      │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                         EXTERNAL CONNECTIONS                         │  │
+│  │                                                                      │  │
+│  │  ┌────────────────────┐  ┌────────────────────┐                      │  │
+│  │  │    VeChainThor     │  │  Payment Gateway   │                      │  │
+│  │  │ (Testnet/Mainnet)  │  │   (VNPay / MoMo)   │                      │  │
+│  │  └────────────────────┘  └────────────────────┘                      │  │
+│  │                                                                      │  │
+│  │  ┌────────────────────┐  ┌────────────────────┐                      │  │
+│  │  │   Firebase (FCM)   │  │  SendGrid / SMTP   │                      │  │
+│  │  │ Push Notification  │  │   Email Service    │                      │  │
+│  │  └────────────────────┘  └────────────────────┘                      │  │
+│  │                                                                      │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 9.2. Docker Compose Configuration Overview
+### 9.2. Triển khai
 
-| Service | Image | Port | Depends On | Volumes |
-|---------|-------|------|------------|---------|
-| `nginx-proxy` | nginx:latest | 80, 443 | api, web-apps | nginx.conf, SSL certs |
-| `api` | bicap-api:latest | 8080 | mysql, redis | logs |
-| `mysql` | mysql:5.7.41 | 3306 | — | /data/mysql |
-| `redis` | redis:8.6 | 6379 | — | /data/redis |
-| `mqtt` | eclipse-mosquitto:latest | 1883, 9001 | — | mosquitto.conf |
-| `admin-web` | bicap-admin:latest | 3001 | api | — |
-| `farm-web` | bicap-farm:latest | 3002 | api | — |
-| `retailer-web` | bicap-retailer:latest | 3003 | api | — |
-| `shipping-web` | bicap-shipping:latest | 3004 | api | — |
+Ứng dụng chạy **một port** nhờ Spring Boot phục vụ static bundle của `web/`. Quy trình:
+
+```bash
+# Chạy từ thư mục gốc repo
+# 1. Build web app (React 19 + TypeScript + Vite) → web/dist
+cd web && npm ci && npm run build
+
+# 2. Copy static bundle vào backend
+cp -r dist/* ../backend/src/main/resources/static/
+
+# 3. Chạy backend (H2, port 8080)
+cd ../backend && mvn spring-boot:run
+```
+
+- Farm/Retailer/Shipping/Guest portal: `http://localhost:8080/`
+- Admin dashboard: `http://localhost:8080/admin/`
+
+Khi phát triển, có thể chạy riêng web dev server (`npm run dev`, port **5174** cho cả `/` và `/admin`) song song với backend (port **8080**).
+
+> **Không còn Docker:** repo **không còn** `Dockerfile`, `docker-compose` hay Nginx; job build/push Docker image đã được gỡ khỏi CI. Ports chỉ còn **8080** (backend) và **5174** (web dev server).
 
 ### 9.3. CI/CD Pipeline
 
@@ -1374,28 +1336,28 @@ bicap/iot/{farmId}/all            → Combined sensor data (JSON)
      │                  │                     │                    │
      │                  │                     │  ① Checkout code   │
      │                  │                     │                    │
-     │                  │                     │  ② Build & Test    │
-     │                  │                     │  - mvn clean test  │
-     │                  │                     │  - npm run test    │
+     │                  │                     │  ② CI — 2 job      │
+     │                  │                     │  - web-ci:         │
+     │                  │                     │    lint + test +   │
+     │                  │                     │    build (web/)    │
+     │                  │                     │  - backend-ci:     │
+     │                  │                     │    mvn clean test  │
+     │                  │                     │    + package (JAR) │
      │                  │                     │  - SonarQube scan  │
      │                  │                     │                    │
-     │                  │                     │  ③ Build Docker    │
-     │                  │                     │     images         │
+     │                  │                     │  ③ Upload artifact │
+     │                  │                     │     (JAR)          │
      │                  │                     │                    │
-     │                  │                     │  ④ Push to         │
-     │                  │                     │     Container      │
-     │                  │                     │     Registry       │
-     │                  │                     │                    │
-     │                  │                     │  ⑤ Deploy to       │
+     │                  │                     │  ④ Deploy to       │
      │                  │                     │     Staging        │
      │                  │                     │────────────────────►│
      │                  │                     │                    │
-     │                  │                     │  ⑥ Run E2E tests   │
+     │                  │                     │  ⑤ Run E2E tests   │
      │                  │                     │                    │
-     │                  │                     │  ⑦ Manual approval │
+     │                  │                     │  ⑥ Manual approval │
      │                  │                     │     (Production)   │
      │                  │                     │                    │
-     │                  │                     │  ⑧ Deploy to       │
+     │                  │                     │  ⑦ Deploy to       │
      │                  │                     │     Production     │
      │                  │                     │────────────────────►│
 ```
@@ -1503,7 +1465,7 @@ Bảo vệ Private Key của tài khoản hệ thống (dùng để ký các gia
 │                                                                     │
 │  ┌───────────────────┐    REST/gRPC    ┌─────────────────────────┐  │
 │  │                   │  (Internal TLS) │  Signing Service        │  │
-│  │  BICAP API        │────────────────►│  (Isolated Container)   │  │
+│  │  BICAP API        │────────────────►│  (Isolated Service)     │  │
 │  │  (Business Logic) │                 │                         │  │
 │  │                   │◄────────────────│  • Fetch key from Vault │  │
 │  └───────────────────┘    Signed TX    │  • Sign transaction     │  │
@@ -1737,10 +1699,10 @@ Hệ thống ghi nhận **Audit Log** không thể chỉnh sửa cho tất cả 
 
 | Loại kiểm thử | Mục tiêu | Công cụ | Phạm vi |
 |---------------|---------|---------|---------|
-| **Unit Testing** | Kiểm thử từng class/method riêng lẻ | JUnit 5, Mockito (Backend); Jest (Frontend) | Service layer, Utility classes |
-| **Integration Testing** | Kiểm thử tương tác giữa các module | Spring Boot Test, Testcontainers | Controller ↔ Service ↔ Repository |
+| **Unit Testing** | Kiểm thử từng class/method riêng lẻ | JUnit 5, Mockito (Backend); Vitest (Frontend) | Service layer, Utility classes |
+| **Integration Testing** | Kiểm thử tương tác giữa các module | Spring Boot Test, H2 in-memory | Controller ↔ Service ↔ Repository |
 | **API Testing** | Kiểm thử REST API endpoints | Postman, RestAssured | Tất cả API endpoints (~130) |
-| **E2E Testing** | Kiểm thử luồng nghiệp vụ đầu cuối | Cypress (Web), Detox (Mobile) | Luồng chính: đăng ký → mua bán → vận chuyển |
+| **E2E Testing** | Kiểm thử luồng nghiệp vụ đầu cuối | Cypress (Web) | Luồng chính: đăng ký → mua bán → vận chuyển |
 | **Performance Testing** | Kiểm thử hiệu năng và chịu tải | JMeter, k6 | Response < 2s, 500 concurrent users |
 | **Security Testing** | Kiểm thử bảo mật | OWASP ZAP, manual testing | OWASP Top 10, RBAC, JWT |
 | **Blockchain Testing** | Kiểm thử smart contract và tích hợp | Hardhat, VeChain Solo | Smart contract functions, TX flow |
@@ -1824,7 +1786,7 @@ Hệ thống ghi nhận **Audit Log** không thể chỉnh sửa cho tất cả 
 |---|--------|--------|-----------|
 | R1 | VeChainThor network downtime | Cao | Retry queue + async processing; dữ liệu đã lưu MySQL vẫn khả dụng |
 | R2 | Hết VTHO (gas) cho giao dịch blockchain | Trung bình | Monitor VTHO balance; cảnh báo Admin khi balance thấp; dự trữ đủ VTHO |
-| R3 | MySQL single point of failure | Trung bình | Backup định kỳ (daily); read replica cho production; Docker volume persistence |
+| R3 | MySQL single point of failure | Trung bình | Backup định kỳ (daily); read replica cho production; đĩa lưu trữ bền vững + backup định kỳ |
 | R4 | Quá tải đồng thời khi nhiều IoT sensor gửi dữ liệu | Trung bình | MQTT broker + batch processing; Redis buffer; queue overflow protection |
 | R5 | Lỗ hổng Smart Contract sau khi deploy | Cao | Audit code trước deploy mainnet; sử dụng proxy pattern cho upgrade |
 | R6 | Payment gateway timeout / failure | Trung bình | Retry mechanism; callback verification; manual reconciliation |

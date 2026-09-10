@@ -9,7 +9,7 @@
 | **Viết tắt** | BICAP |
 | **Loại tài liệu** | Báo cáo tổng kết toàn bộ quá trình phát triển |
 | **Thời gian phát triển** | 22/07/2026 → 12/08/2026 |
-| **Số commit** | 70 commits trên nhánh `main` |
+| **Số commit** | 144 commits trên nhánh `main` (5 thành viên) |
 
 ---
 
@@ -53,7 +53,7 @@ Dự án ứng dụng công nghệ **Blockchain** để truy xuất nguồn gố
 | **Farm Manager** | Web App | Quản lý nông trại, mùa vụ, xuất bán, nhận thông báo IoT |
 | **Retailer** | Web App | Tìm kiếm sản phẩm, đặt hàng, đặt cọc, truy xuất QR |
 | **Shipping Manager** | Web App | Quản lý vận chuyển, phương tiện, tài xế |
-| **Ship Driver** | Mobile App | Cập nhật quy trình giao hàng, quét QR |
+| **Ship Driver** | Mobile App (đã gỡ khỏi repo; backend vẫn giữ API `/api/driver/**`) | Cập nhật quy trình giao hàng, quét QR |
 | **Guest** | Web/Mobile | Xem sản phẩm, nội dung giáo dục |
 
 ---
@@ -68,10 +68,10 @@ Dự án ứng dụng công nghệ **Blockchain** để truy xuất nguồn gố
 | **Xác thực** | JWT (jjwt 0.12.5), HS256, BCrypt, RBAC (`@EnableMethodSecurity` + `@PreAuthorize`) |
 | **Database** | MySQL 5.7.41 (production), H2 in-memory (dev/test) |
 | **Cache** | Redis 8.6 (cấu hình đã chuẩn bị) |
-| **Frontend** | React 19 + Vite 8 + TypeScript 6 (2 ứng dụng: farm portal & admin) |
+| **Frontend** | React 19 + Vite 8 + TypeScript 6 (**1 ứng dụng web duy nhất** `web/`: portal ở `/` + admin ở `/admin`) |
 | **Blockchain** | VeChainThor (EVM-compatible), Solidity ^0.8.24, OpenZeppelin Upgradeable |
 | **Thanh toán** | Cổng Sepay (webhook bank transfer) |
-| **CI/CD** | GitHub Actions, Docker, Docker Compose, Nginx |
+| **CI/CD** | GitHub Actions (2 job: `web-ci`, `backend-ci`) — không dùng Docker/Nginx |
 
 ### 2.2. Kiến trúc tổng thể
 
@@ -80,8 +80,7 @@ Hệ thống theo **kiến trúc 3 tầng** (Presentation / Application / Data),
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  Presentation Layer                                             │
-│   ├── Admin Web App   (admin-web/, React Vite)                  │
-│   ├── Farm Portal     (frontend/, React Vite)                   │
+│   ├── Web App         (web/, React Vite: / portal + /admin)     │
 │   └── (Retailer / Shipping / Mobile - tương lai)                │
 ├─────────────────────────────────────────────────────────────────┤
 │  Application Layer  →  Spring Boot Backend (:8080)              │
@@ -112,16 +111,17 @@ Hệ thống theo **kiến trúc 3 tầng** (Presentation / Application / Data),
 
 ### 2.4. Quy mô codebase
 
-- **Backend**: 142 file Java — 17 Controllers, 19 Services, 17 Repositories, 23 Entities, 43 DTOs, 19 file test.
-- **Frontend**: 2 ứng dụng React TS.
-- **Blockchain**: 4 smart contract trong 1 file Solidity (`Traceability.sol`, ~19 KB).
-- **Docs**: 10 tài liệu (SRS, Architecture Design, Detail Design, User Requirements, …).
+- **Backend**: 238 file Java (main) + 35 file Java (test), ~18.800 dòng Java (main); 34 test class, `mvn test` = **251 test pass**.
+- **Web**: **1 ứng dụng React TS duy nhất** (70 file `.ts`/`.tsx`, ~16.300 dòng) — 45 file trong `web/src/portal`, 21 file trong `web/src/admin`; 6 file test, `npm test` = **28 test pass**.
+- **Blockchain**: 4 smart contract trong 1 file Solidity (`dev/blockchain/contracts/Traceability.sol`, ~19 KB).
+- **Docs**: 15 tài liệu `.md` + 6 script SQL trong `docs/sql/`.
+- **Tổng**: 144 commit, 5 thành viên.
 
 ---
 
 ## 3. Tổng quan các giai đoạn phát triển
 
-Dự án phát triển qua **70 commits** theo các ticket Jira, chia thành 12 giai đoạn:
+Dự án phát triển qua **144 commits** theo các ticket Jira, chia thành 12 giai đoạn:
 
 | # | Giai đoạn | Ticket | Thời gian | Kết quả chính |
 |---|---|---|---|---|
@@ -175,7 +175,7 @@ Dự án phát triển qua **70 commits** theo các ticket Jira, chia thành 12 
 **Cách triển khai:**
 
 - **Backend**: `AdminController` (`/api/admins`) — danh sách phân trang + lọc (status/role/search), chi tiết, tạo admin (chỉ `SUPER_ADMIN`, validate mật khẩu mạnh bằng regex), cập nhật từng phần, **xóa mềm** (status → INACTIVE, không cho tự xóa chính mình).
-- **UI**: `AdminTable`, `AdminModal` (form với checkbox RBAC từng quyền), `StatsCards` — trên admin-web.
+- **UI**: `AdminTable`, `AdminModal` (form với checkbox RBAC từng quyền), `StatsCards` — trong `web/src/admin`.
 - **Phân quyền UI**: nút "Tạo Admin"/"Xóa" chỉ hiện khi `SUPER_ADMIN`.
 
 ---
@@ -190,7 +190,7 @@ Dự án phát triển qua **70 commits** theo các ticket Jira, chia thành 12 
 - **Validate đầu vào**: email, số điện thoại Việt Nam `^0[35789]\d{8}$`, mật khẩu mạnh, xác nhận mật khẩu.
 - **`AuthService`**: ngăn **nâng cấp vai trò ngầm** (user không thể tự ý thêm role), kiểm tra khóa/treo tài khoản.
 - **UI**: `AuthPage` với tab vai trò (Farm Manager/Retailer), `LoginForm`, `RegisterForm`, `PasswordStrengthMeter` (5 luật + thanh tiến độ, chuẩn WAI-ARIA).
-- **Session**: lưu `accessToken`/`refreshToken`/`currentUser` trong `localStorage` (`utils/auth.ts`), kiểm tra `isLoggedIn()`.
+- **Session**: lưu `accessToken`/`refreshToken`/`currentUser` trong `localStorage` (`web/src/shared/session.ts` — dùng chung cho cả portal và admin), kiểm tra `isLoggedIn()`.
 
 ---
 
@@ -370,7 +370,7 @@ Index cho các truy vấn tải cao: `users.phone`, `farms.status`, `farming_sea
 - EVM-compatible, đồng thuận **PoA**, **dual-token VET + VTHO** (gas), chi phí giao dịch thấp — phù hợp doanh nghiệp supply-chain.
 - Testnet node: `https://node-testnet.vechain.dev`.
 
-### 6.2. 4 Smart Contract (`blockchain/contracts/Traceability.sol`)
+### 6.2. 4 Smart Contract (`dev/blockchain/contracts/Traceability.sol`)
 
 Một file chứa **4 hợp đồng** (Solidity `^0.8.24`, MIT license, OpenZeppelin Upgradeable), tuân thủ chuẩn bảo mật: `AccessControlUpgradeable` + `ReentrancyGuardUpgradeable` + `PausableUpgradeable` + `UUPSUpgradeable`.
 
@@ -433,31 +433,33 @@ Một file chứa **4 hợp đồng** (Solidity `^0.8.24`, MIT license, OpenZepp
 
 ## 7. Frontend Web
 
-Dự án có **2 ứng dụng React** (cả hai đều là SPA tối giản, **không dùng thư viện router/state/HTTP** — tự viết bằng `fetch` + conditional rendering / `history.pushState`):
+Dự án có **1 ứng dụng web React duy nhất** trong `web/` (React 19 + TypeScript + Vite), gộp hai giao diện trước đây (`frontend/` farm portal và `admin-web/` admin) vào cùng một codebase. App là **SPA tối giản**, **không dùng thư viện router/state/HTTP** — tự viết bằng `fetch` + conditional rendering / `history.pushState`.
 
-### 7.1. Farm Manager / Retailer Portal (`frontend/`, port 5174)
+### 7.1. Web App gộp (`web/`, dev port 5174)
 
-- **Auth** với tab vai trò: Farm Manager (`/api/auth/farm/*`) & Retailer (`/api/auth/retailer/*`), hỗ trợ verify email qua `?verifyToken=`.
-- **ServicePackages**: danh mục gói dịch vụ, mua gói (`POST /subscriptions/purchase`), `PaymentModal` (hướng dẫn chuyển khoản, copy clipboard, **poll trạng thái mỗi 5s**).
-- **Khóa VIP theo subscription**: menu `products`, `iot`, `certificates` 🔒 chỉ mở khi có subscription ACTIVE (`GET /subscriptions/my`).
-- **IotDashboard**: 3 thẻ số liệu + nút simulate + lịch sử cảnh báo real-time (SSE).
-- **NotificationBell**: thông báo real-time (SSE), badge chưa đọc.
-- **Profile**: `ProfilePage` (Farm Manager), `RetailerProfilePage` (avatar upload), `RetailerBusinessPage` (upload giấy phép).
-- **`farms/my`**: lấy nông trại của chính user (không hardcode farm id).
+- **Router theo endpoint** (`web/src/App.tsx`): mọi đường dẫn bắt đầu bằng `/admin` → `AdminApp`; các đường dẫn còn lại → `PortalApp`. Dev chạy `cd web && npm run dev` → `http://localhost:5174/` (portal) và `http://localhost:5174/admin` (admin).
+- **Cấu trúc mã nguồn**: `web/src/portal/**` (chuyển từ `frontend/src/**`), `web/src/admin/**` (chuyển từ `admin-web/src/**`), `web/src/shared/session.ts` (session + API base dùng chung), `web/src/index.css` (design system gộp).
+- **Session dùng chung**: một cơ chế duy nhất trong `web/src/shared/session.ts` — lưu `accessToken` / `currentUser` / `refreshToken` trong `localStorage` cho cả portal và admin; đã **bỏ cơ chế chuyển token qua redirect `?token=`**.
+- **Phía portal (`/`)**:
+  - **Auth** với tab vai trò: Farm Manager (`/api/auth/farm/*`) & Retailer (`/api/auth/retailer/*`), hỗ trợ verify email qua `?verifyToken=`.
+  - **ServicePackages**: danh mục gói dịch vụ, mua gói (`POST /subscriptions/purchase`), `PaymentModal` (hướng dẫn chuyển khoản, copy clipboard, **poll trạng thái mỗi 5s**).
+  - **Khóa VIP theo subscription**: menu `products`, `iot`, `certificates` 🔒 chỉ mở khi có subscription ACTIVE (`GET /subscriptions/my`).
+  - **IotDashboard**: 3 thẻ số liệu + nút simulate + lịch sử cảnh báo real-time (SSE).
+  - **NotificationBell**: thông báo real-time (SSE), badge chưa đọc.
+  - **Profile**: `ProfilePage` (Farm Manager), `RetailerProfilePage` (avatar upload), `RetailerBusinessPage` (upload giấy phép).
+  - **`farms/my`**: lấy nông trại của chính user (không hardcode farm id).
+- **Phía admin (`/admin`)**:
+  - **Landing page** 3 cổng vào (Admin / Farm / Retail), định tuyến thủ công qua `history.pushState`.
+  - **Admin CRUD**: `AdminTable` + `AdminModal` (phân trang, debounced search, filter role/status, RBAC từng quyền, xóa mềm).
+  - **FarmApprovalPage** (BICAP-3): 3 tab trạng thái, phê duyệt/từ chối kèm lý do bắt buộc, xem chứng nhận.
+  - **FarmManagementPage** (BICAP-4): đổi trạng thái, ghi chú admin, GPS link Google Maps.
+  - **SmartContractPage** (BICAP-6): triển khai & theo dõi smart contract trên VeChainThor.
+  - **Session/role mapping**: `buildSession()` map roles API → permissions theo cổng (`SUPER_ADMIN` → 4 quyền admin, …). 401 → tự logout; 403 → "Access Denied". Gửi header `X-Actor-Email` cho mọi API admin.
 
-### 7.2. Admin Portal (`admin-web/`, port 5173 / deploy 3001)
-
-- **Landing page** 3 cổng vào (Admin / Farm / Retail), định tuyến thủ công qua `history.pushState`.
-- **Admin CRUD**: `AdminTable` + `AdminModal` (phân trang, debounced search, filter role/status, RBAC từng quyền, xóa mềm).
-- **FarmApprovalPage** (BICAP-3): 3 tab trạng thái, phê duyệt/từ chối kèm lý do bắt buộc, xem chứng nhận.
-- **FarmManagementPage** (BICAP-4): đổi trạng thái, ghi chú admin, GPS link Google Maps.
-- **SmartContractPage** (BICAP-6): triển khai & theo dõi smart contract trên VeChainThor.
-- **Session/role mapping**: `buildSession()` map roles API → permissions theo cổng (`SUPER_ADMIN` → 4 quyền admin, …). 401 → tự logout; 403 → "Access Denied". Gửi header `X-Actor-Email` cho mọi API admin.
-
-### 7.3. Thiết kế UI chung
+### 7.2. Thiết kế UI chung
 
 - **Dark "glass-panel" design system** qua CSS custom properties (`--primary`, `--glass-blur`, …), font Inter, giao diện **tiếng Việt**.
-- Đồng bộ design system giữa 2 app (`index.css`).
+- Design system dùng chung cho cả portal và admin trong 1 file `web/src/index.css`.
 
 ---
 
@@ -465,31 +467,29 @@ Dự án có **2 ứng dụng React** (cả hai đều là SPA tối giản, **k
 
 ### 8.1. GitHub Actions (`.github/workflows/ci.yml`)
 
-Pipeline "Java & Node.js Multi-Service CI/CD" — chạy khi push `main`/`feature/*` và PR vào `main`, có `concurrency` (cancel-in-progress):
+Pipeline "Java & Node.js Multi-Service CI/CD" — chạy khi push `main`/`feature/*` và PR vào `main`, có `concurrency` (cancel-in-progress). **Chỉ còn 2 job:**
 
 | Job | Nội dung |
 |---|---|
-| `frontend-ci` | admin-web: Node 20, `npm ci`, `npm run lint` (oxlint), `npm run build` |
-| `farm-portal-ci` | frontend: Node 20, `npm ci`, `npm run build` |
-| `backend-ci` | JDK 21 (Corretto), `mvn clean test`, `mvn package`, upload artifact JAR |
-| `docker-build-push` | Chờ 2 job trên; Buildx + QEMU; **push Docker Hub** backend image + admin-web image (tag `latest` trên main, `sha`, branch) |
+| `web-ci` | `web/`: Node 20, `npm ci` → `npm run lint` (oxlint) → `npm test` → `npm run build` |
+| `backend-ci` | `backend/`: JDK 21 (Corretto), `mvn clean test` (251 test) → `mvn package -DskipTests`, upload artifact JAR |
 
-### 8.2. Docker
+### 8.2. Triển khai
 
-- **Backend Dockerfile**: `eclipse-temurin:21-jre`, chạy user **không root** `bicap`, `HEALTHCHECK` qua `/actuator/health`, curl.
-- **`docker-compose.db.yml`**: 3 service — `api` (8080), `admin-web` (3001→80, Nginx SPA fallback), `farm-portal` (3002→80). MySQL/Redis local bị comment (dùng cloud DB). Volume `bicap-uploads` cho file upload.
+- **Chạy 1 port (khuyến nghị)**: build web (`cd web && npm run build` → `web/dist`), copy toàn bộ `web/dist/*` vào `backend/src/main/resources/static/`, rồi chạy backend (`cd backend && mvn spring-boot:run`). Backend phục vụ tĩnh cả hai endpoint trên cùng cổng 8080: `http://localhost:8080/` (portal) và `http://localhost:8080/admin` (admin).
+- **Dev tách rời**: backend 8080 (H2 in-memory), web dev server 5174.
+- **Docker đã được gỡ hoàn toàn khỏi repo**: không còn `Dockerfile`, `docker-compose.db.yml`, `web/Dockerfile`, `web/nginx.conf` và job `docker-build-push` trong CI. Triển khai thực hiện trực tiếp bằng Maven/npm như trên.
 
 ### 8.3. Cấu hình môi trường
 
 - `.env.example` liệt kê toàn bộ biến: DB, JWT (bắt buộc), SMTP (verify email), Sepay API key (bắt buộc), Redis, `VITE_API_BASE_URL`.
 - `SecretConfigValidator` **fail-fast**: thiếu `JWT_SECRET`/`SEPAY_API_KEY` → app không khởi động.
-- `run-backend.bat` / `run-frontend.bat` tiện ích chạy local (load `.env`, fallback H2).
 
 ---
 
 ## 9. Kiểm thử
 
-**19 file test** (JUnit 5 + MockMvc + Spring Security Test, H2 in-memory `create-drop`):
+**Backend: 34 test class / 251 test pass** (JUnit 5 + MockMvc + Spring Security Test, H2 in-memory `create-drop`); **Web: 6 file test / 28 test pass** (`npm test`):
 
 | File test | Phạm vi |
 |---|---|
@@ -516,27 +516,32 @@ Pipeline "Java & Node.js Multi-Service CI/CD" — chạy khi push `main`/`featur
 # Tạo .env từ template rồi điền credentials
 cp .env.example .env
 
-# Chạy qua IntelliJ IDEA (EnvFile plugin) hoặc:
-mvn spring-boot:run
+# Chạy backend (H2 in-memory, MODE=MySQL)
+cd backend && mvn spring-boot:run
+
+# Test: mvn test (251 test)
+# Package: mvn clean package -DskipTests → backend/target/*.jar
 ```
 
 > Mặc định backend chạy với **H2 in-memory** (MODE=MySQL) nên không cần DB ngoài. Set `SPRING_DATASOURCE_*` để dùng MySQL cloud.
 
-### Frontend
+### Web (React + Vite, dev port 5174)
 
 ```bash
-# Farm/Retailer portal (port 5174)
-cd frontend && npm install && npm run dev
-
-# Admin portal (port 5173, hoặc 3001 để khớp CORS)
-cd admin-web && npm install && npm run dev
+cd web && npm install && npm run dev
+# → http://localhost:5174/       (portal: Farm Manager / Retailer)
+# → http://localhost:5174/admin  (admin)
 ```
 
-### Docker (production)
+Các lệnh khác trong `web/`: `npm test` (28 test), `npm run lint` (oxlint), `npm run build` → `web/dist`.
+
+### Triển khai 1 port (không dùng Docker)
 
 ```bash
-docker-compose -f docker-compose.db.yml up -d --build
-# → api (8080), admin-web (3001), farm-portal (3002)
+cd web && npm run build
+cp -r web/dist/* ../backend/src/main/resources/static/
+cd ../backend && mvn spring-boot:run
+# → http://localhost:8080/  (portal) và http://localhost:8080/admin  (admin)
 ```
 
 ### Tài khoản demo (từ seeder)
@@ -558,14 +563,15 @@ docker-compose -f docker-compose.db.yml up -d --build
 | **Blockchain** | 4 smart contract UUPS chuẩn bảo mật OZ; BlockchainService mock/live + idempotency + retry; quản lý & triển khai contract trên admin UI |
 | **Thông báo** | In-app real-time **SSE** (heartbeat, multi-tab), email, cảnh báo IoT theo ngưỡng, tổng hợp cuối ngày |
 | **IoT** | API nhận dữ liệu cảm biến, dashboard simulate |
-| **Hạ tầng** | CI/CD 4 job, Docker + Compose, 19 test, 10 tài liệu kỹ thuật |
+| **Hạ tầng** | CI/CD **2 job** (`web-ci`, `backend-ci`), **không dùng Docker**; triển khai 1 port bằng cách build web → `static/` → chạy backend; **251 test backend + 28 test web**; 15 tài liệu kỹ thuật + 6 script SQL. App mobile tài xế đã gỡ khỏi repo (backend vẫn giữ `DriverMobileController` + `/api/driver/**`) |
 
 ### 11.2. Còn thiếu / đang phát triển 🔜
 
 - **Vận chuyển (Shipping)**: entities `vehicles`/`drivers`/`shipments`/`shipment_tracking` đã thiết kế nhưng **chưa có API/UI**.
 - **Sàn giao dịch (Trading floor)**: bảng `products`/`qrcodes` đã thiết kế, chưa có CRUD sản phẩm & đặt hàng đầy đủ (hiện mới có luồng đặt cọc).
 - **Truy xuất QR cho khách hàng**: `TraceabilityContract.verify()` đã có trên chain, **nhưng chưa có REST endpoint** (`/api/trace/**` đã mở permitAll trong security, chưa có controller) và chưa sinh QR thật.
-- **Mobile app** (Ship Driver / Guest) và **Guest web app** — chưa phát triển.
+- **Guest web app** — chưa phát triển.
+- **App mobile tài xế**: chưa triển khai trong bản này — đã **gỡ khỏi repo** (`mobile-app/` không còn), trong khi backend **vẫn giữ** `DriverMobileController` + API `/api/driver/**` để sẵn sàng khi làm lại UI mobile.
 - **Live VeChainThor**: hiện `blockchain.mode=mock` (mặc định); chế độ `live` mới chỉ health-check node, chưa ký & gửi giao dịch thật (chưa có SDK web3j/VeChain trong `pom.xml`, chưa có script deploy, ABI/bytecode phải dán tay vào form admin).
 - **Redis**: cấu hình sẵn sàng nhưng chưa có CacheManager tiêu thụ trong code.
 - **File export (CSV/Excel)** và **QR generation** từ backend.
@@ -575,8 +581,8 @@ docker-compose -f docker-compose.db.yml up -d --build
 - **Không dùng Lombok** → POJO tường minh, builder pattern thủ công (dễ đọc, dễ debug, nhưng verbose hơn).
 - **An toàn**: BCrypt, fail-fast secret, chống path traversal upload, chống giả mạo `X-Actor-Email`, idempotency chống trùng giao dịch thanh toán/blockchain, rate limit chống brute-force, escape LIKE chống search injection.
 - **Hiệu năng**: batch-load chống N+1, repository query động, index thiết kế cho truy vấn tải cao.
-- **Sạch sẽ**: exception handler toàn cục chuẩn hóa, 19 test bao phủ các service/controller then chốt.
+- **Sạch sẽ**: exception handler toàn cục chuẩn hóa, 251 test backend + 28 test web bao phủ các service/controller then chốt.
 
 ---
 
-*Báo cáo được tổng hợp từ toàn bộ source code, lịch sử 70 commits, và 10 tài liệu kỹ thuật trong `docs/`. Thời điểm tổng kết: 12/08/2026.*
+*Báo cáo được tổng hợp từ toàn bộ source code, lịch sử 144 commits (5 thành viên), và 15 tài liệu kỹ thuật trong `docs/`. Thời điểm tổng kết: 12/08/2026.*
