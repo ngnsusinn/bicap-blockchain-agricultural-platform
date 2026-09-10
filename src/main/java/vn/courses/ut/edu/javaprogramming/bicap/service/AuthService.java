@@ -1,5 +1,8 @@
 package vn.courses.ut.edu.javaprogramming.bicap.service;
 
+import java.util.Locale;
+import java.util.Set;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -7,6 +10,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.JwtTokenProvider;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.AuthResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.LoginRequest;
@@ -20,9 +24,6 @@ import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundExcepti
 import vn.courses.ut.edu.javaprogramming.bicap.exception.UnauthorizedException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.RoleRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
-
-import java.util.Locale;
-import java.util.Set;
 
 @Service
 @Transactional

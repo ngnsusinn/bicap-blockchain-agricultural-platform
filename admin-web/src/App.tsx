@@ -17,7 +17,7 @@ import { Toast } from './components/Toast';
 import type { ToastMessage } from './components/Toast';
 import { API_ORIGIN } from './utils/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/admins';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/admins').replace(/\/$/, '');
 
 // ── Base path ──
 // App được Spring Boot phục vụ tại /admin/ (Vite base). Khi dev riêng qua Vite,
@@ -79,6 +79,10 @@ export default function App() {
     return null;
   });
 
+  // JWT stored after login/register
+  const token = localStorage.getItem('bicap_token') || localStorage.getItem('ACCESS_TOKEN');
+
+  // Table Data & Filter State
   // ── SSO từ Farm Portal: đăng nhập ADMIN ở cổng / được chuyển hướng sang
   // /admin/?token=... — đổi token lấy hồ sơ, thiết lập phiên và vào thẳng dashboard.
   const [ssoPending, setSsoPending] = useState<boolean>(
@@ -171,9 +175,9 @@ export default function App() {
     if (!currentSession) return;
     try {
       const params = new URLSearchParams({ search: debouncedSearch, status: statusFilter, role: roleFilter, page: currentPage.toString(), size: '5' });
-      const token = localStorage.getItem('bicap_token');
+      const authToken = token || localStorage.getItem('bicap_token');
       const headers: Record<string, string> = { 'X-Actor-Email': currentSession.email };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
       const response = await fetch(`${API_BASE_URL}?${params}`, { headers });
       if (!response.ok) {
@@ -193,8 +197,7 @@ export default function App() {
       setAdmins([]); setTotalPages(1);
       showToast(err.message, 'error');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, statusFilter, roleFilter, currentPage, currentSession, showToast]);
+  }, [debouncedSearch, statusFilter, roleFilter, currentPage, currentSession, token, showToast]);
 
   useEffect(() => {
     if (isAuthenticated && currentTab === 'admins' && currentPath.startsWith('/admin')) fetchAdmins();
@@ -206,9 +209,9 @@ export default function App() {
     if (!currentSession) return;
     if (!window.confirm('Bạn có chắc muốn xoá tài khoản quản trị này?')) return;
     try {
-      const token = localStorage.getItem('bicap_token');
+      const authToken = token || localStorage.getItem('bicap_token');
       const headers: Record<string, string> = { 'X-Actor-Email': currentSession.email };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
       const response = await fetch(`${API_BASE_URL}/${id}`, { method: 'DELETE', headers });
       if (!response.ok) {
         if (response.status === 401) { handleLogout(); showToast('Phiên đăng nhập đã hết hạn.', 'error'); return; }
@@ -225,9 +228,9 @@ export default function App() {
       const isEdit = !!selectedAdmin;
       const url = isEdit ? `${API_BASE_URL}/${selectedAdmin.id}` : API_BASE_URL;
       const method = isEdit ? 'PUT' : 'POST';
-      const token = localStorage.getItem('bicap_token');
+      const authToken = token || localStorage.getItem('bicap_token');
       const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-Actor-Email': currentSession.email };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
       const response = await fetch(url, { method, headers, body: JSON.stringify(adminData) });
       if (!response.ok) {
         if (response.status === 401) { handleLogout(); showToast('Phiên đăng nhập đã hết hạn.', 'error'); return; }

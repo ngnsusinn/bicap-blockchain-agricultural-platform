@@ -1,8 +1,11 @@
 package vn.courses.ut.edu.javaprogramming.bicap.common.security;
 
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.Map;
+
+import javax.crypto.SecretKey;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,9 +13,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.SecretKey;
-import java.util.Date;
-import java.util.Map;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 
 @Component
 public class JwtTokenProvider {
@@ -38,11 +45,11 @@ public class JwtTokenProvider {
         byte[] keyBytes;
         try {
             keyBytes = Decoders.BASE64.decode(jwtSecret);
-        } catch (Exception e) {
+        } catch (IllegalArgumentException ex) {
             try {
                 keyBytes = Decoders.BASE64URL.decode(jwtSecret);
-            } catch (Exception ex) {
-                keyBytes = jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            } catch (IllegalArgumentException ignored) {
+                keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
             }
         }
         if (keyBytes.length < 32) {

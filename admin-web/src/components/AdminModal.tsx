@@ -7,15 +7,6 @@ interface AdminModalProps {
   onSave: (adminData: any) => void;
 }
 
-/** Backend AdminResponse nests role/permission data under roles[] — derive the edit values. */
-function primaryRole(admin: AdminUser): string {
-  return admin.roles?.[0]?.name ?? 'ADMIN';
-}
-
-function permissionCodes(admin: AdminUser): string[] {
-  return (admin.roles ?? []).flatMap((r) => (r.permissions ?? []).map((p) => p.code));
-}
-
 const ALL_PERMISSIONS = [
   { code: 'ADMIN_CREATE', name: 'Create Admins', desc: 'Allows creating new administrators' },
   { code: 'ADMIN_READ', name: 'Read Admins', desc: 'Allows viewing admin accounts and details' },
@@ -44,14 +35,30 @@ export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }
   const [submitting, setSubmitting] = useState(false);
 
   // Sync state if edit mode
+  const resolveAdminRole = (adminData: any) => {
+    if (!adminData?.roles?.length) {
+      return 'ADMIN';
+    }
+    return adminData.roles[0].name || 'ADMIN';
+  };
+
+  const resolveAdminPermissions = (adminData: any) => {
+    if (!adminData?.roles?.length) {
+      return [];
+    }
+    return adminData.roles.flatMap((role: any) =>
+      role.permissions?.map((perm: any) => perm.code) || []
+    );
+  };
+
   useEffect(() => {
     if (admin) {
       setFullName(admin.fullName);
       setEmail(admin.email);
       setPhone(admin.phone || '');
-      setRole(primaryRole(admin));
+      setRole(resolveAdminRole(admin));
       setStatus(admin.status);
-      setSelectedPermissions(permissionCodes(admin));
+      setSelectedPermissions(resolveAdminPermissions(admin));
       setPassword(''); // Don't edit password unless entered
     } else {
       setFullName('');
