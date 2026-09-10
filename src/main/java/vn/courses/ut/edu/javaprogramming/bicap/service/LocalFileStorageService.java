@@ -37,6 +37,11 @@ public class LocalFileStorageService {
         return store("farms", userId, "products", file, IMAGE_TYPES, 5L * 1024 * 1024);
     }
 
+    /** Stores a retailer delivery receipt photo (BICAP-52 / SRS-RT-017). */
+    public String storeDeliveryReceipt(Long userId, MultipartFile file) {
+        return store("retailers", userId, "delivery-receipts", file, IMAGE_TYPES, 5L * 1024 * 1024);
+    }
+
     private String store(String topLevel, Long userId, String category, MultipartFile file,
                          Set<String> allowedTypes, long maxBytes) {
         if (file == null || file.isEmpty()) {

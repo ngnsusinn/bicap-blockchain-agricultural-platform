@@ -25,8 +25,10 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepositor
 import vn.courses.ut.edu.javaprogramming.bicap.repository.OrderRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ProductRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.service.LocalFileStorageService;
 import vn.courses.ut.edu.javaprogramming.bicap.service.NotificationService;
 import vn.courses.ut.edu.javaprogramming.bicap.service.OrderService;
+import vn.courses.ut.edu.javaprogramming.bicap.service.ReportService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -60,6 +62,8 @@ class FarmManagerOrderServiceTest {
     @Mock private FarmingSeasonRepository seasonRepository;
     @Mock private FarmRepository farmRepository;
     @Mock private NotificationService notificationService;
+    @Mock private LocalFileStorageService fileStorage;
+    @Mock private ReportService reportService;
 
     private OrderService service;
     private User farmManager;
@@ -71,7 +75,8 @@ class FarmManagerOrderServiceTest {
     @BeforeEach
     void setUp() {
         service = new OrderService(orderRepository, userRepository, new SepayConfig(),
-                productRepository, seasonRepository, farmRepository, notificationService);
+                productRepository, seasonRepository, farmRepository, notificationService,
+                fileStorage, reportService);
 
         Role role = Role.builder().name("FARM_MANAGER").permissions(Set.of()).build();
         farmManager = User.builder().id(FM_ID).email("farm@bicap.com").status(UserStatus.ACTIVE).roles(Set.of(role)).build();

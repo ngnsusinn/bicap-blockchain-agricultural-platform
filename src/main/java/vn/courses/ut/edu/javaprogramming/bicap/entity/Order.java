@@ -80,6 +80,18 @@ public class Order {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    /** Optional 1–5 star rating when Retailer confirms receipt (BICAP-51). */
+    @Column(name = "completion_rating")
+    private Integer completionRating;
+
+    /** Optional comment when Retailer confirms receipt (BICAP-51). */
+    @Column(name = "completion_comment", length = 1000)
+    private String completionComment;
+
+    /** JSON array of receipt photo URLs uploaded by Retailer (BICAP-52). */
+    @Column(name = "delivery_images", length = 4000)
+    private String deliveryImages;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -153,6 +165,12 @@ public class Order {
     public void setDeliveredAt(LocalDateTime deliveredAt) { this.deliveredAt = deliveredAt; }
     public LocalDateTime getCompletedAt() { return completedAt; }
     public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
+    public Integer getCompletionRating() { return completionRating; }
+    public void setCompletionRating(Integer completionRating) { this.completionRating = completionRating; }
+    public String getCompletionComment() { return completionComment; }
+    public void setCompletionComment(String completionComment) { this.completionComment = completionComment; }
+    public String getDeliveryImages() { return deliveryImages; }
+    public void setDeliveryImages(String deliveryImages) { this.deliveryImages = deliveryImages; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

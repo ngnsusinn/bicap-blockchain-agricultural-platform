@@ -5,12 +5,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.scheduling.annotation.Scheduled;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.ActorAuthorizer;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.CurrentUser;
+import vn.courses.ut.edu.javaprogramming.bicap.common.util.ImagesJson;
 import vn.courses.ut.edu.javaprogramming.bicap.config.SepayConfig;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.CompleteOrderRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.CreateDepositRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.DepositResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.OrderResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.CancelOrderRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.PlaceOrderRequest;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.ReportCreateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmingSeason;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Order;
@@ -25,10 +28,12 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepositor
 import vn.courses.ut.edu.javaprogramming.bicap.repository.OrderRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ProductRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -61,10 +66,13 @@ public class OrderService {
     private final FarmingSeasonRepository seasonRepository;
     private final FarmRepository farmRepository;
     private final NotificationService notificationService;
+    private final LocalFileStorageService fileStorage;
+    private final ReportService reportService;
 
     public OrderService(OrderRepository orderRepository, UserRepository userRepository, SepayConfig sepayConfig,
                         ProductRepository productRepository, FarmingSeasonRepository seasonRepository,
-                        FarmRepository farmRepository, NotificationService notificationService) {
+                        FarmRepository farmRepository, NotificationService notificationService,
+                        LocalFileStorageService fileStorage, ReportService reportService) {
         this.orderRepository = orderRepository;
         this.userRepository = userRepository;
         this.sepayConfig = sepayConfig;
@@ -72,6 +80,8 @@ public class OrderService {
         this.seasonRepository = seasonRepository;
         this.farmRepository = farmRepository;
         this.notificationService = notificationService;
+        this.fileStorage = fileStorage;
+        this.reportService = reportService;
     }
 
     /**
@@ -144,6 +154,22 @@ public class OrderService {
             order.setCancelledReason("Deposit payment window expired");
         });
         if (!expired.isEmpty()) orderRepository.saveAll(expired);
+    }
+
+    /** BICAP-51 BR2: auto-confirm receipt 48h after driver/FM marks DELIVERED. */
+    @Scheduled(fixedDelayString = "${bicap.orders.delivery-confirm-check-ms:60000}")
+    public void autoConfirmExpiredDeliveries() {
+        List<Order> expired = orderRepository.findByStatusAndDeliveredAtBefore(
+                Order.STATUS_DELIVERED, LocalDateTime.now().minusHours(48));
+        for (Order order : expired) {
+            order.setStatus(Order.STATUS_COMPLETED);
+            order.setCompletedAt(LocalDateTime.now());
+            if (order.getCompletionComment() == null || order.getCompletionComment().isBlank()) {
+                order.setCompletionComment("Auto-confirmed after 48 hours");
+            }
+            orderRepository.save(order);
+            notifyFarmManagerCompleted(order, null);
+        }
     }
 
     /**
@@ -443,11 +469,16 @@ public class OrderService {
     }
 
     /**
-     * Retailer xác nhận đã nhận hàng (DELIVERED → COMPLETED).
-     * Chỉ chủ đơn mới được xác nhận.
+     * Retailer xác nhận đã nhận hàng (DELIVERED → COMPLETED) — BICAP-51 / SRS-RT-016.
+     * {@code accepted=false} tạo báo cáo khiếu nại và giữ đơn ở DELIVERED.
      */
     public OrderResponse completeOrder(Long id) {
+        return completeOrder(id, new CompleteOrderRequest());
+    }
+
+    public OrderResponse completeOrder(Long id, CompleteOrderRequest request) {
         User actor = requireRetailer();
+        CompleteOrderRequest body = request != null ? request : new CompleteOrderRequest();
 
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
@@ -460,28 +491,111 @@ public class OrderService {
                     "Only DELIVERED orders can be completed (current: " + order.getStatus() + ")");
         }
 
-        order.setStatus(Order.STATUS_COMPLETED);
-        order.setCompletedAt(java.time.LocalDateTime.now());
-        Order saved = orderRepository.save(order);
-
-        // Thông báo Farm Manager
-        Product product = order.getProductId() != null
-                ? productRepository.findById(order.getProductId()).orElse(null) : null;
-        FarmingSeason season = product != null && product.getSeasonId() != null
-                ? seasonRepository.findById(product.getSeasonId()).orElse(null) : null;
-        if (season != null && season.getFarmId() != null) {
-            farmRepository.findById(season.getFarmId()).ifPresent(farm ->
-                notificationService.sendNotification(farm.getUserId(), "SUCCESS",
-                        "Đơn hàng hoàn thành",
-                        "Nhà bán lẻ " + actor.getFullName() + " đã xác nhận nhận hàng. Đơn hàng #" + id + " đã hoàn thành.",
-                        false)
-            );
+        if (!body.isAccepted()) {
+            String comment = body.getComment() == null ? "" : body.getComment().trim();
+            if (comment.length() < 10) {
+                throw new BadRequestException("Complaint comment must be at least 10 characters");
+            }
+            reportService.createReport(new ReportCreateRequest(
+                    "COMPLAINT",
+                    "Khiếu nại nhận hàng đơn #" + id,
+                    comment,
+                    id
+            ));
+            Product product = order.getProductId() != null
+                    ? productRepository.findById(order.getProductId()).orElse(null) : null;
+            FarmingSeason season = product != null && product.getSeasonId() != null
+                    ? seasonRepository.findById(product.getSeasonId()).orElse(null) : null;
+            Farm farm = season != null && season.getFarmId() != null
+                    ? farmRepository.findById(season.getFarmId()).orElse(null) : null;
+            return OrderResponse.from(order, product, season, farm, actor);
         }
 
+        if (body.getRating() != null) {
+            order.setCompletionRating(body.getRating());
+        }
+        if (body.getComment() != null && !body.getComment().isBlank()) {
+            order.setCompletionComment(body.getComment().trim());
+        }
+
+        order.setStatus(Order.STATUS_COMPLETED);
+        order.setCompletedAt(LocalDateTime.now());
+        Order saved = orderRepository.save(order);
+
+        notifyFarmManagerCompleted(saved, actor);
+
+        Product product = saved.getProductId() != null
+                ? productRepository.findById(saved.getProductId()).orElse(null) : null;
+        FarmingSeason season = product != null && product.getSeasonId() != null
+                ? seasonRepository.findById(product.getSeasonId()).orElse(null) : null;
         Farm farm = season != null && season.getFarmId() != null
                 ? farmRepository.findById(season.getFarmId()).orElse(null) : null;
         User retailer = userRepository.findById(actor.getId()).orElse(actor);
         return OrderResponse.from(saved, product, season, farm, retailer);
+    }
+
+    /**
+     * Retailer tải ảnh xác nhận nhận hàng (BICAP-52 / SRS-RT-017).
+     * Chỉ chủ đơn, trạng thái DELIVERED hoặc COMPLETED.
+     */
+    public OrderResponse uploadDeliveryImages(Long id, List<MultipartFile> images) {
+        User actor = requireRetailer();
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
+
+        if (!actor.getId().equals(order.getRetailerId())) {
+            throw new ForbiddenException("This order does not belong to the current user");
+        }
+        if (!Order.STATUS_DELIVERED.equals(order.getStatus())
+                && !Order.STATUS_COMPLETED.equals(order.getStatus())) {
+            throw new BadRequestException(
+                    "Delivery images can only be uploaded for DELIVERED or COMPLETED orders (current: "
+                            + order.getStatus() + ")");
+        }
+        if (images == null || images.isEmpty()) {
+            throw new BadRequestException("At least one image is required");
+        }
+        if (images.size() > 5) {
+            throw new BadRequestException("Maximum 5 delivery images allowed");
+        }
+
+        List<String> urls = new ArrayList<>(ImagesJson.parse(order.getDeliveryImages()));
+        for (MultipartFile image : images) {
+            if (image != null && !image.isEmpty()) {
+                urls.add(fileStorage.storeDeliveryReceipt(actor.getId(), image));
+            }
+        }
+        if (urls.isEmpty()) {
+            throw new BadRequestException("At least one image is required");
+        }
+        order.setDeliveryImages(ImagesJson.toJson(urls));
+        Order saved = orderRepository.save(order);
+
+        Product product = saved.getProductId() != null
+                ? productRepository.findById(saved.getProductId()).orElse(null) : null;
+        FarmingSeason season = product != null && product.getSeasonId() != null
+                ? seasonRepository.findById(product.getSeasonId()).orElse(null) : null;
+        Farm farm = season != null && season.getFarmId() != null
+                ? farmRepository.findById(season.getFarmId()).orElse(null) : null;
+        return OrderResponse.from(saved, product, season, farm, actor);
+    }
+
+    private void notifyFarmManagerCompleted(Order order, User actor) {
+        Product product = order.getProductId() != null
+                ? productRepository.findById(order.getProductId()).orElse(null) : null;
+        FarmingSeason season = product != null && product.getSeasonId() != null
+                ? seasonRepository.findById(product.getSeasonId()).orElse(null) : null;
+        if (season == null || season.getFarmId() == null) {
+            return;
+        }
+        String actorName = actor != null ? actor.getFullName() : "Hệ thống";
+        farmRepository.findById(season.getFarmId()).ifPresent(farm ->
+                notificationService.sendNotification(farm.getUserId(), "SUCCESS",
+                        "Đơn hàng hoàn thành",
+                        "Nhà bán lẻ " + actorName + " đã xác nhận nhận hàng. Đơn hàng #"
+                                + order.getId() + " đã hoàn thành.",
+                        false)
+        );
     }
 
     /**

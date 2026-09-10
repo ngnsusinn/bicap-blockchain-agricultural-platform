@@ -1,9 +1,12 @@
 package vn.courses.ut.edu.javaprogramming.bicap.controller;
 
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.CancelOrderRequest;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.CompleteOrderRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.CreateDepositRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.DepositResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.OrderResponse;
@@ -97,9 +100,19 @@ public class OrderController {
     public ResponseEntity<OrderResponse> confirmDelivery(@PathVariable Long id) {
         return ResponseEntity.ok(orderService.confirmDelivery(id));
     }
-    /** Retailer xác nhận đã nhận hàng (DELIVERED → COMPLETED). */
+    /** Retailer xác nhận đã nhận hàng (DELIVERED → COMPLETED) — BICAP-51. */
     @PutMapping("/{id}/complete")
-    public ResponseEntity<OrderResponse> completeOrder(@PathVariable Long id) {
-        return ResponseEntity.ok(orderService.completeOrder(id));
+    public ResponseEntity<OrderResponse> completeOrder(
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) CompleteOrderRequest request) {
+        return ResponseEntity.ok(orderService.completeOrder(id, request));
+    }
+
+    /** Retailer tải ảnh xác nhận nhận hàng (BICAP-52 / SRS-RT-017). */
+    @PostMapping(value = "/{id}/delivery-images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<OrderResponse> uploadDeliveryImages(
+            @PathVariable Long id,
+            @RequestParam("images") List<MultipartFile> images) {
+        return ResponseEntity.ok(orderService.uploadDeliveryImages(id, images));
     }
 }

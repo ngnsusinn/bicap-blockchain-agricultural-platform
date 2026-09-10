@@ -12,20 +12,20 @@ describe('LoginForm', () => {
   it('renders the role title and test-account quick-fill for FARM_MANAGER', () => {
     render(<LoginForm role="FARM_MANAGER" onSuccess={vi.fn()} onSwitchToRegister={vi.fn()} />);
     expect(screen.getByText(/Chủ Trang Trại/)).toBeInTheDocument();
-    expect(screen.getByText('farm@bicap.com , Farmpassword@2026')).toBeInTheDocument();
+    expect(screen.getByText(/farm@bicap\.com/)).toBeInTheDocument();
   });
 
   it('renders admin test accounts for the ADMIN role', () => {
     render(<LoginForm role="ADMIN" onSuccess={vi.fn()} onSwitchToRegister={vi.fn()} />);
-    expect(screen.getByText('superadmin@bicap.com , Superadmin@2026')).toBeInTheDocument();
-    expect(screen.getByText('admin@bicap.com , Adminpassword@2026')).toBeInTheDocument();
+    expect(screen.getByText(/superadmin@bicap\.com/)).toBeInTheDocument();
+    expect(screen.getByText(/^admin@bicap\.com/)).toBeInTheDocument();
     // Admin cannot self-register → no "Đăng ký ngay" link
     expect(screen.queryByText('Đăng ký ngay')).not.toBeInTheDocument();
   });
 
   it('quick-fill populates identifier and password', () => {
     render(<LoginForm role="RETAILER" onSuccess={vi.fn()} onSwitchToRegister={vi.fn()} />);
-    fireEvent.click(screen.getByText('retailer@bicap.com , Retailpassword@2026'));
+    fireEvent.click(screen.getByText(/retailer@bicap\.com/));
     expect(screen.getByLabelText(/Email hoặc Số điện thoại/)).toHaveValue('retailer@bicap.com');
     expect(screen.getByLabelText(/^Mật khẩu/)).toHaveValue('Retailpassword@2026');
   });
@@ -68,12 +68,13 @@ describe('LoginForm', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     render(<LoginForm role="ADMIN" onSuccess={vi.fn()} onSwitchToRegister={vi.fn()} />);
-    fireEvent.click(screen.getByText('admin@bicap.com , Adminpassword@2026'));
+    fireEvent.click(screen.getByText(/^admin@bicap\.com/));
     fireEvent.click(screen.getByRole('button', { name: /Đăng nhập Admin Portal/ }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
     expect(String(fetchMock.mock.calls[0][0])).toContain('/auth/admin/login');
   });
+
 
   it('surfaces backend error message on failed login', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({

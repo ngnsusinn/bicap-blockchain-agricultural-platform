@@ -58,6 +58,9 @@ public class OrderResponse {
     private String notes;
     private LocalDateTime acceptedAt;
     private LocalDateTime depositExpiresAt;
+    private Integer completionRating;
+    private String completionComment;
+    private List<String> deliveryImages;
 
     public OrderResponse() {}
 
@@ -137,6 +140,9 @@ public class OrderResponse {
         response.notes = order.getNotes();
         response.acceptedAt = order.getAcceptedAt();
         response.depositExpiresAt = order.getAcceptedAt() == null ? null : order.getAcceptedAt().plusHours(24);
+        response.completionRating = order.getCompletionRating();
+        response.completionComment = order.getCompletionComment();
+        response.deliveryImages = ImagesJson.parse(order.getDeliveryImages());
         return response;
     }
 
@@ -204,4 +210,10 @@ public class OrderResponse {
     public void setAcceptedAt(LocalDateTime acceptedAt) { this.acceptedAt = acceptedAt; }
     public LocalDateTime getDepositExpiresAt() { return depositExpiresAt; }
     public void setDepositExpiresAt(LocalDateTime depositExpiresAt) { this.depositExpiresAt = depositExpiresAt; }
+    public Integer getCompletionRating() { return completionRating; }
+    public void setCompletionRating(Integer completionRating) { this.completionRating = completionRating; }
+    public String getCompletionComment() { return completionComment; }
+    public void setCompletionComment(String completionComment) { this.completionComment = completionComment; }
+    public List<String> getDeliveryImages() { return deliveryImages; }
+    public void setDeliveryImages(List<String> deliveryImages) { this.deliveryImages = deliveryImages; }
 }

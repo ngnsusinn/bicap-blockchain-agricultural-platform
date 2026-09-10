@@ -10,6 +10,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import vn.courses.ut.edu.javaprogramming.bicap.config.SepayConfig;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.CancelOrderRequest;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.CompleteOrderRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.OrderResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.PlaceOrderRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
@@ -27,8 +28,10 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepositor
 import vn.courses.ut.edu.javaprogramming.bicap.repository.OrderRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ProductRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.service.LocalFileStorageService;
 import vn.courses.ut.edu.javaprogramming.bicap.service.NotificationService;
 import vn.courses.ut.edu.javaprogramming.bicap.service.OrderService;
+import vn.courses.ut.edu.javaprogramming.bicap.service.ReportService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -62,6 +65,8 @@ class OrderManagementServiceTest {
     @Mock private FarmingSeasonRepository seasonRepository;
     @Mock private FarmRepository farmRepository;
     @Mock private NotificationService notificationService;
+    @Mock private LocalFileStorageService fileStorage;
+    @Mock private ReportService reportService;
 
     private OrderService service;
     private User retailer;
@@ -73,7 +78,8 @@ class OrderManagementServiceTest {
     @BeforeEach
     void setUp() {
         service = new OrderService(orderRepository, userRepository, new SepayConfig(),
-                productRepository, seasonRepository, farmRepository, notificationService);
+                productRepository, seasonRepository, farmRepository, notificationService,
+                fileStorage, reportService);
 
         Role retailerRole = Role.builder().name("RETAILER").permissions(Set.of()).build();
         retailer = User.builder().id(RETAILER_ID).email("retailer@bicap.com")
@@ -359,6 +365,45 @@ class OrderManagementServiceTest {
         assertEquals(Order.STATUS_COMPLETED, order.getStatus());
         assertNotNull(order.getCompletedAt());
         verify(notificationService).sendNotification(eq(FM_ID), eq("SUCCESS"), anyString(), anyString(), eq(false));
+    }
+
+    @Test
+    void completeOrder_withRatingAndComment_persistsFeedback() {
+        loginAs(retailer);
+        Order order = deliveredOrder();
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
+        when(seasonRepository.findById(SEASON_ID)).thenReturn(Optional.of(season));
+        when(farmRepository.findById(FARM_ID)).thenReturn(Optional.of(farm));
+        when(userRepository.findById(RETAILER_ID)).thenReturn(Optional.of(retailer));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CompleteOrderRequest request = new CompleteOrderRequest(true, 5, "Hàng tốt");
+        OrderResponse response = service.completeOrder(ORDER_ID, request);
+
+        assertEquals(Order.STATUS_COMPLETED, response.getStatus());
+        assertEquals(5, order.getCompletionRating());
+        assertEquals("Hàng tốt", order.getCompletionComment());
+        assertEquals(5, response.getCompletionRating());
+    }
+
+    @Test
+    void completeOrder_whenRejected_createsComplaintAndKeepsDelivered() {
+        loginAs(retailer);
+        Order order = deliveredOrder();
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
+        when(seasonRepository.findById(SEASON_ID)).thenReturn(Optional.of(season));
+        when(farmRepository.findById(FARM_ID)).thenReturn(Optional.of(farm));
+
+        CompleteOrderRequest request = new CompleteOrderRequest(false, null,
+                "Hàng bị dập nát khi nhận, thiếu một phần số lượng.");
+        OrderResponse response = service.completeOrder(ORDER_ID, request);
+
+        assertEquals(Order.STATUS_DELIVERED, response.getStatus());
+        assertEquals(Order.STATUS_DELIVERED, order.getStatus());
+        verify(reportService).createReport(any());
+        verify(orderRepository, never()).save(any());
     }
 
     @Test

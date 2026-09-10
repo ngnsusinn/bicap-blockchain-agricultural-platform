@@ -170,6 +170,17 @@ public class DriverShipmentService {
         shipment.setPickupTime(LocalDateTime.now());
         shipmentRepository.save(shipment);
 
+        // BICAP-50: notify retailer that shipment is on the way
+        orderRepository.findById(shipment.getOrderId()).ifPresent(order -> {
+            if (order.getRetailerId() != null) {
+                notificationService.sendNotification(order.getRetailerId(), "INFO",
+                        "Đơn hàng đang được vận chuyển",
+                        "Tài xế đã lấy hàng cho đơn #" + order.getId()
+                                + ". Đơn hàng đang trên đường giao tới bạn.",
+                        false);
+            }
+        });
+
         return buildDetailResponse(shipment, driver);
     }
 

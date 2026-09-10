@@ -212,7 +212,7 @@ class FullLifecycleIntegrationTest {
         MvcResult vehicle = postJson("/api/shipping/vehicles", java.util.Map.of(
                 "licensePlate", "51H-" + s, "type", "Tai 500kg", "capacity", 500.0), shipToken);
         long vehicleId = json(vehicle).path("id").asLong();
-        long driverUserId = userRepository.findByEmail("driver@bicap.com").orElseThrow().getId();
+        long driverUserId = userRepository.findByEmail("driver2@bicap.com").orElseThrow().getId();
         long driverId = driverRepository.findByUserId(driverUserId).orElseThrow().getId();
 
         MvcResult shipment = postJson("/api/shipping/shipments", java.util.Map.of(
@@ -225,7 +225,7 @@ class FullLifecycleIntegrationTest {
 
         // ── 9. Driver pickup → tracking → delivery (BICAP-64/66/67) ────────
         String driverToken = tokenOf(postJson("/api/auth/driver/login",
-                java.util.Map.of("identifier", "driver@bicap.com", "password", "Driver@2026"), null));
+                java.util.Map.of("identifier", "driver2@bicap.com", "password", "Driver@2026"), null));
         postJson("/api/driver/shipments/" + shipmentId + "/pickup",
                 java.util.Map.of("gpsLat", 10.9, "gpsLng", 106.8, "notes", "Da lay hang"), driverToken);
         postJson("/api/driver/shipments/" + shipmentId + "/tracking",

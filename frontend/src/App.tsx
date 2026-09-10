@@ -11,6 +11,7 @@ import RetailerOrdersPage from './pages/Retailer/RetailerOrdersPage';
 import QrScannerPage from './pages/Retailer/QrScannerPage';
 import RetailerNotificationsPage from './pages/Retailer/RetailerNotificationsPage';
 import RetailerShipmentsPage from './pages/Retailer/RetailerShipmentsPage';
+import RetailerReportsPage from './pages/Retailer/RetailerReportsPage';
 import SeasonExports from './pages/FarmManager/SeasonExports';
 import TradingFloor from './pages/FarmManager/TradingFloor';
 import Orders from './pages/FarmManager/Orders';
@@ -363,7 +364,7 @@ export default function App() {
   const [user, setUser] = useState<UserSession | null>(getCurrentUser());
   const [currentTab, setCurrentTab] = useState('guest-notifications');
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
-  const [retailerTab, setRetailerTab] = useState<'dashboard' | 'marketplace' | 'trace' | 'orders' | 'notifications' | 'shipments' | 'profile' | 'business'>('dashboard');
+  const [retailerTab, setRetailerTab] = useState<'dashboard' | 'marketplace' | 'trace' | 'orders' | 'notifications' | 'shipments' | 'reports' | 'profile' | 'business'>('dashboard');
   
   // Quản lý chế độ xem khách (Guest) khi chưa đăng nhập
   const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
@@ -529,6 +530,7 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <NotificationBell />
             <span style={{ fontSize: '13px', color: '#cbd5e1' }}>
               Xin chào, <strong>{user.fullName}</strong> <span style={roleBadgeRetailerStyle}>Retailer</span>
             </span>
@@ -545,6 +547,7 @@ export default function App() {
           <button className={retailerTab === 'orders' ? 'is-active' : ''} onClick={() => setRetailerTab('orders')}>Đơn mua</button>
           <button className={retailerTab === 'notifications' ? 'is-active' : ''} onClick={() => setRetailerTab('notifications')}>🔔 Thông báo</button>
           <button className={retailerTab === 'shipments' ? 'is-active' : ''} onClick={() => setRetailerTab('shipments')}>🚚 Vận chuyển</button>
+          <button className={retailerTab === 'reports' ? 'is-active' : ''} onClick={() => setRetailerTab('reports')}>Báo cáo</button>
           <button className={retailerTab === 'profile' ? 'is-active' : ''} onClick={() => setRetailerTab('profile')}>Thông tin cá nhân</button>
           <button className={retailerTab === 'business' ? 'is-active' : ''} onClick={() => setRetailerTab('business')}>Giấy phép kinh doanh</button>
         </nav>
@@ -566,6 +569,7 @@ export default function App() {
           {retailerTab === 'orders' && <RetailerOrdersPage />}
           {retailerTab === 'notifications' && <RetailerNotificationsPage />}
           {retailerTab === 'shipments' && <RetailerShipmentsPage />}
+          {retailerTab === 'reports' && <RetailerReportsPage />}
           {retailerTab === 'dashboard' && (
             <div className="glass-panel retailer-panel">
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛒</div>
@@ -577,23 +581,35 @@ export default function App() {
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginTop: '32px' }}>
-                <div style={statCardStyle}>
+                <button type="button" onClick={() => setRetailerTab('marketplace')} style={{ ...statCardStyle, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
                   <div style={{ fontSize: '24px' }}>🔍</div>
                   <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Tìm kiếm Nông sản</h3>
                   <p style={{ fontSize: '12px', color: '#94a3b8' }}>Duyệt danh mục sản phẩm đạt chứng nhận VietGAP/GlobalGAP.</p>
-                </div>
+                </button>
 
-                <div style={statCardStyle}>
+                <button type="button" onClick={() => setRetailerTab('orders')} style={{ ...statCardStyle, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
                   <div style={{ fontSize: '24px' }}>📦</div>
                   <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Đơn hàng của tôi</h3>
-                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>Quản lý các hợp đồng mua bán nông sản trực tiếp từ trang trại.</p>
-                </div>
+                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>Theo dõi đơn, xác nhận nhận hàng và tải ảnh giao nhận.</p>
+                </button>
 
-                <div style={statCardStyle}>
+                <button type="button" onClick={() => setRetailerTab('shipments')} style={{ ...statCardStyle, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
                   <div style={{ fontSize: '24px' }}>🚚</div>
                   <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Theo dõi Vận chuyển</h3>
                   <p style={{ fontSize: '12px', color: '#94a3b8' }}>Tracking thời gian thực tiến trình giao nhận lô hàng.</p>
-                </div>
+                </button>
+
+                <button type="button" onClick={() => setRetailerTab('notifications')} style={{ ...statCardStyle, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
+                  <div style={{ fontSize: '24px' }}>🔔</div>
+                  <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Thông báo</h3>
+                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>Cập nhật từ trang trại và người vận chuyển.</p>
+                </button>
+
+                <button type="button" onClick={() => setRetailerTab('reports')} style={{ ...statCardStyle, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
+                  <div style={{ fontSize: '24px' }}>📣</div>
+                  <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Báo cáo Admin</h3>
+                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>Gửi khiếu nại, phản hồi hoặc báo cáo sự cố.</p>
+                </button>
               </div>
             </div>
           )}
