@@ -4,8 +4,8 @@
 |---|---|
 | **Dự án** | BICAP — Blockchain Integration in Clean Agricultural Platform |
 | **Mã ticket** | BICAP-96 (liên quan BICAP-86/87/88/89/90) |
-| **Phiên bản** | 1.0 — 30/08/2026 |
-| **Môi trường test** | Windows x64 · JDK 21 (Temurin) · Node 24 · H2 in-memory (MODE=MySQL) · blockchain.mode=mock |
+| **Phiên bản** | 1.1 — 10/09/2026 |
+| **Môi trường test** | Windows/Linux x64 · JDK 21 (Temurin) · Node 22.22+ hoặc 24.15+ · H2 in-memory (MODE=MySQL) · blockchain.mode=mock |
 
 ---
 

@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "description": "BICAP unified web app — Farm/Retailer/Shipping/Guest portal at / and Admin dashboard at /admin",
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+  },
   "scripts": {
     "dev": "vite --port 5174",
     "build": "tsc -b && vite build",

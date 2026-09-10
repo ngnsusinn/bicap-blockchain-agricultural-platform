@@ -130,7 +130,7 @@ bicap-blockchain-agricultural-platform/
 | --- | --- | --- |
 | JDK | 21+ | Bắt buộc cho backend |
 | Maven | 3.9+ | Dự án không kèm Maven Wrapper |
-| Node.js | 20+ | Cho `web/` |
+| Node.js | **22.22.2+** (hoặc 24.15+) | Cho `web/` — jsdom 30/undici 8 không hỗ trợ Node 20 |
 | npm | 10+ | |
 | MySQL | 8.x | Tùy chọn — mặc định backend dùng H2 in-memory |
 | Redis | 7+ | Tùy chọn — tự fallback cache in-memory |
@@ -246,7 +246,7 @@ CI (`.github/workflows/ci.yml`) gồm 2 job:
 
 | Job | Nội dung |
 | --- | --- |
-| `web-ci` | Node 20 · `npm ci` → `npm run lint` → `npm test` → `npm run build` (thư mục `web/`) |
+| `web-ci` | Node 22 · `npm ci` → `npm run lint` → `npm test` → `npm run build` (thư mục `web/`) |
 | `backend-ci` | JDK 21 · `mvn clean test` → `mvn package -DskipTests`; upload JAR (thư mục `backend/`) |
 
 Chạy cục bộ:
@@ -295,6 +295,5 @@ cd backend && mvn test
 | `docs/testing-document.md`, `docs/uat-plan.md` | Tài liệu kiểm thử & UAT |
 | `docs/user-manual.md` | Hướng dẫn người dùng cuối |
 | `docs/BAO-CAO-TONG-HOP.md` | Báo cáo tổng kết dự án |
-| `docs/BAO-CAO-DONG-GOP-THANH-VIEN.md` | Báo cáo đóng góp chi tiết của từng thành viên theo chức năng/module |
 
 > Các tài liệu trong `docs/` đã được cập nhật theo cấu trúc mới (`backend/`, `web/`, `dev/`). Riêng các yêu cầu gốc về **Mobile App tài xế** và **Docker** vẫn được giữ trong tài liệu đặc tả kèm ghi chú rằng phần triển khai tương ứng đã được gỡ khỏi repository.

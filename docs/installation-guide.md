@@ -15,7 +15,7 @@
 |---|---|---|
 | Java JDK | 21 (Temurin/Corretto) | `java -version` |
 | Maven | 3.9+ | `mvn -v` |
-| Node.js | 20+ (đã test 24) | `node -v` |
+| Node.js | 22.22.2+ hoặc 24.15+ (đã test 22.23 & 24.21) | `node -v` |
 | npm | 10+ | `npm -v` |
 
 ### 1.2 Phần mềm tùy chọn (production)

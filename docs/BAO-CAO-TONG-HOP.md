@@ -471,7 +471,7 @@ Pipeline "Java & Node.js Multi-Service CI/CD" — chạy khi push `main`/`featur
 
 | Job | Nội dung |
 |---|---|
-| `web-ci` | `web/`: Node 20, `npm ci` → `npm run lint` (oxlint) → `npm test` → `npm run build` |
+| `web-ci` | `web/`: Node 22 (≥22.22.2 — jsdom 30/undici 8 bỏ hỗ trợ Node 20), `npm ci` → `npm run lint` (oxlint) → `npm test` → `npm run build` |
 | `backend-ci` | `backend/`: JDK 21 (Corretto), `mvn clean test` (251 test) → `mvn package -DskipTests`, upload artifact JAR |
 
 ### 8.2. Triển khai

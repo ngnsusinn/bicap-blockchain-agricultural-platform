@@ -8,7 +8,7 @@ This document contains step-by-step instructions to run the Blockchain Agricultu
 
 Ensure you have the following installed on your machine:
 *   **Java JDK 21**
-*   **Node.js (v20 or newer)** & **npm**
+*   **Node.js v22.22.2+ (or v24.15.0+)** & **npm** — jsdom 30/undici 8 no longer support Node 20
 *   **IntelliJ IDEA** (Optional, recommended for development)
 
 ---
