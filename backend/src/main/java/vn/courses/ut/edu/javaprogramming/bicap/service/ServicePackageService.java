@@ -24,6 +24,8 @@ import java.util.stream.Collectors;
 public class ServicePackageService {
 
     private static final Set<String> ADMIN_ROLES = Set.of("SUPER_ADMIN", "ADMIN");
+    /** Đọc danh mục gói: MODERATOR là vai trò chỉ đọc nên cũng được xem. */
+    private static final Set<String> ADMIN_VIEW_ROLES = Set.of("SUPER_ADMIN", "ADMIN", "MODERATOR");
 
     private final ServicePackageRepository servicePackageRepository;
     private final SubscriptionRepository subscriptionRepository;
@@ -51,10 +53,10 @@ public class ServicePackageService {
 
     // ── Admin CRUD ────────────────────────────────────────────────────────────
 
-    /** Admin: list ALL packages regardless of status. */
+    /** Admin: list ALL packages regardless of status (MODERATOR được phép xem). */
     @Transactional(readOnly = true)
     public List<ServicePackageResponse> getAllPackagesAdmin() {
-        requireAdmin();
+        requireAdminView();
         return servicePackageRepository.findAll().stream()
                 .map(ServicePackageResponse::fromEntity)
                 .collect(Collectors.toList());
@@ -137,5 +139,10 @@ public class ServicePackageService {
     private void requireAdmin() {
         User actor = CurrentUser.get();
         ActorAuthorizer.requireRoles(actor, ADMIN_ROLES);
+    }
+
+    private void requireAdminView() {
+        User actor = CurrentUser.get();
+        ActorAuthorizer.requireRoles(actor, ADMIN_VIEW_ROLES);
     }
 }

@@ -140,14 +140,16 @@ const ServicePackages: React.FC = () => {
     else                    { setSuccess(msg);  setTimeout(() => setSuccess(null), 4000); }
   };
 
+  /** Bóc tách `features` (có thể bị bọc thêm 1 lớp JSON string) và luôn trả về mảng. */
   const getFeatures = (f: string | null | undefined): string[] => {
     if (!f) return [];
-    try {
-      const parsed = JSON.parse(f);
-      return Array.isArray(parsed) ? parsed.filter(item => typeof item === 'string') : [];
-    } catch {
-      return f.split(',').map(s => s.trim()).filter(Boolean);
+    let value: unknown = f;
+    for (let i = 0; i < 3 && typeof value === 'string'; i++) {
+      try { value = JSON.parse(value); } catch { break; }
     }
+    if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string');
+    if (typeof value === 'string') return value.split(',').map(s => s.trim()).filter(Boolean);
+    return [];
   };
 
   const daysLeft = (endDate: string) => {

@@ -60,7 +60,8 @@ export const ServicePackagesPage: React.FC<Props> = ({ currentSession, onToast }
     try {
       const res = await fetch(`${apiBase}/service-packages/admin/all`, { headers });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setPackages(await res.json());
+      const data = await res.json();
+      setPackages(Array.isArray(data) ? data : []);
     } catch (e: any) {
       onToast(e.message || 'Không tải được danh sách gói dịch vụ.', 'error');
     } finally {
@@ -143,9 +144,21 @@ export const ServicePackagesPage: React.FC<Props> = ({ currentSession, onToast }
     }
   };
 
-  const parseFeatureList = (raw: string): string[] => {
-    try { return JSON.parse(raw); }
-    catch { return raw.split(',').map(s => s.trim()).filter(Boolean); }
+  /**
+   * Trả về danh sách tính năng dạng mảng string.
+   *
+   * `features` từ API có thể bị bọc thêm một lớp JSON string (H2 lưu cột `json`
+   * thành JSON string scalar → `"[\"A\",\"B\"]"`). Phải bóc tách đệ quy và
+   * LUÔN trả về mảng, nếu không `.map()` trên string sẽ làm React crash → trắng trang.
+   */
+  const parseFeatureList = (raw: unknown): string[] => {
+    let value: unknown = raw;
+    for (let i = 0; i < 3 && typeof value === 'string'; i++) {
+      try { value = JSON.parse(value); } catch { break; }
+    }
+    if (Array.isArray(value)) return value.map((v) => String(v));
+    if (typeof value === 'string') return value.split(',').map((s) => s.trim()).filter(Boolean);
+    return [];
   };
 
   const canEdit = ['SUPER_ADMIN', 'ADMIN'].includes(currentSession.role);
@@ -176,7 +189,9 @@ export const ServicePackagesPage: React.FC<Props> = ({ currentSession, onToast }
 
       {/* Package cards */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))', gap:20 }}>
-        {packages.map(pkg => (
+        {packages.map(pkg => {
+          const featureList = parseFeatureList(pkg.features);
+          return (
           <div key={pkg.id} className="glass-panel" style={{ padding:24, display:'flex', flexDirection:'column', gap:12 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
               <h3 style={{ margin:0, fontSize:18, fontWeight:700, color:'#fff' }}>{pkg.name}</h3>
@@ -192,15 +207,15 @@ export const ServicePackagesPage: React.FC<Props> = ({ currentSession, onToast }
               </span>
               <span style={{ color:'#64748b', alignSelf:'flex-end' }}>/ {pkg.durationDays} ngày</span>
             </div>
-            {parseFeatureList(pkg.features).length > 0 && (
+            {featureList.length > 0 && (
               <ul style={{ margin:0, padding:0, listStyle:'none', display:'flex', flexDirection:'column', gap:5 }}>
-                {parseFeatureList(pkg.features).slice(0, 4).map((f, i) => (
+                {featureList.slice(0, 4).map((f, i) => (
                   <li key={i} style={{ fontSize:12, color:'#94a3b8', display:'flex', gap:8 }}>
                     <span style={{ color:'#8b5cf6' }}>✦</span>{f}
                   </li>
                 ))}
-                {parseFeatureList(pkg.features).length > 4 && (
-                  <li style={{ fontSize:11, color:'#475569' }}>+{parseFeatureList(pkg.features).length - 4} tính năng khác…</li>
+                {featureList.length > 4 && (
+                  <li style={{ fontSize:11, color:'#475569' }}>+{featureList.length - 4} tính năng khác…</li>
                 )}
               </ul>
             )}
@@ -225,7 +240,8 @@ export const ServicePackagesPage: React.FC<Props> = ({ currentSession, onToast }
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Create / Edit form modal */}

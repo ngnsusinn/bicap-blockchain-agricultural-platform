@@ -1,10 +1,21 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { API_ORIGIN, authHeaders, formatDate } from '../utils/api';
+import { normalizeApiOrigin } from '../../shared/session';
 
 /** BICAP-86 — admin portal shared API helpers. */
 describe('API_ORIGIN normalization', () => {
-  it('strips any /api/... suffix down to the server origin', () => {
-    expect(API_ORIGIN).toBe('http://localhost:8080');
+  it('strips /api and any sub-path down to the server origin', () => {
+    expect(normalizeApiOrigin('http://localhost:8080/api/admins')).toBe('http://localhost:8080');
+    expect(normalizeApiOrigin('http://localhost:8080/api')).toBe('http://localhost:8080');
+    expect(normalizeApiOrigin('http://host:9000')).toBe('http://host:9000');
+  });
+
+  it('falls back to the default origin when the env value is missing', () => {
+    expect(normalizeApiOrigin(undefined)).toBe('http://localhost:8080');
+    expect(normalizeApiOrigin('')).toBe('http://localhost:8080');
+  });
+
+  it('exposes an API_ORIGIN without any /api suffix (whatever the env value)', () => {
     expect(API_ORIGIN).not.toMatch(/\/api/);
   });
 });

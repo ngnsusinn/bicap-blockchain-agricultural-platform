@@ -3,10 +3,15 @@ package vn.courses.ut.edu.javaprogramming.bicap.controller;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.ActorAuthorizer;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.CurrentUser;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.RetailerBusinessRequest;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.RetailerBusinessResponse;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.RetailerProfileRequest;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.RetailerProfileResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.ShipmentDetailResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.ShipmentResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
@@ -22,6 +27,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepositor
 import vn.courses.ut.edu.javaprogramming.bicap.repository.OrderRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ProductRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.service.NotificationService;
+import vn.courses.ut.edu.javaprogramming.bicap.service.RetailerProfileService;
 import vn.courses.ut.edu.javaprogramming.bicap.service.RetailerShipmentService;
 
 import java.util.List;
@@ -41,6 +47,7 @@ public class RetailerController {
     private static final Set<String> RETAILER_ROLES = Set.of("RETAILER");
 
     private final RetailerShipmentService retailerShipmentService;
+    private final RetailerProfileService retailerProfileService;
     private final NotificationService notificationService;
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
@@ -48,12 +55,14 @@ public class RetailerController {
     private final FarmRepository farmRepository;
 
     public RetailerController(RetailerShipmentService retailerShipmentService,
+                               RetailerProfileService retailerProfileService,
                                NotificationService notificationService,
                                OrderRepository orderRepository,
                                ProductRepository productRepository,
                                FarmingSeasonRepository seasonRepository,
                                FarmRepository farmRepository) {
         this.retailerShipmentService = retailerShipmentService;
+        this.retailerProfileService = retailerProfileService;
         this.notificationService = notificationService;
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
@@ -80,6 +89,53 @@ public class RetailerController {
     @GetMapping("/shipments/{id}")
     public ResponseEntity<ShipmentDetailResponse> getShipmentDetail(@PathVariable Long id) {
         return ResponseEntity.ok(retailerShipmentService.getMyShipmentDetail(id));
+    }
+
+    // ── Hồ sơ Nhà bán lẻ (BICAP-37) ──────────────────────────────────────────
+
+    /** Thông tin cá nhân của retailer đang đăng nhập. */
+    @GetMapping("/profile")
+    public ResponseEntity<RetailerProfileResponse> getMyProfile() {
+        return ResponseEntity.ok(retailerProfileService.getProfile());
+    }
+
+    /**
+     * Cập nhật thông tin cá nhân. Gửi dạng multipart/form-data:
+     * {@code fullName}, {@code phone}, {@code address}, {@code avatar} (file, tùy chọn).
+     */
+    @PutMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<RetailerProfileResponse> updateMyProfile(
+            @ModelAttribute RetailerProfileRequest request) {
+        return ResponseEntity.ok(retailerProfileService.updateProfile(request));
+    }
+
+    // ── Hồ sơ doanh nghiệp (BICAP-38) ────────────────────────────────────────
+
+    /**
+     * Hồ sơ doanh nghiệp của retailer. Trả 404 khi chưa cập nhật — giao diện
+     * coi 404 là "chưa có hồ sơ" và hiển thị form trống.
+     */
+    @GetMapping("/business-profile")
+    public ResponseEntity<RetailerBusinessResponse> getMyBusinessProfile() {
+        return ResponseEntity.ok(retailerProfileService.getBusinessProfile());
+    }
+
+    /**
+     * Tạo/cập nhật hồ sơ doanh nghiệp kèm giấy phép kinh doanh.
+     * Gửi dạng multipart/form-data: {@code businessName}, {@code address},
+     * {@code businessType}, {@code license} (file).
+     */
+    @PostMapping(value = "/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<RetailerBusinessResponse> updateMyBusinessProfile(
+            @ModelAttribute RetailerBusinessRequest request) {
+        return ResponseEntity.ok(retailerProfileService.updateBusinessProfile(request));
+    }
+
+    /** Alias PUT của {@code /documents} cho client dùng REST style. */
+    @PutMapping(value = "/business-profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<RetailerBusinessResponse> putMyBusinessProfile(
+            @ModelAttribute RetailerBusinessRequest request) {
+        return ResponseEntity.ok(retailerProfileService.updateBusinessProfile(request));
     }
 
     // ── BICAP-48: Gửi thông báo cho Farm Manager ─────────────────────────────

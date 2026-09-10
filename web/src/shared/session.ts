@@ -48,8 +48,17 @@ export const STORAGE_KEYS = {
  * the origin or at an app-specific base such as `http://localhost:8080/api/admins`;
  * any trailing `/api/...` path is stripped so a single value works for both apps.
  */
-export const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080')
-  .replace(/\/api(?:\/.*)?$/, '');
+/**
+ * Chuẩn hoá `VITE_API_BASE_URL` về đúng origin của backend: giá trị có thể là
+ * origin (`http://localhost:8080`) hoặc base kèm path (`.../api` / `.../api/admins`).
+ * Tách thành hàm thuần để test được độc lập với môi trường.
+ */
+export function normalizeApiOrigin(raw: string | undefined, fallback = 'http://localhost:8080'): string {
+  return (raw || fallback).replace(/\/api(?:\/.*)?$/, '');
+}
+
+/** Backend origin, e.g. `http://localhost:8080`. */
+export const API_ORIGIN = normalizeApiOrigin(import.meta.env.VITE_API_BASE_URL as string | undefined);
 
 /** REST base for the shared `/api/**` endpoints. */
 export const API_BASE_URL = `${API_ORIGIN}/api`;

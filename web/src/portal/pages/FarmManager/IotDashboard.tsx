@@ -26,7 +26,7 @@ export default function IotDashboard() {
     // Fetch alerts (URGENT and PERIODIC notifications)
     const fetchAlerts = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/notifications/user/${user.id}`, {
+        const res = await fetch(`${API_BASE_URL}/notifications`, {
           headers: getAuthHeaders(),
         });
         if (res.ok) {
@@ -44,8 +44,12 @@ export default function IotDashboard() {
 
     fetchAlerts();
 
-    // Listen to real-time alerts
-    const sseUrl = `${API_BASE_URL}/notifications/stream/${user.id}`;
+    // Listen to real-time alerts. EventSource cannot send Authorization headers,
+    // so the JWT travels in ?token= (handled by JwtAuthenticationFilter).
+    const token = localStorage.getItem('accessToken');
+    const sseUrl = token
+      ? `${API_BASE_URL}/notifications/stream?token=${encodeURIComponent(token)}`
+      : `${API_BASE_URL}/notifications/stream`;
     const eventSource = new EventSource(sseUrl);
 
     eventSource.addEventListener('notification', (event) => {
