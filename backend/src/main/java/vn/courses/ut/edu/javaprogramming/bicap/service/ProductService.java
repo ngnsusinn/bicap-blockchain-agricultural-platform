@@ -73,14 +73,11 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Page<ProductResponse> getProducts(String status, Long categoryId, String search,
                                              Pageable pageable, String actorEmail) {
-        if (actorEmail != null && !actorEmail.isBlank()) {
-            checkView(actorEmail);
-        } else {
-            // Đối với Guest xem công khai, mặc định lọc sản phẩm ACTIVE nếu không chỉ định status
-            if (status == null || status.isBlank()) {
-                status = ProductStatus.ACTIVE.name();
-            }
-        }
+        // /api/admin/products is an admin endpoint. Role enforcement must NOT depend on the
+        // optional X-Actor-Email header: previously an authenticated retailer/driver that
+        // simply omitted the header fell through to the public "ACTIVE only" catalogue and
+        // received the admin product list. The guest catalogue lives at /api/public/products.
+        checkView(actorEmail);
 
         Page<Product> products = productRepository.findProductsFiltered(
                 status, categoryId, SearchUtils.escapeLike(search), pageable);

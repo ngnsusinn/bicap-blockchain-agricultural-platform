@@ -102,7 +102,14 @@ public class DriverService {
             d.setVehicleId(request.getVehicleId());
         }
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
-            d.setStatus(request.getStatus());
+            // Reject arbitrary status strings: only the Driver state machine's values are
+            // valid, so a client cannot desynchronise ON_TRIP/driver-availability logic.
+            String status = request.getStatus().trim().toUpperCase();
+            if (!Set.of(Driver.STATUS_IDLE, Driver.STATUS_ON_TRIP, Driver.STATUS_OFFLINE).contains(status)) {
+                throw new BadRequestException("Invalid driver status: " + request.getStatus()
+                        + " (allowed: IDLE, ON_TRIP, OFFLINE)");
+            }
+            d.setStatus(status);
         }
         return buildResponse(driverRepository.save(d));
     }

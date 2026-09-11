@@ -248,6 +248,7 @@ export default function AdminApp() {
         {showModal && (
           <AdminModal
             admin={selectedAdmin}
+            actorEmail={currentSession.email}
             onClose={() => { setShowModal(false); setSelectedAdmin(null); }}
             onSave={handleSaveAdmin}
           />

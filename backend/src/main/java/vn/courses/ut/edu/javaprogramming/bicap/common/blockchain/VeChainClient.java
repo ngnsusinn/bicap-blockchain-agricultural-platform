@@ -75,14 +75,40 @@ public class VeChainClient {
         return String.valueOf(response.get("id"));
     }
 
+    /**
+     * Execution status of a transaction, derived the way thor actually reports it.
+     *
+     * <p>The thor REST API has <b>no</b> {@code txStatus} field on
+     * {@code GET /transactions/{id}} — reading it always yielded {@code TX_UNKNOWN}, so
+     * PENDING broadcasts were never confirmed and their hash was never written back to the
+     * season/process/export rows. The real signals are:
+     * <ul>
+     *   <li>404 → the node does not know the transaction ({@link #TX_UNKNOWN})</li>
+     *   <li>200 without {@code meta.blockID} → still in the mempool ({@link #TX_PENDING})</li>
+     *   <li>200 with {@code meta.blockID} → mined; the receipt's {@code reverted} flag then
+     *       distinguishes {@link #TX_CONFIRMED} from {@link #TX_ERROR}</li>
+     * </ul>
+     */
     public int getTransactionStatus(String txId) {
+        Map<?, ?> body;
         try {
-            Map<?, ?> body = restTemplate.getForObject(nodeUrl + "/transactions/" + txId, Map.class);
-            Object status = body == null ? null : body.get("txStatus");
-            return status == null ? TX_UNKNOWN : ((Number) status).intValue();
+            body = restTemplate.getForObject(nodeUrl + "/transactions/" + txId, Map.class);
         } catch (HttpClientErrorException.NotFound e) {
             return TX_UNKNOWN;
         }
+        if (body == null) {
+            return TX_UNKNOWN;
+        }
+        Object meta = body.get("meta");
+        boolean mined = meta instanceof Map<?, ?> metaMap && metaMap.get("blockID") != null;
+        if (!mined) {
+            return TX_PENDING;
+        }
+        Receipt receipt = getReceipt(txId);
+        if (receipt != null && receipt.reverted()) {
+            return TX_ERROR;
+        }
+        return TX_CONFIRMED;
     }
 
     /** Returns the receipt, or {@code null} while the transaction is still pending. */

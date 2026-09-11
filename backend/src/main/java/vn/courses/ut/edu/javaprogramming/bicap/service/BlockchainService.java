@@ -14,16 +14,23 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.BlockchainTransaction;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Export;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmingProcess;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmingSeason;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.SeasonExport;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.SmartContract;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.UpdateContractRequest;
+import vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException;
+import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.BlockchainTransactionRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ExportRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingProcessRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.SeasonExportRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.SmartContractRepository;
 
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.math.BigInteger;
 import java.util.Optional;
 
@@ -52,6 +59,7 @@ public class BlockchainService {
     private final FarmingSeasonRepository seasonRepository;
     private final FarmingProcessRepository processRepository;
     private final ExportRepository exportRepository;
+    private final SeasonExportRepository seasonExportRepository;
     private final SecureRandom random = new SecureRandom();
 
     @Value("${blockchain.mode:mock}")
@@ -81,12 +89,14 @@ public class BlockchainService {
                              SmartContractRepository contractRepository,
                              FarmingSeasonRepository seasonRepository,
                              FarmingProcessRepository processRepository,
-                             ExportRepository exportRepository) {
+                             ExportRepository exportRepository,
+                             SeasonExportRepository seasonExportRepository) {
         this.txRepository = txRepository;
         this.contractRepository = contractRepository;
         this.seasonRepository = seasonRepository;
         this.processRepository = processRepository;
         this.exportRepository = exportRepository;
+        this.seasonExportRepository = seasonExportRepository;
     }
 
     public boolean isLive() {
@@ -109,6 +119,61 @@ public class BlockchainService {
 
     public List<SmartContract> getContracts() {
         return contractRepository.findAll();
+    }
+
+    public SmartContract getContract(Long id) {
+        return contractRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Smart contract not found: " + id));
+    }
+
+    /**
+     * F6: updates the managed metadata of a smart contract (name, source, ABI, environment,
+     * version, status, address). Deployment itself stays in {@link #deployContract}; this is
+     * the "update / manage" half of the admin requirement that was previously missing —
+     * the admin UI could only deploy and list.
+     */
+    public SmartContract updateContract(Long id, UpdateContractRequest request) {
+        SmartContract contract = getContract(id);
+        if (request.getName() != null && !request.getName().isBlank()) {
+            contract.setName(request.getName().trim());
+        }
+        if (request.getBytecode() != null && !request.getBytecode().isBlank()) {
+            contract.setBytecode(request.getBytecode());
+        }
+        if (request.getAbi() != null && !request.getAbi().isBlank()) {
+            contract.setAbi(request.getAbi());
+        }
+        if (request.getEnvironment() != null && !request.getEnvironment().isBlank()) {
+            contract.setEnvironment(request.getEnvironment().trim().toUpperCase(Locale.ROOT));
+        }
+        if (request.getVersion() != null && !request.getVersion().isBlank()) {
+            contract.setVersion(request.getVersion().trim());
+        }
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            contract.setStatus(normalizeContractStatus(request.getStatus()));
+        }
+        if (request.getAddress() != null && !request.getAddress().isBlank()) {
+            contract.setAddress(request.getAddress().trim());
+        }
+        return contractRepository.save(contract);
+    }
+
+    public SmartContract updateContractStatus(Long id, String status) {
+        SmartContract contract = getContract(id);
+        contract.setStatus(normalizeContractStatus(status));
+        return contractRepository.save(contract);
+    }
+
+    private static final Set<String> CONTRACT_STATUSES =
+            Set.of("PENDING", "DEPLOYED", "ACTIVE", "INACTIVE", "FAILED");
+
+    private String normalizeContractStatus(String status) {
+        String normalized = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
+        if (!CONTRACT_STATUSES.contains(normalized)) {
+            throw new BadRequestException("Invalid contract status: " + status
+                    + " (expected one of " + CONTRACT_STATUSES + ")");
+        }
+        return normalized;
     }
 
     public SmartContract deployContract(String name, String bytecode, String abi, String environment, String version) {
@@ -177,6 +242,18 @@ public class BlockchainService {
     public String recordExport(Export export) {
         return recordEntity("EXPORT", export.getId(),
                 hash -> { export.setTxHash(hash); exportRepository.save(export); });
+    }
+
+    /**
+     * F1 fix: anchors a {@code season_exports} receipt (the record behind the traceability
+     * QR code) on VeChainThor. In {@code live} mode this is a real signed broadcast; in
+     * {@code mock} mode a clearly-labelled simulated receipt is produced. Previously the
+     * export/QR path never reached the blockchain at all — it returned a local SHA-256 hash
+     * while the UI claimed the data had been written on-chain.
+     */
+    public String recordSeasonExport(SeasonExport export) {
+        return recordEntity("SEASON_EXPORT", export.getId(),
+                hash -> { export.setTransactionHash(hash); seasonExportRepository.save(export); });
     }
 
     private String recordEntity(String entityType, Long entityId, java.util.function.Consumer<String> onConfirmed) {
@@ -267,9 +344,12 @@ public class BlockchainService {
         VeChainClient node = client();
         int chainTag = cachedChainTag(node);
         VeChainClient.BestBlock best = node.getBestBlock();
-        // BlockRef = canonical uint64 of the reference block number (thor legacy tx).
+        // BlockRef = first 8 bytes of the reference block ID as a uint64 (NOT the block
+        // height: thor reads the reference number from the high 4 bytes, so passing the
+        // height made every transaction fail with 403 "tx rejected: expired").
+        long blockRef = VeChainTxSigner.blockRefFromBlockId(best.id());
         VeChainTxSigner.SignedTransaction signed = VeChainTxSigner.signType0(
-                chainTag, best.number(), expiration, clauses,
+                chainTag, blockRef, expiration, clauses,
                 gasPriceCoef, gas, nonce, privateKeyBytes());
         return node.sendRawTransaction(signed.rawTx());
     }
@@ -327,6 +407,11 @@ public class BlockchainService {
             exportRepository.findById(entityId).ifPresent(e -> {
                 e.setTxHash(txHash);
                 exportRepository.save(e);
+            });
+        } else if ("SEASON_EXPORT".equalsIgnoreCase(entityType)) {
+            seasonExportRepository.findById(entityId).ifPresent(e -> {
+                e.setTransactionHash(txHash);
+                seasonExportRepository.save(e);
             });
         }
     }

@@ -70,6 +70,42 @@ class SeasonExportServiceTest {
         assertEquals("QR_FAILED", service.create(2L, 9L, request("10"), "request-3").status());
     }
 
+    /**
+     * F1: the receipt must record whether it was really broadcast (LIVE) or is a simulated
+     * development receipt (MOCK), so the UI cannot claim an on-chain record that does not
+     * exist. Before the fix the export path never touched VeChainThor at all.
+     */
+    @Test void create_recordsLiveChainModeWhenGatewayBroadcasts() {
+        when(exports.findByIdempotencyKey("request-live")).thenReturn(Optional.empty());
+        when(seasons.requireHarvested(2L, 9L)).thenReturn(new FarmingSeasonExportGateway.SeasonSnapshot(9L,"Rice",new BigDecimal("100"),"kg"));
+        when(exports.sumCommittedQuantity(9L, ExportStatus.BLOCKCHAIN_FAILED)).thenReturn(BigDecimal.ZERO);
+        when(exports.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
+        when(exports.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(blockchain.recordExport(any())).thenReturn("0x" + "c".repeat(64));
+        when(blockchain.isLiveAnchor()).thenReturn(true);
+        when(qrCodes.pngDataUri(anyString())).thenReturn("data:image/png;base64,abc");
+
+        var result = service.create(2L, 9L, request("10"), "request-live");
+
+        assertEquals("LIVE", result.chainMode());
+        assertEquals("READY", result.status());
+    }
+
+    @Test void create_recordsMockChainModeForSimulatedReceipt() {
+        when(exports.findByIdempotencyKey("request-mock")).thenReturn(Optional.empty());
+        when(seasons.requireHarvested(2L, 9L)).thenReturn(new FarmingSeasonExportGateway.SeasonSnapshot(9L,"Rice",new BigDecimal("100"),"kg"));
+        when(exports.sumCommittedQuantity(9L, ExportStatus.BLOCKCHAIN_FAILED)).thenReturn(BigDecimal.ZERO);
+        when(exports.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
+        when(exports.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(blockchain.recordExport(any())).thenReturn("0x" + "d".repeat(64));
+        when(blockchain.isLiveAnchor()).thenReturn(false);
+        when(qrCodes.pngDataUri(anyString())).thenReturn("data:image/png;base64,abc");
+
+        var result = service.create(2L, 9L, request("10"), "request-mock");
+
+        assertEquals("MOCK", result.chainMode());
+    }
+
     private SeasonExportRequest request(String quantity) {
         return new SeasonExportRequest(new BigDecimal(quantity), "kg", LocalDate.now(), "Kho A");
     }

@@ -1,6 +1,7 @@
 package vn.courses.ut.edu.javaprogramming.bicap.service.impl;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,9 +65,11 @@ public class NotificationServiceImpl implements NotificationService {
     public NotificationListResponse getUserNotifications(Long userId) {
         List<Notification> notifications;
 
-        // [BICAP-69] Hỗ trợ Guest chưa đăng nhập: lấy tất cả thông báo hệ thống mới nhất
+        // C-3 fix: unauthenticated guests only see platform-wide announcements
+        // (is_system = true). The previous implementation returned every notification in
+        // the database, exposing private farm/retailer/shipper messages.
         if (userId == null) {
-            notifications = notificationRepository.findAllByOrderByCreatedAtDesc();
+            notifications = notificationRepository.findBySystemTrueOrderByCreatedAtDesc();
             List<NotificationResponse> responses = notifications.stream()
                     .map(NotificationResponse::from)
                     .toList();
@@ -93,7 +96,10 @@ public class NotificationServiceImpl implements NotificationService {
     public NotificationResponse markAsRead(Long notificationId, Long currentUserId) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
-        if (!notification.getUserId().equals(currentUserId)) {
+        // System announcements have no owner (userId == null) and cannot be marked read
+        // per user — they are read-only for guests.
+        if (notification.getUserId() == null || currentUserId == null
+                || !notification.getUserId().equals(currentUserId)) {
             throw new ForbiddenException("Cannot modify another user's notification");
         }
         notification.setIsRead(true);
@@ -135,6 +141,23 @@ public class NotificationServiceImpl implements NotificationService {
         if (sendEmail) {
             sendAlertEmail(userId, title, content);
         }
+    }
+
+    @Override
+    @Transactional
+    public NotificationResponse publishSystemAnnouncement(String type, String title, String content) {
+        // A system announcement has no individual recipient — it is what unauthenticated
+        // guests are allowed to read (C-3 / BICAP-69).
+        Notification saved = notificationRepository.save(Notification.builder()
+                .userId(null)
+                .type(type == null || type.isBlank() ? "ANNOUNCEMENT" : type.trim().toUpperCase(Locale.ROOT))
+                .title(title.trim())
+                .content(content.trim())
+                .channel(CHANNEL_IN_APP)
+                .isRead(false)
+                .system(true)
+                .build());
+        return NotificationResponse.from(saved);
     }
 
     @Override

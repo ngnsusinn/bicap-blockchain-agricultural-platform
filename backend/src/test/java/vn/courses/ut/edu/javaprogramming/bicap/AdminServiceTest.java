@@ -2,6 +2,7 @@ package vn.courses.ut.edu.javaprogramming.bicap;
 
 import vn.courses.ut.edu.javaprogramming.bicap.dto.AdminCreateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.AdminResponse;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Permission;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Role;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
@@ -15,6 +16,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.service.AdminService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -108,6 +110,44 @@ public class AdminServiceTest {
         assertEquals("New Admin", response.getFullName());
         assertEquals(UserStatus.ACTIVE, response.getStatus()); // Defaults to ACTIVE (BR3)
         verify(userRepository, times(1)).save(any(User.class));
+    }
+
+    /**
+     * F2 regression: requested permissions used to be validated and then silently dropped,
+     * so the admin UI's permission picker had no effect. They must be resolved and stored
+     * on the account and returned in the response.
+     */
+    @Test
+    void createAdmin_persistsRequestedPermissions() {
+        Permission readPermission = Permission.builder().id(10L).code("ADMIN_READ").description("read").build();
+        Permission deletePermission = Permission.builder().id(11L).code("ADMIN_DELETE").description("delete").build();
+        AdminCreateRequest request = AdminCreateRequest.builder()
+                .email("perm@bicap.com")
+                .password("P@ssword123")
+                .fullName("Permission Admin")
+                .role("ADMIN")
+                .permissions(List.of("ADMIN_READ", "ADMIN_DELETE"))
+                .build();
+
+        when(userRepository.findByEmail("super@bicap.com")).thenReturn(Optional.of(superAdmin));
+        when(userRepository.existsByEmail("perm@bicap.com")).thenReturn(false);
+        when(roleRepository.findByName("ADMIN")).thenReturn(Optional.of(adminRole));
+        when(permissionRepository.findByCode("ADMIN_READ")).thenReturn(Optional.of(readPermission));
+        when(permissionRepository.findByCode("ADMIN_DELETE")).thenReturn(Optional.of(deletePermission));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AdminResponse response = adminService.createAdmin(request, "super@bicap.com");
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        Set<String> persistedCodes = captor.getValue().getPermissions().stream()
+                .map(Permission::getCode).collect(java.util.stream.Collectors.toSet());
+        assertEquals(Set.of("ADMIN_READ", "ADMIN_DELETE"), persistedCodes);
+
+        Set<String> returnedCodes = response.getPermissions().stream()
+                .map(AdminResponse.PermissionResponse::getCode)
+                .collect(java.util.stream.Collectors.toSet());
+        assertTrue(returnedCodes.containsAll(Set.of("ADMIN_READ", "ADMIN_DELETE")));
     }
 
     @Test

@@ -161,23 +161,12 @@ export default function ProfilePage({ onUserUpdated }: ProfilePageProps) {
         });
       }
     } catch (err) {
-      // Local fallback simulation if network unavailable
-      const currentUser = getCurrentUser();
-      const updatedSession: UserSession = {
-        ...currentUser,
-        id: profile.id || 1,
-        email: profile.email || 'farm@bicap.com',
-        fullName: fullName.trim(),
-        role: 'FARM_MANAGER',
-        phone: phone.trim(),
-        address: address.trim(),
-        avatarUrl: avatarUrl.trim(),
-      };
-      saveSession(localStorage.getItem('accessToken') || '', updatedSession);
-      if (onUserUpdated) {
-        onUserUpdated(updatedSession);
-      }
-      setMessage({ type: 'success', text: 'Đã lưu thông tin hồ sơ thành công!' });
+      // F7 fix: never fake a successful save. If the request never reached the backend,
+      // the local form state must NOT be written to the session as if it had been saved.
+      setMessage({
+        type: 'error',
+        text: 'Không thể kết nối tới máy chủ. Thông tin chưa được lưu, vui lòng thử lại.',
+      });
     } finally {
       setSaving(false);
     }

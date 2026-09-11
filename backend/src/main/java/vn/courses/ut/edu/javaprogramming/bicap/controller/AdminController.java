@@ -34,6 +34,13 @@ public class AdminController {
         return ResponseEntity.ok(admins);
     }
 
+    /** F2: assignable permission catalogue for the admin account editor. */
+    @GetMapping("/permissions")
+    public ResponseEntity<java.util.List<AdminResponse.PermissionResponse>> getPermissionCatalog(
+            @RequestHeader("X-Actor-Email") String actorEmail) {
+        return ResponseEntity.ok(adminService.getPermissionCatalog(actorEmail));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<AdminResponse> getAdminById(
             @RequestHeader("X-Actor-Email") String actorEmail,

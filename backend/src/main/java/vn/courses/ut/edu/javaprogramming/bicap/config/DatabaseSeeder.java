@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Category;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Driver;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.EducationalContent;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmCertification;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmStatus;
@@ -31,6 +32,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Vehicle;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.CategoryRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.DriverRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.EducationalContentRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmCertificationRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepository;
@@ -69,6 +71,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         private final OrderRepository orderRepository;
         private final ReportRepository reportRepository;
         private final NotificationRepository notificationRepository;
+        private final EducationalContentRepository educationalContentRepository;
 
     public DatabaseSeeder(PermissionRepository permissionRepository, RoleRepository roleRepository, UserRepository userRepository,
                           FarmRepository farmRepository, FarmCertificationRepository farmCertificationRepository,
@@ -83,7 +86,8 @@ public class DatabaseSeeder implements CommandLineRunner {
                           ShipmentTrackingRepository shipmentTrackingRepository,
                           OrderRepository orderRepository,
                           ReportRepository reportRepository,
-                          NotificationRepository notificationRepository) {
+                          NotificationRepository notificationRepository,
+                          EducationalContentRepository educationalContentRepository) {
         this.permissionRepository = permissionRepository;
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
@@ -102,6 +106,7 @@ public class DatabaseSeeder implements CommandLineRunner {
         this.orderRepository = orderRepository;
         this.reportRepository = reportRepository;
         this.notificationRepository = notificationRepository;
+        this.educationalContentRepository = educationalContentRepository;
     }
 
     @Override
@@ -192,6 +197,115 @@ public class DatabaseSeeder implements CommandLineRunner {
             seedShippingTestData(seededProduct, farmOwner1, seedUserByEmail("retailer@bicap.com"),
                     seededDriver, availableDriver, seedUserByEmail("shipping_mgr@bicap.com"));
         }
+
+        // 8. Seed public educational content + platform announcements (F5 / C-3).
+        //    These back the guest "Kiến thức nông nghiệp" and "Thông báo chung" screens,
+        //    which previously rendered hard-coded arrays in the browser.
+        seedEducationalContent();
+        seedSystemAnnouncements();
+    }
+
+    private void seedEducationalContent() {
+        if (educationalContentRepository.count() > 0) {
+            return;
+        }
+        seedEducationalContent("Hiểu đúng về nông sản sạch và tiêu chuẩn VietGAP",
+                "VietGAP là gì, vì sao chứng nhận này quan trọng với rau ăn lá và cách người tiêu dùng nhận biết.",
+                """
+                VietGAP (Thực hành sản xuất nông nghiệp tốt của Việt Nam) là bộ tiêu chuẩn do Bộ Nông nghiệp \
+                và Phát triển Nông thôn ban hành, quy định về đất trồng, nguồn nước, phân bón, thuốc bảo vệ \
+                thực vật, thu hoạch và bảo quản.
+
+                Với người tiêu dùng, một sản phẩm đạt VietGAP nghĩa là:
+                1. Có nhật ký canh tác ghi lại toàn bộ quá trình từ gieo trồng đến thu hoạch.
+                2. Không sử dụng hóa chất bị cấm và tuân thủ thời gian cách ly thuốc bảo vệ thực vật.
+                3. Có thể truy xuất được lô sản xuất, ngày thu hoạch và nông trại sản xuất.
+
+                Trên BICAP, mỗi lô xuất kho đều được neo lên blockchain kèm mã QR. Khi quét mã QR, người \
+                tiêu dùng thấy được đúng nông trại, đúng mùa vụ và đúng nhật ký canh tác của lô hàng đó — \
+                đây là điểm khác biệt so với một tem chứng nhận in sẵn.""",
+                EducationalContent.TYPE_ARTICLE, null,
+                "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80",
+                "VietGAP,Truy xuất nguồn gốc,An toàn thực phẩm");
+
+        seedEducationalContent("Quy trình ghi nhật ký canh tác trên BICAP",
+                "Hướng dẫn nông trại ghi nhật ký mùa vụ đúng cách để dữ liệu truy xuất có giá trị.",
+                """
+                Nhật ký canh tác chỉ có giá trị khi được ghi tại thời điểm việc đó xảy ra. Quy trình khuyến nghị:
+
+                1. Tạo mùa vụ với thông tin giống, diện tích và ngày bắt đầu.
+                2. Ghi từng bước canh tác (làm đất, gieo trồng, bón phân, phun thuốc, thu hoạch) kèm ngày \
+                thực hiện, vật tư sử dụng và ảnh minh chứng.
+                3. Sau khi thu hoạch, nhập sản lượng thực tế rồi tạo lô xuất kho.
+                4. Hệ thống neo lô xuất kho lên VeChainThor và sinh mã QR truy xuất.
+
+                Mỗi bước ghi nhận đều được băm và neo on-chain, nên sửa dữ liệu sau đó sẽ lộ ra ngay khi \
+                đối chiếu mã giao dịch.""",
+                EducationalContent.TYPE_ARTICLE, null,
+                "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=80",
+                "Nhật ký canh tác,Blockchain,Mùa vụ");
+
+        seedEducationalContent("Video: Nhận biết rau củ an toàn tại điểm bán",
+                "5 phút hướng dẫn quan sát màu sắc, mùi, tem nhãn và cách quét mã QR truy xuất tại quầy.",
+                "Video hướng dẫn người tiêu dùng kiểm tra nhanh một lô rau củ: quan sát hình dáng tự nhiên, "
+                        + "kiểm tra tem truy xuất, quét mã QR và đối chiếu tên nông trại, ngày thu hoạch trên "
+                        + "trang truy xuất công khai của BICAP.",
+                EducationalContent.TYPE_VIDEO,
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                "https://images.unsplash.com/photo-1518843875459-f738682238a6?auto=format&fit=crop&w=1200&q=80",
+                "Video,Truy xuất nguồn gốc,Người tiêu dùng");
+
+        seedEducationalContent("Video: Kỹ thuật ủ phân hữu cơ tại nông trại",
+                "Hướng dẫn ủ phân hữu cơ đúng kỹ thuật để giảm chi phí và giữ đất khỏe.",
+                "Video trình bày cách chọn nguyên liệu, tỷ lệ C/N, độ ẩm và thời gian ủ để có phân hữu cơ "
+                        + "hoai mục an toàn cho rau ăn lá.",
+                EducationalContent.TYPE_VIDEO,
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+                "https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&w=1200&q=80",
+                "Video,Hữu cơ,Kỹ thuật canh tác");
+    }
+
+    private void seedEducationalContent(String title, String summary, String content, String type,
+                                        String videoUrl, String coverImageUrl, String tags) {
+        educationalContentRepository.save(EducationalContent.builder()
+                .title(title)
+                .summary(summary)
+                .content(content)
+                .type(type)
+                .videoUrl(videoUrl)
+                .coverImageUrl(coverImageUrl)
+                .tags(tags)
+                .status(EducationalContent.STATUS_PUBLISHED)
+                .build());
+    }
+
+    /** Platform-wide announcements are the only notifications guests can read (C-3). */
+    private void seedSystemAnnouncements() {
+        if (notificationRepository.findBySystemTrueOrderByCreatedAtDesc().size() >= 2) {
+            return;
+        }
+        notificationRepository.save(Notification.builder()
+                .userId(null)
+                .system(true)
+                .type("ANNOUNCEMENT")
+                .title("Chào mừng bạn đến với nền tảng BICAP")
+                .content("BICAP kết nối nông trại sạch, nhà bán lẻ và đơn vị vận chuyển trên một nền tảng "
+                        + "truy xuất nguồn gốc bằng blockchain VeChainThor. Quét mã QR trên sản phẩm để xem "
+                        + "toàn bộ hành trình từ nông trại tới bàn ăn.")
+                .channel("IN_APP")
+                .isRead(false)
+                .build());
+        notificationRepository.save(Notification.builder()
+                .userId(null)
+                .system(true)
+                .type("EVENT")
+                .title("Tuần lễ nông sản sạch 2026")
+                .content("Sự kiện trưng bày và kết nối tiêu thụ nông sản sạch sẽ diễn ra tại TP.HCM. "
+                        + "Nông trại đạt chứng nhận VietGAP/Organic có thể đăng ký gian hàng qua mục "
+                        + "Sàn giao dịch sau khi đăng nhập.")
+                .channel("IN_APP")
+                .isRead(false)
+                .build());
     }
 
     private Permission seedPermission(String code, String description) {

@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.courses.ut.edu.javaprogramming.bicap.common.security.ActorAuthorizer;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.SeasonCreateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.SeasonUpdateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.*;
@@ -13,10 +14,13 @@ import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundExcepti
 import vn.courses.ut.edu.javaprogramming.bicap.repository.*;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 @Service
 @Transactional
 public class SeasonService {
+    private static final Set<String> FARM_MANAGER_ROLES = Set.of("FARM_MANAGER");
+
     private final FarmingSeasonRepository seasonRepository;
     private final FarmRepository farmRepository;
     private final SubscriptionRepository subscriptionRepository;
@@ -33,6 +37,7 @@ public class SeasonService {
     }
 
     public FarmingSeason createSeason(Long farmId, SeasonCreateRequest request, User currentUser) {
+        requireFarmManager(currentUser);
         Farm farm = farmRepository.findById(farmId)
                 .orElseThrow(() -> new ResourceNotFoundException("Farm not found: " + farmId));
 
@@ -65,6 +70,7 @@ public class SeasonService {
     }
 
     public FarmingSeason updateSeason(Long farmId, Long seasonId, SeasonUpdateRequest request, User currentUser) {
+        requireFarmManager(currentUser);
         Farm farm = farmRepository.findById(farmId)
                 .orElseThrow(() -> new ResourceNotFoundException("Farm not found: " + farmId));
 
@@ -95,6 +101,7 @@ public class SeasonService {
     public FarmingSeason updateSeasonStatus(Long farmId, Long seasonId,
                                             vn.courses.ut.edu.javaprogramming.bicap.dto.SeasonStatusUpdateRequest request,
                                             User currentUser) {
+        requireFarmManager(currentUser);
         String newStatus = request.getStatus();
         Farm farm = farmRepository.findById(farmId)
                 .orElseThrow(() -> new ResourceNotFoundException("Farm not found: " + farmId));
@@ -140,6 +147,7 @@ public class SeasonService {
     }
 
     public FarmingSeason getSeason(Long farmId, Long seasonId, User currentUser) {
+        requireFarmManager(currentUser);
         Farm farm = farmRepository.findById(farmId)
                 .orElseThrow(() -> new ResourceNotFoundException("Farm not found: " + farmId));
 
@@ -158,6 +166,7 @@ public class SeasonService {
     }
 
     public Page<FarmingSeason> getSeasonsByFarm(Long farmId, String status, Pageable pageable, User currentUser) {
+        requireFarmManager(currentUser);
         Farm farm = farmRepository.findById(farmId)
                 .orElseThrow(() -> new ResourceNotFoundException("Farm not found: " + farmId));
 
@@ -170,5 +179,10 @@ public class SeasonService {
         } else {
             return seasonRepository.findByFarmId(farmId, pageable);
         }
+    }
+
+    /** Season data is Farm-Manager-only; ownership alone is checked below. */
+    private void requireFarmManager(User actor) {
+        ActorAuthorizer.requireRoles(actor, FARM_MANAGER_ROLES);
     }
 }

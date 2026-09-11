@@ -1,10 +1,14 @@
 /**
- * BICAP-54 — Shipping: Xem đơn hàng đã thanh toán (DEPOSIT_PAID) chờ tạo lô vận chuyển.
+ * BICAP-54 / F8 — Shipping: danh sách đơn hàng dùng để tạo lô vận chuyển.
  *
- * Shipping Manager xem danh sách đơn hàng đã đặt cọc, chưa có lô vận chuyển,
- * sau đó có thể chuyển sang trang tạo lô (BICAP-55).
+ * Tab chính ("Đơn đủ điều kiện tạo vận chuyển") gọi `GET /api/shipping/orders/ready-to-ship`:
+ * các đơn đã thanh toán cọc và CHƯA có lô vận chuyển — đây mới là danh sách Shipping
+ * Manager cần để tạo shipment.
+ *
+ * Tab phụ ("Đơn đã hoàn tất") gọi `GET /api/shipping/orders/completed` và được tách
+ * hoàn toàn khỏi danh sách tạo vận chuyển.
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { API_BASE_URL, getAuthHeaders } from '../../utils/auth';
 import {
   panelStyle, cardStyle, badgeStyle, alertStyle, buttonStyle,
@@ -25,7 +29,26 @@ type CompletedOrder = {
   depositCode?: string;
   createdAt?: string;
   desiredDeliveryDate?: string;
+  deliveredAt?: string;
+  completedAt?: string;
   notes?: string;
+};
+
+type OrderView = 'ready' | 'completed';
+
+const VIEWS: Record<OrderView, { path: string; title: string; subtitle: string; empty: string }> = {
+  ready: {
+    path: '/shipping/orders/ready-to-ship',
+    title: 'Đơn đủ điều kiện tạo vận chuyển',
+    subtitle: 'Đơn đã cọc, chưa có lô vận chuyển — sẵn sàng để tạo lô vận chuyển.',
+    empty: 'Không có đơn hàng nào đủ điều kiện tạo vận chuyển.',
+  },
+  completed: {
+    path: '/shipping/orders/completed',
+    title: 'Đơn đã hoàn tất',
+    subtitle: 'Các đơn hàng đã được giao và xác nhận hoàn tất.',
+    empty: 'Chưa có đơn hàng nào hoàn tất.',
+  },
 };
 
 interface Props {
@@ -33,16 +56,17 @@ interface Props {
 }
 
 export default function CompletedOrdersPage({ onCreateShipment }: Props) {
+  const [view, setView] = useState<OrderView>('ready');
   const [orders, setOrders] = useState<CompletedOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async (target: OrderView = view) => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE_URL}/shipping/orders/completed`, {
+      const res = await fetch(`${API_BASE_URL}${VIEWS[target].path}`, {
         headers: getAuthHeaders(),
       });
       if (!res.ok) {
@@ -51,13 +75,16 @@ export default function CompletedOrdersPage({ onCreateShipment }: Props) {
       }
       setOrders(await res.json());
     } catch (err) {
+      setOrders([]);
       setError(err instanceof Error ? err.message : 'Không tải được danh sách đơn hàng.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [view]);
 
-  useEffect(() => { load().catch(() => {}); }, []);
+  useEffect(() => { load(view).catch(() => {}); }, [load, view]);
+
+  const meta = VIEWS[view];
 
   const filtered = orders.filter(o => {
     if (!search.trim()) return true;
@@ -72,10 +99,31 @@ export default function CompletedOrdersPage({ onCreateShipment }: Props) {
 
   return (
     <div>
-      <h1 className="dashboard-title">Đơn hàng chờ vận chuyển</h1>
-      <p className="dashboard-subtitle">
-        Danh sách đơn hàng đã thanh toán đặt cọc (DEPOSIT_PAID) — sẵn sàng để tạo lô vận chuyển.
-      </p>
+      <h1 className="dashboard-title">{meta.title}</h1>
+      <p className="dashboard-subtitle">{meta.subtitle}</p>
+
+      {/* Tách rõ hai danh sách: tạo vận chuyển vs. đã hoàn tất */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+        {(['ready', 'completed'] as OrderView[]).map(v => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => { setSearch(''); setView(v); }}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 20,
+              border: `1px solid ${view === v ? '#10b981' : 'rgba(255,255,255,0.12)'}`,
+              background: view === v ? 'rgba(16,185,129,0.12)' : 'transparent',
+              color: view === v ? '#34d399' : '#94a3b8',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            {v === 'ready' ? '🚚 Đơn đủ điều kiện tạo vận chuyển' : '✅ Đơn đã hoàn tất'}
+          </button>
+        ))}
+      </div>
 
       {error && <div style={alertStyle}>{error}</div>}
 
@@ -106,9 +154,7 @@ export default function CompletedOrdersPage({ onCreateShipment }: Props) {
 
       {!loading && !error && filtered.length === 0 && (
         <div className="glass-panel" style={{ ...panelStyle, textAlign: 'center', color: '#94a3b8' }}>
-          {orders.length === 0
-            ? 'Không có đơn hàng nào chờ vận chuyển.'
-            : 'Không tìm thấy đơn hàng phù hợp.'}
+          {orders.length === 0 ? meta.empty : 'Không tìm thấy đơn hàng phù hợp.'}
         </div>
       )}
 
@@ -153,13 +199,19 @@ export default function CompletedOrdersPage({ onCreateShipment }: Props) {
                   {order.createdAt && (
                     <span>🕐 {new Date(order.createdAt).toLocaleString('vi-VN')}</span>
                   )}
+                  {view === 'completed' && order.completedAt && (
+                    <span>✅ Hoàn tất: {new Date(order.completedAt).toLocaleString('vi-VN')}</span>
+                  )}
+                  {view === 'completed' && !order.completedAt && order.deliveredAt && (
+                    <span>✅ Giao lúc: {new Date(order.deliveredAt).toLocaleString('vi-VN')}</span>
+                  )}
                   {order.notes && (
                     <span style={{ gridColumn: '1 / -1' }}>📝 {order.notes}</span>
                   )}
                 </div>
               </div>
 
-              {onCreateShipment && (
+              {view === 'ready' && onCreateShipment && (
                 <button
                   onClick={() => onCreateShipment(order)}
                   style={{

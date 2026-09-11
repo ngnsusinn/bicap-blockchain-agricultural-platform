@@ -29,9 +29,9 @@ public class TxProbe {
             List<VeChainTxSigner.Clause> cs = withData
                     ? List.of(VeChainTxSigner.Clause.call(self, BigInteger.ZERO, HexUtils.fromHex("deadbeef")))
                     : List.of(VeChainTxSigner.Clause.call(self, BigInteger.ZERO, new byte[0]));
-            long blockNumber = blockNumber(node);
+            long blockRef = blockRef(node);
             VeChainTxSigner.SignedTransaction s =
-                    VeChainTxSigner.signType0(chainTag, blockNumber, 10000, cs, coef, gas, nonce, priv);
+                    VeChainTxSigner.signType0(chainTag, blockRef, 10000, cs, coef, gas, nonce, priv);
             HttpRequest req = HttpRequest.newBuilder(URI.create(NODE + "/transactions"))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString("{\"raw\":\"" + HexUtils.toHex(s.rawTx()) + "\"}"))
@@ -52,11 +52,17 @@ public class TxProbe {
         return Integer.parseInt(id.substring(id.length() - 2), 16);
     }
 
-    static long blockNumber(HttpClient node) throws Exception {
+    /**
+     * BlockRef = first 8 bytes of the best block ID (uint64), NOT the block height.
+     * Passing the height makes thor compute reference block 0 and reject with "expired".
+     */
+    static long blockRef(HttpClient node) throws Exception {
         HttpRequest req = HttpRequest.newBuilder(URI.create(NODE + "/blocks/best")).GET().build();
         String body = node.send(req, HttpResponse.BodyHandlers.ofString()).body();
-        int idx = body.indexOf("\"number\":");
-        int end = body.indexOf(',', idx + 9);
-        return Long.parseLong(body.substring(idx + 9, end).trim());
+        int idx = body.indexOf("\"id\":\"") + 6;
+        String id = body.substring(idx, body.indexOf('"', idx));
+        long ref = VeChainTxSigner.blockRefFromBlockId(HexUtils.fromHex(id));
+        System.out.println("best block id=" + id + " -> blockRef=" + Long.toUnsignedString(ref));
+        return ref;
     }
 }

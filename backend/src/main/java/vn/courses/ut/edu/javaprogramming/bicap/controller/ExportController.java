@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import vn.courses.ut.edu.javaprogramming.bicap.common.security.ActorAuthorizer;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.CurrentUser;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.ExportCreateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.ExportResponse;
@@ -19,6 +20,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepositor
 import vn.courses.ut.edu.javaprogramming.bicap.service.ExportService;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -40,6 +42,7 @@ public class ExportController {
             @PathVariable Long seasonId,
             @Valid @RequestBody ExportCreateRequest request) {
         User currentUser = CurrentUser.get();
+        ActorAuthorizer.requireRoles(currentUser, Set.of("FARM_MANAGER"));
         FarmingSeason season = seasonRepository.findById(seasonId)
                 .orElseThrow(() -> new ResourceNotFoundException("Season not found"));
         
@@ -66,7 +69,9 @@ public class ExportController {
 
     @GetMapping
     public ResponseEntity<List<ExportResponse>> getExports(@PathVariable Long seasonId) {
-        // Validation could be added here if needed, but exports might be readable
+        // F12 fix: this legacy endpoint used to return any season's exports to any
+        // authenticated user, leaking another farm's shipment data across tenants.
+        requireSeasonAccess(seasonId);
         List<Export> exports = exportService.getExportsBySeason(seasonId);
         List<ExportResponse> response = exports.stream().map(this::toResponse).collect(Collectors.toList());
         return ResponseEntity.ok(response);
@@ -76,12 +81,31 @@ public class ExportController {
     public ResponseEntity<ExportResponse> getExport(
             @PathVariable Long seasonId,
             @PathVariable Long exportId) {
+        requireSeasonAccess(seasonId);
         Export export = exportService.getExport(exportId)
                 .orElseThrow(() -> new ResourceNotFoundException("Export not found: " + exportId));
         if (!export.getSeasonId().equals(seasonId)) {
             throw new BadRequestException("Export does not belong to this season");
         }
         return ResponseEntity.ok(toResponse(export));
+    }
+
+    /**
+     * Allows admin-view roles to read any season, and a farm owner to read only their own
+     * seasons.
+     */
+    private void requireSeasonAccess(Long seasonId) {
+        User actor = CurrentUser.get();
+        if (CurrentUser.isAdminView(actor)) {
+            return;
+        }
+        FarmingSeason season = seasonRepository.findById(seasonId)
+                .orElseThrow(() -> new ResourceNotFoundException("Season not found"));
+        Farm farm = farmRepository.findById(season.getFarmId())
+                .orElseThrow(() -> new ResourceNotFoundException("Farm not found"));
+        if (!farm.getUserId().equals(actor.getId())) {
+            throw new ForbiddenException("Not authorized to view exports for this season");
+        }
     }
 
     private ExportResponse toResponse(Export e) {

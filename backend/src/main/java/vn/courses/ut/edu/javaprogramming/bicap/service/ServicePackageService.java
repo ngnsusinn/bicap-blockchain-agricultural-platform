@@ -47,8 +47,12 @@ public class ServicePackageService {
 
     @Transactional(readOnly = true)
     public ServicePackageResponse getPackageById(Long id) {
-        ServicePackage pkg = findPackage(id);
-        return ServicePackageResponse.fromEntity(pkg);
+        // Public detail endpoint: an INACTIVE package that the public list hides must not be
+        // retrievable by guessing its id. Admins read every status via /admin/all.
+        return servicePackageRepository.findById(id)
+                .filter(pkg -> "ACTIVE".equals(pkg.getStatus()))
+                .map(ServicePackageResponse::fromEntity)
+                .orElseThrow(() -> new ResourceNotFoundException("Service package not found: " + id));
     }
 
     // ── Admin CRUD ────────────────────────────────────────────────────────────

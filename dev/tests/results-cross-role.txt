@@ -1,0 +1,160 @@
+BICAP cross-role HTTP matrix → http://localhost:8080
+
+logged in as 10 actors
+
+1. Portal login is role-scoped
+  ✓ correct portal: FARM_A [200]
+  ✓ correct portal: FARM_B [200]
+  ✓ correct portal: RETAIL_A [200]
+  ✓ correct portal: RETAIL_B [200]
+  ✓ correct portal: SHIPPING [200]
+  ✓ correct portal: DRIVER_A [200]
+  ✓ correct portal: DRIVER_B [200]
+  ✓ correct portal: ADMIN [200]
+  ✓ correct portal: SUPERADMIN [200]
+  ✓ correct portal: MODERATOR [200]
+  ✓ FARM_A cannot log into /admin/login [401]
+  ✓ FARM_A cannot log into /retailer/login [401]
+  ✓ RETAIL_A cannot log into /farm/login [401]
+  ✓ SHIPPING cannot log into /driver/login [401]
+  ✓ DRIVER_A cannot log into /shipping/login [401]
+
+2. X-Actor-Email cannot impersonate another account
+  ✓ farm JWT + superadmin header → /api/admins [403]
+  ✓ retail JWT + admin header → /api/admin/farms [403]
+  ✓ admin JWT + own header → /api/admins [200]
+  ✓ admin JWT, no header → /api/admins [400]
+
+3. Farm self-service (farm ⇄ farm, farm ⇄ others)
+  ✓ owner reads own farm [200]
+  ✓ peer farm reads it [403]
+  ✓ retailer reads it [403]
+  ✓ driver reads it [403]
+  ✓ admin reads it (farm-owned route) [403]
+  ✓ anonymous reads it [403]
+  ✓ retailer registers a farm [403]
+
+4. Farm approval (admin-view vs admin-write)
+  ✓ admin lists farms [200]
+  ✓ moderator lists farms [200]
+  ✓ farm lists approval queue [403]
+  ✓ anonymous lists approval queue [403]
+
+5. Season / export tenant isolation
+  ✓ owner lists seasons [200]
+  ✓ peer lists seasons [403]
+  ✓ retailer lists seasons [403]
+  ✓ owner legacy exports [200]
+  ✓ peer legacy exports [403]
+  ✓ moderator legacy exports (admin-view) [200]
+  ✓ anonymous unknown trace [404]
+
+6. Product monitoring (admin ⇄ retail/farm)
+  ✓ admin lists products [200]
+  ✓ moderator lists products [200]
+  ✓ retailer with own header [403]
+  ✓ retailer WITHOUT header (must not downgrade) [401]
+  ✓ driver WITHOUT header (must not downgrade) [401]
+  ✓ moderator changes product status [403]
+  ✓ anonymous admin products [403]
+
+7. Marketplace (retailer-only vs public)
+  ✓ retailer searches marketplace [200]
+  ✓ farm searches marketplace [403]
+  ✓ anonymous marketplace search [403]
+  ✓ anonymous public catalogue [200]
+  ✓ anonymous education [200]
+  ✓ anonymous categories [200]
+
+8. Orders (farm ⇄ retailer both directions)
+  ✓ farm lists orders [200]
+  ✓ retailer uses farm order list [403]
+  ✓ retailer lists own orders [200]
+  ✓ farm uses retailer order list [403]
+  ✓ anonymous order list [403]
+
+9. Shipping ⇄ driver portal segregation
+  ✓ shipping reads /api/shipping/orders/ready-to-ship [200]
+  ✓ farm reads /api/shipping/orders/ready-to-ship [403]
+  ✓ driver reads /api/shipping/orders/ready-to-ship [403]
+  ✓ shipping reads /api/shipping/shipments [200]
+  ✓ farm reads /api/shipping/shipments [403]
+  ✓ driver reads /api/shipping/shipments [403]
+  ✓ shipping reads /api/shipping/vehicles [200]
+  ✓ farm reads /api/shipping/vehicles [403]
+  ✓ driver reads /api/shipping/vehicles [403]
+  ✓ shipping reads /api/shipping/drivers [200]
+  ✓ farm reads /api/shipping/drivers [403]
+  ✓ driver reads /api/shipping/drivers [403]
+  ✓ driver lists own shipments [200]
+  ✓ farm uses driver app [403]
+  ✓ shipping uses driver app [403]
+  ✓ anonymous driver app [403]
+  ✓ farm creates vehicle [403]
+
+10. IoT readings (owner ⇄ peer ⇄ admin override)
+  ✓ owner pushes reading [200]
+  ✓ peer pushes reading [403]
+  ✓ retailer pushes reading [403]
+  ✓ admin pushes reading (documented bypass) [200]
+  ✓ out-of-range reading [400]
+
+11. Reports (any role submits, only admin handles)
+  ✓ FARM_A submits report [201]
+  ✓ moderator cannot handle report [403]
+  ✓ admin handles report [200]
+  ✓ RETAIL_A submits report [201]
+  ✓ moderator cannot handle report [403]
+  ✓ admin handles report [200]
+  ✓ DRIVER_A submits report [201]
+  ✓ moderator cannot handle report [403]
+  ✓ admin handles report [200]
+  ✓ SHIPPING submits report [201]
+  ✓ moderator cannot handle report [403]
+  ✓ admin handles report [200]
+  ✓ ADMIN submits report [201]
+  ✓ moderator cannot handle report [403]
+  ✓ admin handles report [200]
+  ✓ farm reads admin reports [403]
+  ✓ moderator reads admin reports [200]
+
+12. Notifications (guest ⇄ user, broadcast role)
+  ✓ anonymous system feed [200]
+  ✓ anonymous unread count [403]
+  ✓ farm unread count [200]
+  ✓ farm broadcasts [403]
+  ✓ retailer broadcasts [403]
+  ✓ shipping broadcasts [201]
+
+13. Service packages & subscriptions
+  ✓ anonymous package list [200]
+  ✓ admin all packages [200]
+  ✓ moderator all packages [200]
+  ✓ farm all packages [403]
+  ✓ anonymous all packages [401]
+  ✓ moderator creates package [403]
+  ✓ owner farm subscriptions [200]
+  ✓ peer farm subscriptions [403]
+  ✓ admin farm subscriptions [200]
+
+14. Blockchain & smart contracts (admin ladder)
+  ✓ admin ledger [200]
+  ✓ moderator ledger [200]
+  ✓ farm ledger [403]
+  ✓ anonymous ledger [403]
+  ✓ moderator retries tx [403]
+  ✓ moderator reads contracts [200]
+  ✓ farm reads contracts [403]
+
+15. Admin account management (superadmin-only writes)
+  ✓ superadmin lists admins [200]
+  ✓ moderator lists admins [200]
+  ✓ farm lists admins [403]
+  ✓ anonymous lists admins [403]
+  ✓ admin creates admin [403]
+
+16. Rate limiting ignores client-supplied X-Forwarded-For
+  ✓ rotating X-Forwarded-For still hits the 30/min limit (1 x 429) [true]
+
+────────────────────────────────────────────────────────────
+RESULT: 122 passed, 0 failed

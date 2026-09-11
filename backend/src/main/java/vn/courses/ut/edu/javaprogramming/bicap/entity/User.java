@@ -58,6 +58,21 @@ public class User implements UserDetails {
     )
     private Set<Role> roles;
 
+    /**
+     * F2 fix: per-account permissions assigned by a SUPER_ADMIN on top of the role's
+     * permissions. Previously {@code AdminService} validated the requested permission codes
+     * and then threw them away, so the admin UI's permission picker had no effect at all.
+     * These are merged into the granted authorities in {@link #getAuthorities()}.
+     */
+    @ManyToMany(fetch = FetchType.EAGER)
+    @Fetch(FetchMode.SUBSELECT)
+    @JoinTable(
+        name = "user_permissions",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "permission_id")
+    )
+    private Set<Permission> permissions;
+
     @PrePersist
     protected void onCreate() {
         if (this.createdAt == null) {
@@ -157,16 +172,35 @@ public class User implements UserDetails {
         this.roles = roles;
     }
 
+    public Set<Permission> getPermissions() {
+        return permissions;
+    }
+
+    public void setPermissions(Set<Permission> permissions) {
+        this.permissions = permissions;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         List<GrantedAuthority> authorities = new ArrayList<>();
+        Set<String> seen = new java.util.HashSet<>();
         if (roles != null) {
             for (Role role : roles) {
                 authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getName()));
                 if (role.getPermissions() != null) {
                     for (Permission permission : role.getPermissions()) {
-                        authorities.add(new SimpleGrantedAuthority(permission.getCode()));
+                        if (seen.add(permission.getCode())) {
+                            authorities.add(new SimpleGrantedAuthority(permission.getCode()));
+                        }
                     }
+                }
+            }
+        }
+        // F2: permissions granted directly to the account by a SUPER_ADMIN.
+        if (permissions != null) {
+            for (Permission permission : permissions) {
+                if (seen.add(permission.getCode())) {
+                    authorities.add(new SimpleGrantedAuthority(permission.getCode()));
                 }
             }
         }
@@ -214,6 +248,7 @@ public class User implements UserDetails {
         private int failedLoginAttempts;
         private LocalDateTime lockedUntil;
         private Set<Role> roles;
+        private Set<Permission> permissions;
         private LocalDateTime createdAt;
 
         UserBuilder() {}
@@ -273,14 +308,21 @@ public class User implements UserDetails {
             return this;
         }
 
+        public UserBuilder permissions(Set<Permission> permissions) {
+            this.permissions = permissions;
+            return this;
+        }
+
         public UserBuilder createdAt(LocalDateTime createdAt) {
             this.createdAt = createdAt;
             return this;
         }
 
         public User build() {
-            return new User(id, email, password, fullName, phone, status, avatarUrl,
+            User user = new User(id, email, password, fullName, phone, status, avatarUrl,
                     address, failedLoginAttempts, lockedUntil, roles, createdAt);
+            user.setPermissions(permissions);
+            return user;
         }
     }
 }

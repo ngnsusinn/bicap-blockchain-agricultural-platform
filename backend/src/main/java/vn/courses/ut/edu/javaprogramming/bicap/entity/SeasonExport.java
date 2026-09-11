@@ -22,6 +22,8 @@ public class SeasonExport {
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 30) private ExportStatus status;
     @Column(name = "tx_hash", length = 66) private String transactionHash;
     @Column(name = "trace_hash", length = 66) private String traceHash;
+    /** F1: "LIVE" = real VeChainThor broadcast, "MOCK" = simulated local receipt. */
+    @Column(name = "chain_mode", length = 10) private String chainMode;
     @Lob @Column(name = "qr_image", columnDefinition = "TEXT") private String qrImage;
     @Column(name = "idempotency_key", nullable = false, length = 100) private String idempotencyKey;
     @Column(name = "created_by", nullable = false) private Long createdBy;
@@ -48,6 +50,8 @@ public class SeasonExport {
     public void setTransactionHash(String transactionHash) { this.transactionHash = transactionHash; }
     public String getTraceHash() { return traceHash; }
     public void setTraceHash(String traceHash) { this.traceHash = traceHash; }
+    public String getChainMode() { return chainMode; }
+    public void setChainMode(String chainMode) { this.chainMode = chainMode; }
     public String getQrImage() { return qrImage; }
     public void setQrImage(String qrImage) { this.qrImage = qrImage; }
     public String getIdempotencyKey() { return idempotencyKey; }

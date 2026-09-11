@@ -22,8 +22,17 @@ function primaryRole(admin: AdminUser): string {
   return admin.roles?.[0]?.name ?? '';
 }
 
-function permissionCodes(admin: AdminUser): string[] {
-  return (admin.roles ?? []).flatMap((r) => (r.permissions ?? []).map((p) => p.code));
+/**
+ * F2 — effective permission codes: the backend supplies the effective set both as a
+ * top-level `permissions` array and nested under `roles[].permissions`. Merge them and
+ * dedupe by code so the chips always match what was saved.
+ */
+export function permissionCodes(admin: AdminUser): string[] {
+  const codes = [
+    ...(admin.permissions ?? []).map((p) => p.code),
+    ...(admin.roles ?? []).flatMap((r) => (r.permissions ?? []).map((p) => p.code)),
+  ].filter((code): code is string => !!code);
+  return Array.from(new Set(codes));
 }
 
 export const AdminTable: React.FC<AdminTableProps> = ({

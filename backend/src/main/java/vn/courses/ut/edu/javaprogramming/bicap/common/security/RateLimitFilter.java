@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -28,6 +29,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final Duration WINDOW = Duration.ofMinutes(1);
 
     private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
+    /**
+     * M-7 hardening: {@code X-Forwarded-For} is client-controlled and can be rotated on every
+     * request to evade the per-IP limit. It is only honoured when the deployment explicitly
+     * declares that a trusted reverse proxy overwrites it. Default: use the socket address.
+     */
+    private final boolean trustForwardedFor;
+
+    public RateLimitFilter(
+            @Value("${app.security.trust-forwarded-for:false}") boolean trustForwardedFor) {
+        this.trustForwardedFor = trustForwardedFor;
+    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -60,11 +72,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private String clientKey(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            // Reverse proxy chains: use the leftmost (client) address.
-            int comma = forwarded.indexOf(',');
-            return forwarded.substring(0, comma > 0 ? comma : forwarded.length()).trim();
+        if (trustForwardedFor) {
+            String forwarded = request.getHeader("X-Forwarded-For");
+            if (forwarded != null && !forwarded.isBlank()) {
+                // Reverse proxy chains: use the leftmost (client) address.
+                int comma = forwarded.indexOf(',');
+                return forwarded.substring(0, comma > 0 ? comma : forwarded.length()).trim();
+            }
         }
         String ip = request.getRemoteAddr();
         return ip != null ? ip : "unknown";
@@ -72,6 +86,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final class Bucket {
         int count;
-        long expiresAt = System.currentTimeMillis();
+        // A fresh bucket starts with a full window; otherwise its first request could reset
+        // the counter and shift the limit by one.
+        long expiresAt = System.currentTimeMillis() + WINDOW.toMillis();
     }
 }

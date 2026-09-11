@@ -26,6 +26,8 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 /**
@@ -176,5 +178,54 @@ class SepayServiceTest {
         Map<String, String> result = sepayService.handleWebhook(request("BICAP5001234", "123456789", 500_000));
 
         assertEquals("processed", result.get("message"));
+    }
+
+    // ── C-2 regression: real bank memos embed the code in free text ─────────────
+
+    @Test
+    void matchesDeposit_whenCodeIsEmbeddedInFreeTextMemo() {
+        Order order = new Order();
+        order.setId(3L);
+        order.setStatus(Order.STATUS_ACCEPTED);
+        when(subscriptionRepository.findByPaymentCode(anyString())).thenReturn(Optional.empty());
+        when(orderRepository.findByDepositCode(anyString())).thenAnswer(invocation ->
+                "DEP3236791".equals(invocation.getArgument(0)) ? Optional.of(order) : Optional.empty());
+        when(paymentRepository.findByTxRef(anyString())).thenReturn(Optional.empty());
+
+        // The whole memo never equals the stored code — only the extracted token does.
+        Map<String, String> result = sepayService.handleWebhook(
+                request("DEP3236791 chuyen tien dat coc don hang 3", "123456789", 54_000));
+
+        assertEquals("processed", result.get("message"));
+        verify(orderService).markAsDepositPaid(3L, BigDecimal.valueOf(54_000));
+        verify(paymentRepository).save(argThat(payment -> "DEP3236791".equals(payment.getTxRef())));
+    }
+
+    @Test
+    void matchesSubscription_whenCodeArrivesInSepayCodeField() {
+        Subscription sub = Subscription.builder()
+                .id(5L).farmId(1L).packageId(1L)
+                .status(SubscriptionStatus.PENDING_PAYMENT)
+                .paymentCode("BICAP5001234")
+                .build();
+        SepayWebhookRequest req = request("Thanh toan goi dich vu BICAP", "123456789", 500_000);
+        req.setCode("BICAP5001234");
+        when(subscriptionRepository.findByPaymentCode("BICAP5001234")).thenReturn(Optional.of(sub));
+        when(paymentRepository.findByTxRef("BICAP5001234")).thenReturn(Optional.empty());
+
+        Map<String, String> result = sepayService.handleWebhook(req);
+
+        assertEquals("processed", result.get("message"));
+        verify(subscriptionService).activateSubscription(5L, BigDecimal.valueOf(500_000));
+    }
+
+    @Test
+    void ignoresUnrelatedTransfer_evenWithManyTokens() {
+        Map<String, String> result = sepayService.handleWebhook(
+                request("NGUYEN VAN A chuyen tien mua hang ca nhan", "123456789", 200_000));
+
+        assertEquals("ignored", result.get("message"));
+        verify(orderService, never()).markAsDepositPaid(anyLong(), any());
+        verify(subscriptionService, never()).activateSubscription(anyLong(), any());
     }
 }

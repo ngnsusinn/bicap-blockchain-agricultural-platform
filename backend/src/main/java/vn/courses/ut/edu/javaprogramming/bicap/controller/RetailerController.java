@@ -105,7 +105,7 @@ public class RetailerController {
      */
     @PutMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RetailerProfileResponse> updateMyProfile(
-            @ModelAttribute RetailerProfileRequest request) {
+            @Valid @ModelAttribute RetailerProfileRequest request) {
         return ResponseEntity.ok(retailerProfileService.updateProfile(request));
     }
 
@@ -127,14 +127,14 @@ public class RetailerController {
      */
     @PostMapping(value = "/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RetailerBusinessResponse> updateMyBusinessProfile(
-            @ModelAttribute RetailerBusinessRequest request) {
+            @Valid @ModelAttribute RetailerBusinessRequest request) {
         return ResponseEntity.ok(retailerProfileService.updateBusinessProfile(request));
     }
 
     /** Alias PUT của {@code /documents} cho client dùng REST style. */
     @PutMapping(value = "/business-profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RetailerBusinessResponse> putMyBusinessProfile(
-            @ModelAttribute RetailerBusinessRequest request) {
+            @Valid @ModelAttribute RetailerBusinessRequest request) {
         return ResponseEntity.ok(retailerProfileService.updateBusinessProfile(request));
     }
 

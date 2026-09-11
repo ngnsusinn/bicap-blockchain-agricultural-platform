@@ -1,0 +1,5 @@
+# Registers the BICAP secret-hardening initializer (C-1/C-3).
+# It rejects publicly known default secrets and injects ephemeral dev secrets before
+# any bean is created, so the app can never run with a repository-shipped secret.
+org.springframework.context.ApplicationContextInitializer=\
+vn.courses.ut.edu.javaprogramming.bicap.common.security.SecureSecretInitializer

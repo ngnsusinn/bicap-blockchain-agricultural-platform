@@ -113,6 +113,15 @@ public class GlobalExceptionHandler {
                 "Required parameter '" + ex.getParameterName() + "' is missing");
     }
 
+    // C-3 fix: a missing required header (X-Actor-Email on admin endpoints) is a client
+    // error and used to fall through to the catch-all handler as an opaque 500.
+    @ExceptionHandler(org.springframework.web.bind.MissingRequestHeaderException.class)
+    public ResponseEntity<ErrorResponse> handleMissingHeader(
+            org.springframework.web.bind.MissingRequestHeaderException ex, WebRequest request) {
+        return build(HttpStatus.BAD_REQUEST, "Missing request header",
+                "Required header '" + ex.getHeaderName() + "' is missing");
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException ex, WebRequest request) {
         return build(HttpStatus.NOT_FOUND, HttpStatus.NOT_FOUND.getReasonPhrase(), "Resource not found");

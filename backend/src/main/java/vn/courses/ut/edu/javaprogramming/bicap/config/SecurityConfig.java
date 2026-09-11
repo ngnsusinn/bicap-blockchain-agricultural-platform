@@ -77,9 +77,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/trace/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/admin", "/admin/", "/admin/**").permitAll()
 
-                        // Thêm quyền truy cập GET cho Guest (BICAP-70)
+                        // Guest (anonymous) category lookup. The public catalogue and
+                        // education endpoints live under "/api/public/**" (permitAll above)
+                        // and only expose ACTIVE products / PUBLISHED articles.
+                        // (C-3 fix: "/api/admin/products/**" used to be permitAll, which let
+                        // anyone list unapproved products and, with a spoofed X-Actor-Email
+                        // header, the full admin view.)
                         .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/admin/products/**").permitAll()
 
                         // Liveness/health only — required for container healthchecks, no
                         // sensitive data exposed.
@@ -90,9 +94,11 @@ public class SecurityConfig {
 
         // M-6 mitigation: a strict Content-Security-Policy shrinks the XSS surface that
         // could otherwise exfiltrate the JWT stored in localStorage.
+        // media-src allows the public educational videos (F5) to be streamed over https.
         http.headers(headers -> headers.contentSecurityPolicy(
                 "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-                        + "img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none'")
+                        + "img-src 'self' data: https:; media-src 'self' https:; "
+                        + "connect-src 'self'; frame-ancestors 'none'")
         );
 
         http.authenticationProvider(authenticationProvider());

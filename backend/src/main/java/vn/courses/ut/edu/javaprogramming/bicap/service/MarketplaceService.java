@@ -42,6 +42,27 @@ public class MarketplaceService {
                                                     BigDecimal maxPrice, String availability,
                                                     String sortBy, int page, int size) {
         requireRetailer();
+        return searchInternal(keyword, categoryId, region, certification, minPrice, maxPrice,
+                availability, sortBy, page, size);
+    }
+
+    /**
+     * Anonymous/guest catalogue search (C-3 + F3). Same real data as the retailer
+     * marketplace (only ACTIVE products) without the RETAILER role requirement, so an
+     * unauthenticated visitor can browse origin / certification / availability / trace hash.
+     */
+    public Page<MarketplaceProductResponse> searchPublic(String keyword, Long categoryId, String region,
+                                                          List<String> certification, BigDecimal minPrice,
+                                                          BigDecimal maxPrice, String availability,
+                                                          String sortBy, int page, int size) {
+        return searchInternal(keyword, categoryId, region, certification, minPrice, maxPrice,
+                availability, sortBy, page, size);
+    }
+
+    private Page<MarketplaceProductResponse> searchInternal(String keyword, Long categoryId, String region,
+                                                            List<String> certification, BigDecimal minPrice,
+                                                            BigDecimal maxPrice, String availability,
+                                                            String sortBy, int page, int size) {
         if (page < 0 || size < 1 || size > 100) throw new BadRequestException("Invalid pagination");
         if (minPrice != null && minPrice.signum() < 0) throw new BadRequestException("minPrice must be at least 0");
         if (maxPrice != null && (maxPrice.signum() < 0 || minPrice != null && maxPrice.compareTo(minPrice) <= 0))
@@ -72,6 +93,18 @@ public class MarketplaceService {
             vn.courses.ut.edu.javaprogramming.bicap.config.RedisCacheConfig.CACHE_MARKETPLACE_DETAIL, key = "#id")
     public MarketplaceProductResponse detail(Long id) {
         requireRetailer();
+        return detailInternal(id);
+    }
+
+    /** Anonymous/guest product detail (C-3 + F3) — same data, no role requirement. */
+    @org.springframework.cache.annotation.Cacheable(cacheNames =
+            vn.courses.ut.edu.javaprogramming.bicap.config.RedisCacheConfig.CACHE_MARKETPLACE_DETAIL,
+            key = "'public-' + #id")
+    public MarketplaceProductResponse detailPublic(Long id) {
+        return detailInternal(id);
+    }
+
+    private MarketplaceProductResponse detailInternal(Long id) {
         Product product = products.findById(id).filter(p -> "ACTIVE".equals(p.getStatus()))
                 .orElseThrow(() -> new ResourceNotFoundException("Marketplace product not found"));
         return build(product, true);

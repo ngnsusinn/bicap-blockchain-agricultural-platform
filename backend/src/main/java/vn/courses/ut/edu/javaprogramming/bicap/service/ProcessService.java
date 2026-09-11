@@ -2,6 +2,7 @@ package vn.courses.ut.edu.javaprogramming.bicap.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.courses.ut.edu.javaprogramming.bicap.common.security.ActorAuthorizer;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.ProcessCreateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.ProcessUpdateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
@@ -16,10 +17,13 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingProcessReposito
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepository;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Transactional
 public class ProcessService {
+
+    private static final Set<String> FARM_MANAGER_ROLES = Set.of("FARM_MANAGER");
 
     private final FarmingProcessRepository processRepository;
     private final FarmingSeasonRepository seasonRepository;
@@ -37,6 +41,7 @@ public class ProcessService {
     }
 
     public FarmingProcess addProcess(Long seasonId, ProcessCreateRequest request, User currentUser) {
+        requireFarmManager(currentUser);
         FarmingSeason season = seasonRepository.findById(seasonId)
                 .orElseThrow(() -> new ResourceNotFoundException("Season not found: " + seasonId));
 
@@ -66,6 +71,7 @@ public class ProcessService {
     }
 
     public FarmingProcess updateProcess(Long seasonId, Long processId, ProcessUpdateRequest request, User currentUser) {
+        requireFarmManager(currentUser);
         FarmingSeason season = seasonRepository.findById(seasonId)
                 .orElseThrow(() -> new ResourceNotFoundException("Season not found: " + seasonId));
 
@@ -100,6 +106,7 @@ public class ProcessService {
     }
 
     public FarmingProcess getProcess(Long seasonId, Long processId, User currentUser) {
+        requireFarmManager(currentUser);
         FarmingSeason season = seasonRepository.findById(seasonId)
                 .orElseThrow(() -> new ResourceNotFoundException("Season not found: " + seasonId));
 
@@ -121,6 +128,7 @@ public class ProcessService {
     }
 
     public List<FarmingProcess> getProcessesBySeason(Long seasonId, User currentUser) {
+        requireFarmManager(currentUser);
         FarmingSeason season = seasonRepository.findById(seasonId)
                 .orElseThrow(() -> new ResourceNotFoundException("Season not found: " + seasonId));
 
@@ -132,5 +140,10 @@ public class ProcessService {
         }
 
         return processRepository.findBySeasonId(seasonId);
+    }
+
+    /** Process data is Farm-Manager-only; ownership alone is checked below. */
+    private void requireFarmManager(User actor) {
+        ActorAuthorizer.requireRoles(actor, FARM_MANAGER_ROLES);
     }
 }

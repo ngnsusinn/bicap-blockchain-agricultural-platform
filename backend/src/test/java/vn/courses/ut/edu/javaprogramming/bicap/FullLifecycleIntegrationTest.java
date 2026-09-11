@@ -226,8 +226,10 @@ class FullLifecycleIntegrationTest {
         // ── 9. Driver pickup → tracking → delivery (BICAP-64/66/67) ────────
         String driverToken = tokenOf(postJson("/api/auth/driver/login",
                 java.util.Map.of("identifier", "driver2@bicap.com", "password", "Driver@2026"), null));
+        // F11: the driver must scan the export's traceability QR before confirming pickup.
         postJson("/api/driver/shipments/" + shipmentId + "/pickup",
-                java.util.Map.of("gpsLat", 10.9, "gpsLng", 106.8, "notes", "Da lay hang"), driverToken);
+                java.util.Map.of("gpsLat", 10.9, "gpsLng", 106.8, "notes", "Da lay hang",
+                        "traceHash", traceHash), driverToken);
         postJson("/api/driver/shipments/" + shipmentId + "/tracking",
                 java.util.Map.of("status", "IN_TRANSIT", "gpsLat", 11.2, "gpsLng", 106.5, "notes", "tren duong"), driverToken);
         postJson("/api/driver/shipments/" + shipmentId + "/deliver",

@@ -47,7 +47,10 @@ public class FarmRegistrationService {
     }
 
     public Farm registerFarm(FarmRegistrationRequest request) {
-        User actor = CurrentUser.get();
+        // Only a Farm Manager owns a farm profile. Every sibling farm-scoped service already
+        // requires this role; without the check any authenticated retailer/driver/shipper
+        // could create a farm row owned by themselves.
+        User actor = requireFarmManager();
 
         if (farmRepository.findByName(request.getName().trim()).isPresent()) {
             throw new ConflictException("A farm with this name is already registered");
