@@ -19,9 +19,12 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.SubscriptionRepository
 
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Processes Sepay bank-transfer webhooks (C-3…C-5, M-8, M-9):
@@ -70,11 +73,16 @@ public class SepayService {
             throw new BadRequestException("Empty webhook payload");
         }
 
-        String content = request.getContent() != null ? request.getContent() : request.getDescription();
-        if (content == null || content.trim().isEmpty()) {
+        // C-2 fix: the bank transfer memo is free text — the payment code is normally
+        // embedded in it ("DEP12 345678 chuyen tien dat coc"), so matching the whole
+        // content against the code never succeeded for real transfers and the deposit
+        // stayed unpaid. Instead, extract every plausible code from the payload
+        // (Sepay's own `code` field, then every alphanumeric token of the memo) and
+        // look each one up.
+        List<String> candidates = candidateCodes(request);
+        if (candidates.isEmpty()) {
             throw new BadRequestException("Webhook has no transfer content");
         }
-        String memo = content.trim().toUpperCase(Locale.ROOT);
 
         // C-4 — verify the credited account is the configured one before trusting anything.
         String accountNumber = request.getAccountNumber();
@@ -87,22 +95,61 @@ public class SepayService {
                 ? BigDecimal.valueOf(request.getTransferAmount())
                 : BigDecimal.ZERO;
 
-        // Subscription payment?
-        Optional<Subscription> subscription = subscriptionRepository.findByPaymentCode(memo);
-        if (subscription.isPresent()) {
-            return handleSubscriptionPayment(subscription.get(), memo, amount);
-        }
+        for (String candidate : candidates) {
+            // Subscription payment?
+            Optional<Subscription> subscription = subscriptionRepository.findByPaymentCode(candidate);
+            if (subscription.isPresent()) {
+                return handleSubscriptionPayment(subscription.get(), candidate, amount);
+            }
 
-        // Deposit payment?
-        Optional<Order> order = orderRepository.findByDepositCode(memo);
-        if (order.isPresent()) {
-            return handleDepositPayment(order.get(), memo, amount);
+            // Deposit payment?
+            Optional<Order> order = orderRepository.findByDepositCode(candidate);
+            if (order.isPresent()) {
+                return handleDepositPayment(order.get(), candidate, amount);
+            }
         }
 
         // C-3/M-9 — nothing matched: log the full event so no legitimate transfer is silently dropped.
-        log.warn("Sepay webhook did not match any known transfer memo: id={}, code={}, amount={}, account={}, date={}",
-                request.getId(), memo, amount, accountNumber, request.getTransactionDate());
+        log.warn("Sepay webhook did not match any known transfer memo: id={}, codes={}, amount={}, account={}, date={}",
+                request.getId(), candidates, amount, accountNumber, request.getTransactionDate());
         return result("ignored");
+    }
+
+    /**
+     * Builds the ordered, de-duplicated list of codes to try against the payment tables.
+     *
+     * <p>Sepay sends the extracted code in {@code code}, but the raw bank memo is also
+     * available in {@code content}/{@code description}. Real transfers append arbitrary
+     * text around the code, so both the full memo and each of its alphanumeric tokens are
+     * candidates. Lookups are exact so a stray token can never match by accident.
+     */
+    private List<String> candidateCodes(SepayWebhookRequest request) {
+        LinkedHashSet<String> codes = new LinkedHashSet<>();
+        addCandidate(codes, request.getCode());
+
+        String content = request.getContent() != null ? request.getContent() : request.getDescription();
+        if (content != null) {
+            String trimmed = content.trim();
+            if (!trimmed.isEmpty()) {
+                codes.add(trimmed.toUpperCase(Locale.ROOT));
+                for (String token : trimmed.split("[^A-Za-z0-9]+")) {
+                    addCandidate(codes, token);
+                }
+            }
+        }
+        return List.copyOf(codes);
+    }
+
+    private void addCandidate(Set<String> codes, String raw) {
+        if (raw == null) {
+            return;
+        }
+        String normalized = raw.trim().toUpperCase(Locale.ROOT);
+        // Payment codes are "BICAP<id><6 digits>" / "DEP<id><6 digits>" — never shorter
+        // than 6 characters; a 4-char floor keeps bank noise out without risking a miss.
+        if (normalized.length() >= 4) {
+            codes.add(normalized);
+        }
     }
 
     private Map<String, String> handleSubscriptionPayment(Subscription subscription, String memo, BigDecimal amount) {

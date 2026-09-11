@@ -35,8 +35,16 @@ public class ShippingController {
     // ── ORDERS (read-only — expose DEPOSIT_PAID orders ready for shipment) ─────
 
     /**
-     * Lists orders in DEPOSIT_PAID state waiting for a shipment to be created (BICAP-54).
-     * Returns OrderResponse with product/retailer/farm info for the frontend.
+     * F8: orders with a paid deposit and no shipment yet — the "successful orders between
+     * Retailer and Farm" list a Shipping Manager picks from when creating a shipment.
+     */
+    @GetMapping("/orders/ready-to-ship")
+    public ResponseEntity<List<OrderResponse>> getReadyToShipOrders() {
+        return ResponseEntity.ok(shipmentService.getReadyToShipOrders());
+    }
+
+    /**
+     * F8: genuinely COMPLETED orders (retailer confirmed receipt).
      */
     @GetMapping("/orders/completed")
     public ResponseEntity<List<OrderResponse>> getCompletedOrders() {

@@ -6,12 +6,14 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import vn.courses.ut.edu.javaprogramming.bicap.common.security.ActorAuthorizer;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.CurrentUser;
 import vn.courses.ut.edu.javaprogramming.bicap.config.SepayConfig;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.PaymentStatusResponse;
@@ -37,6 +39,7 @@ public class SubscriptionService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int PAYMENT_CODE_DIGITS = 6;
+    private static final Set<String> FARM_MANAGER_ROLES = Set.of("FARM_MANAGER");
 
     private final SubscriptionRepository subscriptionRepository;
     private final ServicePackageRepository servicePackageRepository;
@@ -72,6 +75,7 @@ public class SubscriptionService {
         Farm farm = farmRepository.findById(farmId)
                 .orElseThrow(() -> new ResourceNotFoundException("Farm not found with id: " + farmId));
         User actor = CurrentUser.get();
+        requireFarmManagerOrAdminView(actor);
         if (!CurrentUser.isAdminView(actor) && !farm.getUserId().equals(actor.getId())) {
             throw new ForbiddenException("You do not have access to this farm");
         }
@@ -112,6 +116,7 @@ public class SubscriptionService {
     @Transactional(readOnly = true)
     public List<SubscriptionResponse> getMySubscriptions() {
         User actor = CurrentUser.get();
+        requireFarmManagerOrAdminView(actor);
         List<Farm> farms = farmRepository.findByUserId(actor.getId());
         if (farms.isEmpty()) {
             return List.of();
@@ -141,6 +146,7 @@ public class SubscriptionService {
         }
 
         private void cancelOwnedSubscription(Subscription sub, User actor) {
+        requireFarmManagerOrAdminView(actor);
         if (sub.getStatus() != SubscriptionStatus.PENDING_PAYMENT
                 && sub.getStatus() != SubscriptionStatus.ACTIVE) {
             throw new BadRequestException(
@@ -261,10 +267,23 @@ public class SubscriptionService {
         if (CurrentUser.isAdminView(actor)) {
             return;
         }
+        requireFarmManager(actor);
         boolean owns = farmRepository.findByUserId(actor.getId()).stream()
                 .anyMatch(f -> f.getId().equals(farmId));
         if (!owns) {
             throw new ForbiddenException("You do not have access to this farm");
         }
+    }
+
+    /** A non-admin actor must actually be a Farm Manager to touch farm subscriptions. */
+    private static void requireFarmManagerOrAdminView(User actor) {
+        if (CurrentUser.isAdminView(actor)) {
+            return;
+        }
+        requireFarmManager(actor);
+    }
+
+    private static void requireFarmManager(User actor) {
+        ActorAuthorizer.requireRoles(actor, FARM_MANAGER_ROLES);
     }
 }

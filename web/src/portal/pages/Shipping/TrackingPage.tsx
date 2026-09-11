@@ -56,7 +56,15 @@ const STEP_LABELS: Record<string, string> = {
   RETURNED: 'Đã hoàn trả',
 };
 
-export default function TrackingPage() {
+export interface TrackingPageProps {
+  /**
+   * F9 — mã lô vận chuyển được chọn từ trang danh sách ("Xem tracking").
+   * Trang tự động tải chi tiết lô này khi mount và mỗi khi prop thay đổi.
+   */
+  initialShipmentId?: number;
+}
+
+export default function TrackingPage({ initialShipmentId }: TrackingPageProps) {
   const [shipmentId, setShipmentId] = useState('');
   const [detail, setDetail] = useState<ShipmentDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -69,6 +77,14 @@ export default function TrackingPage() {
       .then(data => setAllShipments(data))
       .catch(() => {});
   }, []);
+
+  // F9: auto-load lô được chọn từ trang trước và khi prop thay đổi.
+  useEffect(() => {
+    if (initialShipmentId == null) return;
+    setShipmentId(String(initialShipmentId));
+    void loadDetail(initialShipmentId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialShipmentId]);
 
   const loadDetail = async (id: string | number) => {
     const sid = Number(id);

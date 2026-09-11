@@ -14,7 +14,11 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
+    /**
+     * Recipient. {@code null} marks a platform-wide announcement (guest-visible) rather
+     * than a message addressed to one user — see {@link #system}.
+     */
+    @Column(name = "user_id")
     private Long userId;
 
     @Column(nullable = false)
@@ -32,6 +36,14 @@ public class Notification {
     @Column(name = "is_read", nullable = false)
     private Boolean isRead = false;
 
+    /**
+     * C-3 fix: only notifications flagged as system announcements are exposed to
+     * unauthenticated guests. Previously the anonymous feed returned every user's
+     * notifications, leaking private messages between farms and retailers.
+     */
+    @Column(name = "is_system", nullable = false)
+    private boolean system = false;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -39,6 +51,11 @@ public class Notification {
     }
 
     public Notification(Long id, Long userId, String type, String title, String content, String channel, Boolean isRead, LocalDateTime createdAt) {
+        this(id, userId, type, title, content, channel, isRead, false, createdAt);
+    }
+
+    public Notification(Long id, Long userId, String type, String title, String content, String channel,
+                        Boolean isRead, boolean system, LocalDateTime createdAt) {
         this.id = id;
         this.userId = userId;
         this.type = type;
@@ -46,6 +63,7 @@ public class Notification {
         this.content = content;
         this.channel = channel;
         this.isRead = isRead;
+        this.system = system;
         this.createdAt = createdAt;
     }
 
@@ -73,6 +91,8 @@ public class Notification {
     public void setChannel(String channel) { this.channel = channel; }
     public Boolean getIsRead() { return isRead; }
     public void setIsRead(Boolean isRead) { this.isRead = isRead; }
+    public boolean isSystem() { return system; }
+    public void setSystem(boolean system) { this.system = system; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -88,6 +108,7 @@ public class Notification {
         private String content;
         private String channel;
         private Boolean isRead;
+        private boolean system = false;
         private LocalDateTime createdAt;
 
         NotificationBuilder() {}
@@ -99,10 +120,11 @@ public class Notification {
         public NotificationBuilder content(String content) { this.content = content; return this; }
         public NotificationBuilder channel(String channel) { this.channel = channel; return this; }
         public NotificationBuilder isRead(Boolean isRead) { this.isRead = isRead; return this; }
+        public NotificationBuilder system(boolean system) { this.system = system; return this; }
         public NotificationBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
 
         public Notification build() {
-            return new Notification(id, userId, type, title, content, channel, isRead, createdAt);
+            return new Notification(id, userId, type, title, content, channel, isRead, system, createdAt);
         }
     }
 }

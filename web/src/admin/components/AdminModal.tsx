@@ -1,26 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import type { AdminUser } from '../types';
+import type { AdminUser, PermissionResponse } from '../types';
+import { API_ORIGIN, authHeaders } from '../utils/api';
 
 interface AdminModalProps {
   admin: AdminUser | null; // Null if creating
+  /** F2 — current admin's email, sent as X-Actor-Email when loading the permission catalogue. */
+  actorEmail: string;
   onClose: () => void;
   onSave: (adminData: any) => void;
 }
 
-const ALL_PERMISSIONS = [
-  { code: 'ADMIN_CREATE', name: 'Create Admins', desc: 'Allows creating new administrators' },
-  { code: 'ADMIN_READ', name: 'Read Admins', desc: 'Allows viewing admin accounts and details' },
-  { code: 'ADMIN_UPDATE', name: 'Update Admins', desc: 'Allows editing roles, details, or status' },
-  { code: 'ADMIN_DELETE', name: 'Delete Admins', desc: 'Allows soft-deleting administrator profiles' }
-];
-
-const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
-  SUPER_ADMIN: ['ADMIN_CREATE', 'ADMIN_READ', 'ADMIN_UPDATE', 'ADMIN_DELETE'],
-  ADMIN: ['ADMIN_READ', 'ADMIN_UPDATE'],
-  MODERATOR: ['ADMIN_READ'],
-};
-
-export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }) => {
+export const AdminModal: React.FC<AdminModalProps> = ({ admin, actorEmail, onClose, onSave }) => {
   const isEdit = !!admin;
 
   // Form State
@@ -34,6 +24,37 @@ export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
+  // F2 — real permission catalogue from GET /api/admins/permissions (no hard-coded codes).
+  const [catalog, setCatalog] = useState<PermissionResponse[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    setCatalogLoading(true);
+    setCatalogError('');
+    fetch(`${API_ORIGIN}/api/admins/permissions`, { headers: authHeaders(actorEmail) })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Không tải được danh sách quyền (mã lỗi ${res.status}).`);
+        return res.json();
+      })
+      .then((data) => {
+        if (alive) setCatalog(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        if (alive) {
+          setCatalog([]);
+          setCatalogError(err instanceof Error ? err.message : 'Không tải được danh sách quyền.');
+        }
+      })
+      .finally(() => {
+        if (alive) setCatalogLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [actorEmail]);
+
   // Sync state if edit mode
   const resolveAdminRole = (adminData: any) => {
     if (!adminData?.roles?.length) {
@@ -42,13 +63,21 @@ export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }
     return adminData.roles[0].name || 'ADMIN';
   };
 
-  const resolveAdminPermissions = (adminData: any) => {
-    if (!adminData?.roles?.length) {
-      return [];
-    }
-    return adminData.roles.flatMap((role: any) =>
-      role.permissions?.map((perm: any) => perm.code) || []
-    );
+  /**
+   * F2 — effective permissions preferred (role permissions ∪ direct grants); if the
+   * backend did not send a top-level set, fall back to the role permissions.
+   */
+  const resolveAdminPermissions = (adminData: any): string[] => {
+    const direct: string[] = (adminData?.permissions ?? [])
+      .map((perm: any) => perm?.code)
+      .filter(Boolean);
+    if (direct.length > 0) return Array.from(new Set(direct));
+
+    return Array.from(new Set(
+      (adminData?.roles ?? []).flatMap((role: any) =>
+        (role.permissions ?? []).map((perm: any) => perm.code).filter(Boolean)
+      )
+    ));
   };
 
   useEffect(() => {
@@ -67,17 +96,15 @@ export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }
       setPhone('');
       setRole('ADMIN');
       setStatus('ACTIVE');
-      setSelectedPermissions(DEFAULT_ROLE_PERMISSIONS.ADMIN);
+      setSelectedPermissions([]);
     }
     setErrors({});
   }, [admin]);
 
-  // Autofill permissions when role changes
+  // Role changes no longer inject hard-coded permission codes; the real catalogue is
+  // the single source of truth and the admin chooses explicitly.
   const handleRoleChange = (selectedRole: string) => {
     setRole(selectedRole);
-    if (DEFAULT_ROLE_PERMISSIONS[selectedRole]) {
-      setSelectedPermissions(DEFAULT_ROLE_PERMISSIONS[selectedRole]);
-    }
   };
 
   const handlePermissionToggle = (code: string) => {
@@ -253,34 +280,46 @@ export const AdminModal: React.FC<AdminModalProps> = ({ admin, onClose, onSave }
               )}
             </div>
 
-            {/* Permissions */}
+            {/* Permissions — catalogue thật từ GET /api/admins/permissions */}
             <div style={fieldGroupStyle}>
               <label style={labelStyle}>Role Permissions (Fine-grained RBAC override)</label>
-              <div style={permissionsListStyle}>
-                {ALL_PERMISSIONS.map((perm) => {
-                  const isChecked = selectedPermissions.includes(perm.code);
-                  return (
-                    <label key={perm.code} style={{
-                      ...checkboxContainerStyle,
-                      border: isChecked ? '1px solid var(--primary-hover)' : '1px solid var(--border-color)',
-                      background: isChecked ? 'rgba(139, 92, 246, 0.05)' : 'rgba(0, 0, 0, 0.1)',
-                    }}>
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => handlePermissionToggle(perm.code)}
-                        style={checkboxStyle}
-                      />
-                      <div>
-                        <div style={{ fontWeight: 600, color: '#fff', fontSize: '13px' }}>{perm.name}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                          {perm.desc}
+              {catalogLoading ? (
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: 8 }}>
+                  Đang tải danh sách quyền…
+                </p>
+              ) : catalogError ? (
+                <p style={errorTextStyle}>{catalogError}</p>
+              ) : catalog.length === 0 ? (
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: 8 }}>
+                  Hệ thống chưa cấu hình quyền nào.
+                </p>
+              ) : (
+                <div style={permissionsListStyle}>
+                  {catalog.map((perm) => {
+                    const isChecked = selectedPermissions.includes(perm.code);
+                    return (
+                      <label key={perm.code} style={{
+                        ...checkboxContainerStyle,
+                        border: isChecked ? '1px solid var(--primary-hover)' : '1px solid var(--border-color)',
+                        background: isChecked ? 'rgba(139, 92, 246, 0.05)' : 'rgba(0, 0, 0, 0.1)',
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handlePermissionToggle(perm.code)}
+                          style={checkboxStyle}
+                        />
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#fff', fontSize: '13px' }}>{perm.code}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            {perm.description}
+                          </div>
                         </div>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 

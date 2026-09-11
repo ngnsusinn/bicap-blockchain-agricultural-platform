@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAuthHeaders, API_BASE_URL } from '../../utils/auth';
+import { getAuthHeaders, getToken, API_BASE_URL } from '../../utils/auth';
 
 /**
  * BICAP-69: Guest - Nhận thông báo chung
@@ -56,7 +56,11 @@ export default function GuestNotifications() {
     fetchNotifications();
   }, []);
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  // Khách không có token: backend trả 401 cho PUT /notifications/{id}/read và
+  // PUT /notifications/read-all, nên UI tuyệt đối không được gọi hai endpoint này.
+  const canMarkRead = !!getToken();
+
+  const unreadCount = canMarkRead ? notifications.filter(n => !n.isRead).length : 0;
 
   const filteredList = notifications.filter(n => {
     if (filter === 'ALL') return true;
@@ -64,6 +68,7 @@ export default function GuestNotifications() {
   });
 
   const markAsRead = async (id: number) => {
+    if (!canMarkRead) return;
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
     try {
       await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
@@ -76,6 +81,7 @@ export default function GuestNotifications() {
   };
 
   const markAllAsRead = async () => {
+    if (!canMarkRead) return;
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     try {
       await fetch(`${API_BASE_URL}/notifications/read-all`, {
@@ -188,8 +194,8 @@ export default function GuestNotifications() {
                 }}
                 style={{
                   ...cardStyle,
-                  borderLeft: item.isRead ? '4px solid transparent' : '4px solid #10b981',
-                  background: item.isRead ? 'rgba(255, 255, 255, 0.02)' : 'rgba(16, 185, 129, 0.06)',
+                  borderLeft: item.isRead || !canMarkRead ? '4px solid transparent' : '4px solid #10b981',
+                  background: item.isRead || !canMarkRead ? 'rgba(255, 255, 255, 0.02)' : 'rgba(16, 185, 129, 0.06)',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
@@ -197,12 +203,12 @@ export default function GuestNotifications() {
                     <span style={{ ...badgeStyle, color: badge.color, background: badge.bg }}>
                       {badge.label}
                     </span>
-                    {!item.isRead && <span style={dotStyle} />}
+                    {!item.isRead && canMarkRead && <span style={dotStyle} />}
                   </div>
                   <span style={timeStyle}>{formatDate(item.createdAt)}</span>
                 </div>
 
-                <h3 style={{ ...cardTitleStyle, color: item.isRead ? '#e2e8f0' : '#fff' }}>
+                <h3 style={{ ...cardTitleStyle, color: item.isRead || !canMarkRead ? '#e2e8f0' : '#fff' }}>
                   {item.title}
                 </h3>
                 <p style={cardSnippetStyle}>{item.message}</p>

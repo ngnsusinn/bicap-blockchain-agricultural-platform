@@ -29,6 +29,8 @@ import IotDashboard from './pages/FarmManager/IotDashboard';
 import GuestEducation from './pages/Guest/GuestEducation';
 import GuestProductSearch from './pages/Guest/GuestProductSearch';
 import GuestNotifications from './pages/Guest/GuestNotifications';
+import GuestArea from './pages/Guest/GuestArea';
+import DriverShipmentsPage from './pages/Driver/DriverShipmentsPage';
 // Shipping Manager pages (BICAP-54 → BICAP-62)
 import CompletedOrdersPage from './pages/Shipping/CompletedOrdersPage';
 import ShipmentsPage from './pages/Shipping/ShipmentsPage';
@@ -195,13 +197,16 @@ type ShipmentForTracking = { id: number; status: string; orderId?: number; drive
 const ShippingManagerPortal: React.FC<ShippingPortalProps> = ({ user, onLogout }) => {
   const [tab, setTab] = useState<ShippingTab>('orders');
   const [orderForCreate, setOrderForCreate] = useState<CompletedOrderForCreate | null>(null);
+  // F9: "Xem tracking" phải mở đúng lô vận chuyển vừa chọn, không mở trang trống.
+  const [trackingShipmentId, setTrackingShipmentId] = useState<number | null>(null);
 
   const handleCreateShipment = (order: CompletedOrderForCreate) => {
     setOrderForCreate(order);
     setTab('shipments');
   };
 
-  const handleTrack = (_shipment: ShipmentForTracking) => {
+  const handleTrack = (shipment: ShipmentForTracking) => {
+    setTrackingShipmentId(shipment.id);
     setTab('tracking');
   };
 
@@ -333,7 +338,7 @@ const ShippingManagerPortal: React.FC<ShippingPortalProps> = ({ user, onLogout }
               onTrack={handleTrack}
             />
           )}
-          {tab === 'tracking' && <TrackingPage />}
+          {tab === 'tracking' && <TrackingPage initialShipmentId={trackingShipmentId ?? undefined} />}
           {tab === 'vehicles' && <VehiclesPage />}
           {tab === 'drivers' && <DriversPage />}
           {tab === 'reports' && <ShippingReportsPage />}
@@ -446,32 +451,7 @@ export default function App() {
 
   // 1. Nếu chưa đăng nhập nhưng bấm "Xem thông báo chung (Guest)"
   if (!authenticated && isGuestMode) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#0b0f17', padding: '24px' }}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '900px', margin: '0 auto 24px auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={logoIconStyle}>B</div>
-            <span style={logoTextStyle}>BICAP Platform (Guest)</span>
-          </div>
-          <button 
-            onClick={() => setIsGuestMode(false)}
-            style={{ 
-              background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)', 
-              border: 'none', 
-              color: '#fff', 
-              padding: '8px 16px', 
-              borderRadius: '8px', 
-              fontWeight: 600, 
-              cursor: 'pointer' 
-            }}
-          >
-            🔐 Đăng nhập hệ thống
-          </button>
-        </header>
-
-        <GuestNotifications />
-      </div>
-    );
+    return <GuestArea onLogin={() => setIsGuestMode(false)} />;
   }
 
   // 2. Render AuthPage nếu chưa đăng nhập (kèm nút xem Guest ở góc phải)
@@ -608,6 +588,11 @@ export default function App() {
   // 4. Render Shipping Manager Portal (BICAP-54 → BICAP-62)
   if (user?.role === 'SHIPPING_MGR') {
     return <ShippingManagerPortal user={user} onLogout={handleLogout} />;
+  }
+
+  // 4b. Render Driver Portal (F11 — BICAP-76): tài xế quét QR lấy hàng & cập nhật tracking.
+  if (user?.role === 'SHIP_DRIVER') {
+    return <DriverShipmentsPage onLogout={handleLogout} />;
   }
 
   // 5. Render Farm Manager Portal (BICAP-7)

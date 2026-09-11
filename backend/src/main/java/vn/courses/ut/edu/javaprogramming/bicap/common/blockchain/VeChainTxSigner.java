@@ -17,11 +17,14 @@ import java.util.List;
 /**
  * Builds and signs VeChainThor legacy (type 0) transactions.
  *
- * <p>Payload layout (RLP):
- * {@code [ chainTag, blockRef, expiration, [[to, value, data]...], gasPrice, gas,
- * dependsOn, nonce, signature ]}. The transaction ID is the Blake2b-256 hash of the
- * payload with an empty signature — which is also the digest that gets signed, so
- * {@code id == signingHash}.
+ * <p>Broadcast payload (RLP):
+ * {@code [ chainTag, blockRef, expiration, [[to, value, data]...], gasPriceCoef, gas,
+ * dependsOn, nonce, reserved, signature ]}.
+ *
+ * <p>The signing hash — which is also the transaction id — is the Blake2b-256 of the
+ * <b>9-field</b> payload with the signature field omitted. VeChainThor recovers the sender
+ * from that hash, so hashing a 10-field payload with an empty signature (as Ethereum does)
+ * makes thor recover a different, unfunded address and reject the broadcast.
  */
 public final class VeChainTxSigner {
 
@@ -49,19 +52,53 @@ public final class VeChainTxSigner {
      * {@code gasPriceCoef} uint8 (0..255); the node computes the actual price from it:
      * price = basePrice(1e11) + coef/255 * (maxPrice(1e13) - basePrice).
      * id = blake2b256(rlp(unsigned)).
+     *
+     * @param blockRef the 8-byte block reference as an unsigned uint64 — use
+     *                 {@link #blockRefFromBlockId(byte[])}. It is NOT the plain block
+     *                 number: thor reads the reference number from its <b>high</b> 4 bytes,
+     *                 so passing the height alone makes every transaction look
+     *                 {@code expired} and the node rejects it with 403.
      */
-    public static SignedTransaction signType0(int chainTag, long blockNumber, int expiration,
+    public static SignedTransaction signType0(int chainTag, long blockRef, int expiration,
                                               List<Clause> clauses, int gasPriceCoef, long gas,
                                               long nonce, byte[] privateKey) {
-        byte[] unsigned = encodeType0(chainTag, blockNumber, expiration, clauses, gasPriceCoef, gas, nonce, new byte[0]);
+        // VeChainThor signs the 9-field payload WITHOUT the signature field. Including an
+        // empty signature (the Ethereum habit) yields a different digest, so thor recovers
+        // a different sender whose VTHO balance is zero and rejects the tx with
+        // "insufficient energy" — verified against the official SDK's golden vector.
+        byte[] unsigned = encodeType0(chainTag, blockRef, expiration, clauses, gasPriceCoef, gas, nonce, null);
         byte[] txId = Hashes.blake2b256(unsigned);
 
         byte[] signature = signEcdsa(txId, privateKey);
-        byte[] raw = encodeType0(chainTag, blockNumber, expiration, clauses, gasPriceCoef, gas, nonce, signature);
+        byte[] raw = encodeType0(chainTag, blockRef, expiration, clauses, gasPriceCoef, gas, nonce, signature);
         return new SignedTransaction(raw, txId);
     }
 
-    private static byte[] encodeType0(int chainTag, long blockNumber, int expiration,
+    /**
+     * Builds the transaction {@code blockRef} from a block id: the first 8 bytes of the
+     * block id, read as a big-endian unsigned 64-bit integer.
+     *
+     * <p>Verified against a real accepted testnet transaction whose RLP carried
+     * {@code 018b58a7722a5ca4} while the containing block id started with
+     * {@code 018b58a8…} — i.e. {@code blockId[0..8]}, not {@code blockNumber}.
+     */
+    public static long blockRefFromBlockId(byte[] blockId) {
+        if (blockId == null || blockId.length < 8) {
+            throw new IllegalArgumentException("A block id must be at least 8 bytes");
+        }
+        long value = 0;
+        for (int i = 0; i < 8; i++) {
+            value = (value << 8) | (blockId[i] & 0xFFL);
+        }
+        return value;
+    }
+
+    /** Reinterprets a {@code long} as an unsigned 64-bit value for RLP integer encoding. */
+    private static BigInteger asUnsigned(long value) {
+        return value >= 0 ? BigInteger.valueOf(value) : BigInteger.valueOf(value).add(BigInteger.ONE.shiftLeft(64));
+    }
+
+    private static byte[] encodeType0(int chainTag, long blockRef, int expiration,
                                       List<Clause> clauses, int gasPriceCoef, long gas,
                                       long nonce, byte[] signature) {
         List<byte[]> encodedClauses = new ArrayList<>(clauses.size());
@@ -72,19 +109,23 @@ public final class VeChainTxSigner {
                     RlpEncoder.encodeBytes(c.data() == null ? new byte[0] : c.data())
             )));
         }
-        return RlpEncoder.encodeList(List.of(
-                RlpEncoder.encodeBytes(new byte[]{(byte) chainTag}),
-                // BlockRef is a uint64 (canonical RLP integer) = the reference block number.
-                RlpEncoder.encodeLong(blockNumber),
-                RlpEncoder.encodeLong(expiration),
-                RlpEncoder.encodeList(encodedClauses),
-                RlpEncoder.encodeLong(gasPriceCoef),
-                RlpEncoder.encodeLong(gas),
-                RlpEncoder.encodeNull(),                       // dependsOn
-                RlpEncoder.encodeLong(nonce),
-                RlpEncoder.encodeList(List.of()),              // Reserved — empty list
-                RlpEncoder.encodeBytes(signature)
-        ));
+        List<byte[]> fields = new ArrayList<>(10);
+        fields.add(RlpEncoder.encodeBytes(new byte[]{(byte) chainTag}));
+        // BlockRef is a uint64: minimal big-endian bytes of the 8-byte block id prefix,
+        // encoded as an UNSIGNED integer (a signed long would overflow at 0x80…).
+        fields.add(RlpEncoder.encodeBigInteger(asUnsigned(blockRef)));
+        fields.add(RlpEncoder.encodeLong(expiration));
+        fields.add(RlpEncoder.encodeList(encodedClauses));
+        fields.add(RlpEncoder.encodeLong(gasPriceCoef));
+        fields.add(RlpEncoder.encodeLong(gas));
+        fields.add(RlpEncoder.encodeNull());                   // dependsOn
+        fields.add(RlpEncoder.encodeLong(nonce));
+        fields.add(RlpEncoder.encodeList(List.of()));          // reserved
+        if (signature != null) {
+            // Only the broadcast payload carries the signature; the signing hash does not.
+            fields.add(RlpEncoder.encodeBytes(signature));
+        }
+        return RlpEncoder.encodeList(fields);
     }
 
     /** Deterministic (RFC 6979) ECDSA over secp256k1, canonical low-s, 65-byte r||s||v. */

@@ -5,6 +5,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.common.util.SearchUtils;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.AdminCreateRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.AdminResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.AdminUpdateRequest;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.Permission;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Role;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -60,6 +62,22 @@ public class AdminService {
         ActorAuthorizer.requireAdminView(userRepository, actorEmail);
         return userRepository.findAdminsFiltered(status, role, SearchUtils.escapeLike(search), pageable)
                 .map(AdminResponse::fromUser);
+    }
+
+    /**
+     * F2: catalogue of assignable permissions, so the admin UI renders the picker from
+     * real data instead of a hard-coded list.
+     */
+    @Transactional(readOnly = true)
+    public List<AdminResponse.PermissionResponse> getPermissionCatalog(String actorEmail) {
+        ActorAuthorizer.requireAdminView(userRepository, actorEmail);
+        return permissionRepository.findAll().stream()
+                .map(permission -> AdminResponse.PermissionResponse.builder()
+                        .id(permission.getId())
+                        .code(permission.getCode())
+                        .description(permission.getDescription())
+                        .build())
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -104,13 +122,9 @@ public class AdminService {
             roles.add(defaultRole);
         }
 
-        // Validate permissions if present (must exist in system)
-        if (request.getPermissions() != null) {
-            for (String permCode : request.getPermissions()) {
-                permissionRepository.findByCode(permCode.toUpperCase())
-                        .orElseThrow(() -> new ResourceNotFoundException("Permission not found: " + permCode));
-            }
-        }
+        // F2 fix: requested permissions are resolved to entities and persisted on the
+        // account (user_permissions) instead of being validated and discarded.
+        Set<Permission> permissions = resolvePermissions(request.getPermissions());
 
         User user = User.builder()
                 .email(request.getEmail())
@@ -119,10 +133,28 @@ public class AdminService {
                 .phone(request.getPhone())
                 .status(statusVal)
                 .roles(roles)
+                .permissions(permissions)
                 .build();
 
         User savedUser = userRepository.save(user);
         return AdminResponse.fromUser(savedUser);
+    }
+
+    /** Resolves permission codes to entities, failing loudly on unknown codes. */
+    private Set<Permission> resolvePermissions(java.util.List<String> permissionCodes) {
+        if (permissionCodes == null) {
+            return Set.of();
+        }
+        Set<Permission> resolved = new HashSet<>();
+        for (String permCode : permissionCodes) {
+            if (permCode == null || permCode.isBlank()) {
+                continue;
+            }
+            Permission permission = permissionRepository.findByCode(permCode.trim().toUpperCase())
+                    .orElseThrow(() -> new ResourceNotFoundException("Permission not found: " + permCode));
+            resolved.add(permission);
+        }
+        return resolved;
     }
 
     public AdminResponse updateAdmin(Long id, AdminUpdateRequest request, String actorEmail) {
@@ -155,11 +187,14 @@ public class AdminService {
             user.getRoles().add(role);
         }
 
+        // F2 fix: replace the account's direct permissions with the requested set.
         if (request.getPermissions() != null) {
-            for (String permCode : request.getPermissions()) {
-                permissionRepository.findByCode(permCode.toUpperCase())
-                        .orElseThrow(() -> new ResourceNotFoundException("Permission not found: " + permCode));
+            Set<Permission> permissions = resolvePermissions(request.getPermissions());
+            if (user.getPermissions() == null) {
+                user.setPermissions(new HashSet<>());
             }
+            user.getPermissions().clear();
+            user.getPermissions().addAll(permissions);
         }
 
         User updatedUser = userRepository.save(user);

@@ -3,6 +3,11 @@ package vn.courses.ut.edu.javaprogramming.bicap.service.impl;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.IotDataRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.IotData;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
+import vn.courses.ut.edu.javaprogramming.bicap.common.security.ActorAuthorizer;
+import vn.courses.ut.edu.javaprogramming.bicap.common.security.CurrentUser;
+import vn.courses.ut.edu.javaprogramming.bicap.exception.ForbiddenException;
+import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.IotDataRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.service.IotDataService;
@@ -14,6 +19,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class IotDataServiceImpl implements IotDataService {
@@ -33,6 +39,20 @@ public class IotDataServiceImpl implements IotDataService {
     @Override
     @Transactional
     public IotData saveAndCheckThresholds(IotDataRequest request) {
+        // C4 fix: only the farm that owns the data (or a platform admin) may push readings.
+        User actor = CurrentUser.get();
+        Farm farm = farmRepository.findById(request.getFarmId())
+                .orElseThrow(() -> new ResourceNotFoundException("Farm not found: " + request.getFarmId()));
+        boolean platformAdmin = actor.getRoles().stream()
+                .anyMatch(role -> "SUPER_ADMIN".equalsIgnoreCase(role.getName())
+                        || "ADMIN".equalsIgnoreCase(role.getName()));
+        if (!platformAdmin) {
+            ActorAuthorizer.requireRoles(actor, Set.of("FARM_MANAGER"));
+            if (!farm.getUserId().equals(actor.getId())) {
+                throw new ForbiddenException("Farm does not belong to the current user");
+            }
+        }
+
         IotData data = new IotData();
         data.setFarmId(request.getFarmId());
         data.setTemperature(request.getTemperature());
@@ -48,16 +68,13 @@ public class IotDataServiceImpl implements IotDataService {
         boolean phIssue = request.getPh() < 5.5 || request.getPh() > 7.5;
 
         if (tempIssue || humidIssue || phIssue) {
-            Farm farm = farmRepository.findById(request.getFarmId()).orElse(null);
-            if (farm != null) {
-                StringBuilder msg = new StringBuilder("Cảnh báo khẩn cấp từ cảm biến: ");
-                if (tempIssue) msg.append(String.format("Nhiệt độ bất thường (%.1f°C). ", request.getTemperature()));
-                if (humidIssue) msg.append(String.format("Độ ẩm bất thường (%.1f%%). ", request.getHumidity()));
-                if (phIssue) msg.append(String.format("Độ pH bất thường (%.1f). ", request.getPh()));
+            StringBuilder msg = new StringBuilder("Cảnh báo khẩn cấp từ cảm biến: ");
+            if (tempIssue) msg.append(String.format("Nhiệt độ bất thường (%.1f°C). ", request.getTemperature()));
+            if (humidIssue) msg.append(String.format("Độ ẩm bất thường (%.1f%%). ", request.getHumidity()));
+            if (phIssue) msg.append(String.format("Độ pH bất thường (%.1f). ", request.getPh()));
 
-                // Persist, push to the live SSE stream and email the farm owner.
-                notificationService.sendNotification(farm.getUserId(), "URGENT", "Cảnh báo khẩn cấp IoT", msg.toString(), true);
-            }
+            // Persist, push to the live SSE stream and email the farm owner.
+            notificationService.sendNotification(farm.getUserId(), "URGENT", "Cảnh báo khẩn cấp IoT", msg.toString(), true);
         }
         return saved;
     }

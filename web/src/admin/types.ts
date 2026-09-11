@@ -35,6 +35,8 @@ export interface AdminUser {
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   avatarUrl?: string;
   roles: RoleResponse[];
+  /** F2 — effective permissions = role permissions ∪ directly granted permissions. */
+  permissions?: PermissionResponse[];
 }
 
 // ── Farm types (shared by Farm Approval BICAP-3 & Farm Management BICAP-4) ──

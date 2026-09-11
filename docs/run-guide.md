@@ -70,7 +70,8 @@ If Maven (`mvn`) is not registered in your global system `PATH`, you can use the
 Other backend commands (run from `backend/`):
 
 ```bash
-mvn test                        # 251 tests
+mvn test                        # 326 tests
+node ../dev/tests/cross-role-matrix.mjs   # 122 probe HTTP đa vai trò (cần app đang chạy)
 mvn clean package -DskipTests   # → backend/target/*.jar
 ```
 
@@ -153,7 +154,7 @@ Other web commands (run from `web/`):
 ```bash
 npm ci              # clean install from package-lock.json (used by CI)
 npm run lint        # oxlint
-npm test            # vitest run — 28 tests
+npm test            # vitest run — 52 tests
 npm run build       # tsc -b && vite build → web/dist
 npm run preview     # preview the production build on port 5174
 ```

@@ -65,6 +65,9 @@ public class SeasonExportService {
                 throw new IllegalStateException("Blockchain returned an invalid transaction hash");
             value.setTransactionHash(transactionHash);
             value.setTraceHash(value.getTransactionHash());
+            // F1: record honestly whether this receipt was really broadcast (LIVE) or is a
+            // simulated development receipt (MOCK) so the QR/trace UI cannot over-claim.
+            value.setChainMode(blockchain.isLiveAnchor() ? "LIVE" : "MOCK");
         } catch (RuntimeException ex) {
             value.setStatus(ExportStatus.BLOCKCHAIN_FAILED);
             return SeasonExportResponse.from(exports.save(value));

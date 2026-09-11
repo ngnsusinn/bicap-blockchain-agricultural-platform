@@ -1,28 +1,45 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { UserSession, SmartContract, BlockchainTransaction } from '../types';
-import { getToken } from '../../shared/session';
+import { API_ORIGIN, authHeaders } from '../utils/api';
 
 interface SmartContractPageProps {
   currentSession: UserSession;
   onToast: (text: string, type?: 'info' | 'success' | 'error' | 'warning') => void;
 }
 
-const CONTRACT_API_URL = import.meta.env.VITE_API_BASE_URL
-  ? import.meta.env.VITE_API_BASE_URL.replace(/\/admins$/, '/admin/contracts')
-  : 'http://localhost:8080/api/admin/contracts';
+type BlockchainStatus = { mode: 'live' | 'mock' | string; live: boolean; message: string };
 
-const BLOCKCHAIN_API_URL = import.meta.env.VITE_API_BASE_URL
-  ? import.meta.env.VITE_API_BASE_URL.replace(/\/admins$/, '/blockchain/transactions')
-  : 'http://localhost:8080/api/blockchain/transactions';
+const CONTRACT_API_URL = `${API_ORIGIN}/api/admin/contracts`;
+const BLOCKCHAIN_API_URL = `${API_ORIGIN}/api/blockchain/transactions`;
+
+const CONTRACT_STATUSES = ['PENDING', 'DEPLOYED', 'ACTIVE', 'INACTIVE', 'FAILED'] as const;
+const ENVIRONMENTS = ['TESTNET', 'MAINNET'] as const;
+
+/** Real status → existing badge classes (F6d). */
+const contractStatusClass = (status: string): string => {
+  switch (status) {
+    case 'ACTIVE': return 'badge badge-active';
+    case 'DEPLOYED': return 'badge badge-role';
+    case 'PENDING': return 'badge badge-suspended';
+    case 'FAILED': return 'badge badge-inactive';
+    case 'INACTIVE': return 'badge badge-inactive';
+    default: return 'badge badge-suspended';
+  }
+};
 
 export const SmartContractPage: React.FC<SmartContractPageProps> = ({ currentSession, onToast }) => {
   const [activeTab, setActiveTab] = useState<'contracts' | 'transactions'>('contracts');
   const [contracts, setContracts] = useState<SmartContract[]>([]);
   const [transactions, setTransactions] = useState<BlockchainTransaction[]>([]);
+  const [chainStatus, setChainStatus] = useState<BlockchainStatus | null>(null);
+  const [statusError, setStatusError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showDeployModal, setShowDeployModal] = useState(false);
+  const [editing, setEditing] = useState<SmartContract | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [statusBusyId, setStatusBusyId] = useState<number | null>(null);
 
-  // Form State
+  // Deploy form state
   const [contractName, setContractName] = useState('TraceabilityContract');
   const [bytecode, setBytecode] = useState('');
   const [abi, setAbi] = useState('');
@@ -30,18 +47,33 @@ export const SmartContractPage: React.FC<SmartContractPageProps> = ({ currentSes
   const [version, setVersion] = useState('1.0.0');
   const [deploying, setDeploying] = useState(false);
 
+  // Edit form state (F6c)
+  const [editForm, setEditForm] = useState({
+    name: '', environment: 'TESTNET', version: '', status: 'PENDING', address: '',
+  });
+
+  /** F6a — real runtime blockchain mode; never guess. */
+  const fetchChainStatus = useCallback(async () => {
+    setStatusError('');
+    try {
+      const res = await fetch(`${CONTRACT_API_URL}/blockchain-status`, {
+        headers: authHeaders(currentSession.email),
+      });
+      if (!res.ok) throw new Error('Không tải được trạng thái blockchain.');
+      setChainStatus(await res.json());
+    } catch (err: any) {
+      setChainStatus(null);
+      setStatusError(err.message || 'Không tải được trạng thái blockchain.');
+    }
+  }, [currentSession.email]);
+
   // Fetch Deployed Contracts
   const fetchContracts = useCallback(async () => {
     setLoading(true);
     try {
-      const token = getToken();
-      const headers: Record<string, string> = { 'X-Actor-Email': currentSession.email };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch(CONTRACT_API_URL, { headers });
+      const res = await fetch(CONTRACT_API_URL, { headers: authHeaders(currentSession.email) });
       if (!res.ok) throw new Error('Không thể tải danh sách smart contracts.');
-      const data = await res.json();
-      setContracts(data);
+      setContracts(await res.json());
     } catch (err: any) {
       onToast(err.message, 'error');
     } finally {
@@ -53,20 +85,17 @@ export const SmartContractPage: React.FC<SmartContractPageProps> = ({ currentSes
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
     try {
-      const token = getToken();
-      const headers: Record<string, string> = { 'X-Actor-Email': currentSession.email };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch(BLOCKCHAIN_API_URL, { headers });
+      const res = await fetch(BLOCKCHAIN_API_URL, { headers: authHeaders(currentSession.email) });
       if (!res.ok) throw new Error('Không thể tải nhật ký blockchain transactions.');
-      const data = await res.json();
-      setTransactions(data);
+      setTransactions(await res.json());
     } catch (err: any) {
       onToast(err.message, 'error');
     } finally {
       setLoading(false);
     }
   }, [currentSession.email, onToast]);
+
+  useEffect(() => { void fetchChainStatus(); }, [fetchChainStatus]);
 
   useEffect(() => {
     if (activeTab === 'contracts') {
@@ -75,6 +104,9 @@ export const SmartContractPage: React.FC<SmartContractPageProps> = ({ currentSes
       fetchTransactions();
     }
   }, [activeTab, fetchContracts, fetchTransactions]);
+
+  /** True only when the backend confirms real VeChainThor broadcast. */
+  const isLive = chainStatus?.live === true;
 
   // Deploy Contract Handler
   const handleDeploy = async (e: React.FormEvent) => {
@@ -86,41 +118,34 @@ export const SmartContractPage: React.FC<SmartContractPageProps> = ({ currentSes
 
     setDeploying(true);
     try {
-      const token = getToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'X-Actor-Email': currentSession.email
-      };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const body = JSON.stringify({
-        name: contractName,
-        bytecode,
-        abi,
-        environment,
-        version
-      });
-
       const res = await fetch(`${CONTRACT_API_URL}/deploy`, {
         method: 'POST',
-        headers,
-        body
+        headers: { ...authHeaders(currentSession.email), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: contractName, bytecode, abi, environment, version }),
       });
 
       if (!res.ok) {
         if (res.status === 403) {
           throw new Error('Chỉ SUPER_ADMIN mới có quyền triển khai Smart Contract.');
         }
-        const errData = await res.json();
+        const errData = await res.json().catch(() => ({}));
         throw new Error(errData.message || 'Lỗi deploy Smart Contract.');
       }
 
-      onToast('Triển khai Smart Contract thành công trên VeChainThor!', 'success');
+      // F6b — honest toast: only claim a real on-chain deploy in live mode.
+      if (isLive) {
+        onToast('Triển khai Smart Contract thành công trên VeChainThor!', 'success');
+      } else {
+        onToast(
+          'Hợp đồng đã được ghi nhận ở chế độ MÔ PHỎNG (mock) — CHƯA broadcast lên VeChainThor.',
+          'warning',
+        );
+      }
       setShowDeployModal(false);
-      // Reset form
       setBytecode('');
       setAbi('');
       fetchContracts();
+      fetchChainStatus();
     } catch (err: any) {
       onToast(err.message, 'error');
     } finally {
@@ -128,20 +153,74 @@ export const SmartContractPage: React.FC<SmartContractPageProps> = ({ currentSes
     }
   };
 
+  const openEdit = (contract: SmartContract) => {
+    setEditing(contract);
+    setEditForm({
+      name: contract.name ?? '',
+      environment: contract.environment ?? 'TESTNET',
+      version: contract.version ?? '',
+      status: contract.status ?? 'PENDING',
+      address: contract.address ?? '',
+    });
+  };
+
+  /** F6c — update contract metadata via PUT /api/admin/contracts/{id}. */
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editing) return;
+    setSavingEdit(true);
+    try {
+      const res = await fetch(`${CONTRACT_API_URL}/${editing.id}`, {
+        method: 'PUT',
+        headers: { ...authHeaders(currentSession.email), 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'Cập nhật contract thất bại.');
+      }
+      onToast('Cập nhật Smart Contract thành công.', 'success');
+      setEditing(null);
+      fetchContracts();
+    } catch (err: any) {
+      onToast(err.message, 'error');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  /** F6c — dedicated status transition via PUT /api/admin/contracts/{id}/status. */
+  const handleStatusChange = async (contract: SmartContract, nextStatus: string) => {
+    setStatusBusyId(contract.id);
+    try {
+      const res = await fetch(`${CONTRACT_API_URL}/${contract.id}/status`, {
+        method: 'PUT',
+        headers: { ...authHeaders(currentSession.email), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'Đổi trạng thái contract thất bại.');
+      }
+      onToast(`Đã chuyển trạng thái contract sang ${nextStatus}.`, 'success');
+      fetchContracts();
+    } catch (err: any) {
+      onToast(err.message, 'error');
+    } finally {
+      setStatusBusyId(null);
+    }
+  };
+
   // Retry Transaction Handler
   const handleRetry = async (txId: number) => {
     try {
-      const token = getToken();
-      const headers: Record<string, string> = { 'X-Actor-Email': currentSession.email };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
       const res = await fetch(`${BLOCKCHAIN_API_URL}/${txId}/retry`, {
         method: 'POST',
-        headers
+        headers: authHeaders(currentSession.email),
       });
 
       if (!res.ok) {
-        const errData = await res.json();
+        const errData = await res.json().catch(() => ({}));
         throw new Error(errData.message || 'Thao tác retry thất bại.');
       }
 
@@ -157,7 +236,6 @@ export const SmartContractPage: React.FC<SmartContractPageProps> = ({ currentSes
     }
   };
 
-  // Copy helper
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     onToast(`Đã sao chép ${label} vào clipboard.`, 'success');
@@ -195,6 +273,28 @@ export const SmartContractPage: React.FC<SmartContractPageProps> = ({ currentSes
           title={currentSession.role !== 'SUPER_ADMIN' ? 'Yêu cầu quyền SUPER_ADMIN' : 'Deploy contract mới'}
         >
           ⛓️ Triển khai Contract mới
+        </button>
+      </div>
+
+      {/* F6a — real blockchain mode banner */}
+      <div style={modeBannerStyle(chainStatus)} role="status">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={modeBadgeStyle(chainStatus)}>
+            {chainStatus ? (isLive ? '🟢 VeChainThor LIVE' : '🟠 Mô phỏng (MOCK)') : '⚪ Chưa xác định'}
+          </span>
+          <span style={{ fontSize: 13, color: '#cbd5e1' }}>
+            {chainStatus?.message
+              || statusError
+              || 'Đang kiểm tra chế độ ghi nhận blockchain…'}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => void fetchChainStatus()}
+          className="btn btn-secondary"
+          style={{ padding: '6px 12px', fontSize: 12 }}
+        >
+          🔄 Kiểm tra lại
         </button>
       </div>
 
@@ -242,12 +342,13 @@ export const SmartContractPage: React.FC<SmartContractPageProps> = ({ currentSes
                   <th>Trạng thái</th>
                   <th>Giao dịch Deploy (TxHash)</th>
                   <th>Thời gian tạo</th>
+                  <th style={{ textAlign: 'center' }}>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {contracts.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
+                    <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
                       Chưa có Smart Contract nào được triển khai.
                     </td>
                   </tr>
@@ -278,17 +379,7 @@ export const SmartContractPage: React.FC<SmartContractPageProps> = ({ currentSes
                       </td>
                       <td>{c.environment}</td>
                       <td>
-                        <span
-                          className={`badge ${
-                            c.status === 'ACTIVE'
-                              ? 'badge-active'
-                              : c.status === 'FAILED'
-                              ? 'badge-inactive'
-                              : 'badge-suspended'
-                          }`}
-                        >
-                          {c.status}
-                        </span>
+                        <span className={contractStatusClass(c.status)}>{c.status}</span>
                       </td>
                       <td style={{ fontFamily: 'monospace' }}>
                         {c.txHash ? (
@@ -315,6 +406,36 @@ export const SmartContractPage: React.FC<SmartContractPageProps> = ({ currentSes
                         )}
                       </td>
                       <td>{formatDate(c.createdAt)}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => openEdit(c)}
+                            className="btn btn-secondary"
+                            style={{ padding: '4px 10px', fontSize: '11px' }}
+                          >
+                            ✏️ Sửa
+                          </button>
+                          {c.status !== 'ACTIVE' ? (
+                            <button
+                              onClick={() => handleStatusChange(c, 'ACTIVE')}
+                              disabled={statusBusyId === c.id}
+                              className="btn btn-secondary"
+                              style={{ padding: '4px 10px', fontSize: '11px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#6ee7b7' }}
+                            >
+                              ✅ Kích hoạt
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleStatusChange(c, 'INACTIVE')}
+                              disabled={statusBusyId === c.id}
+                              className="btn btn-secondary"
+                              style={{ padding: '4px 10px', fontSize: '11px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}
+                            >
+                              ⏸️ Vô hiệu hóa
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -423,6 +544,12 @@ export const SmartContractPage: React.FC<SmartContractPageProps> = ({ currentSes
               <button onClick={() => setShowDeployModal(false)} className="modal-close-btn">✕</button>
             </div>
 
+            <p style={{ fontSize: 12, color: isLive ? '#6ee7b7' : '#fcd34d', marginTop: 8 }}>
+              {isLive
+                ? 'Chế độ LIVE: giao dịch sẽ được broadcast thật lên VeChainThor.'
+                : 'Chế độ MOCK: contract chỉ được mô phỏng, không có giao dịch on-chain thật.'}
+            </p>
+
             <form onSubmit={handleDeploy} style={{ marginTop: '16px' }}>
               <div className="form-group">
                 <label className="form-label">Tên Smart Contract</label>
@@ -455,8 +582,9 @@ export const SmartContractPage: React.FC<SmartContractPageProps> = ({ currentSes
                     value={environment}
                     onChange={(e) => setEnvironment(e.target.value)}
                   >
-                    <option value="TESTNET">TESTNET</option>
-                    <option value="MAINNET">MAINNET</option>
+                    {ENVIRONMENTS.map((env) => (
+                      <option key={env} value={env}>{env}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -488,20 +616,95 @@ export const SmartContractPage: React.FC<SmartContractPageProps> = ({ currentSes
               </div>
 
               <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowDeployModal(false)}
-                  className="btn btn-secondary"
-                  disabled={deploying}
-                >
+                <button type="button" onClick={() => setShowDeployModal(false)} className="btn btn-secondary" disabled={deploying}>
                   Hủy bỏ
                 </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={deploying}
-                >
-                  {deploying ? '⏳ Đang deploy...' : '⛓️ Triển khai lên VeChainThor'}
+                <button type="submit" className="btn btn-primary" disabled={deploying}>
+                  {deploying ? '⏳ Đang deploy...' : isLive ? '⛓️ Triển khai lên VeChainThor' : '🧪 Triển khai (mô phỏng)'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal (F6c) */}
+      {editing && (
+        <div className="modal-backdrop">
+          <div className="modal-content glass-panel" style={{ maxWidth: '560px', width: '90%' }}>
+            <div className="modal-header">
+              <h2 className="modal-title">Cập Nhật Contract #{editing.id}</h2>
+              <button onClick={() => setEditing(null)} className="modal-close-btn">✕</button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} style={{ marginTop: '16px' }}>
+              <div className="form-group">
+                <label className="form-label">Tên Contract</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="form-group">
+                  <label className="form-label">Phiên bản</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editForm.version}
+                    onChange={(e) => setEditForm({ ...editForm, version: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Môi trường</label>
+                  <select
+                    className="form-input"
+                    value={editForm.environment}
+                    onChange={(e) => setEditForm({ ...editForm, environment: e.target.value })}
+                  >
+                    {ENVIRONMENTS.map((env) => (
+                      <option key={env} value={env}>{env}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="form-group">
+                  <label className="form-label">Trạng thái</label>
+                  <select
+                    className="form-input"
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                  >
+                    {CONTRACT_STATUSES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Địa chỉ Contract</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editForm.address}
+                    onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                    placeholder="0x…"
+                    style={{ fontFamily: 'monospace', fontSize: 12 }}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+                <button type="button" onClick={() => setEditing(null)} className="btn btn-secondary" disabled={savingEdit}>
+                  Hủy bỏ
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={savingEdit}>
+                  {savingEdit ? 'Đang lưu...' : '💾 Lưu thay đổi'}
                 </button>
               </div>
             </form>
@@ -511,6 +714,30 @@ export const SmartContractPage: React.FC<SmartContractPageProps> = ({ currentSes
     </div>
   );
 };
+
+const modeBannerStyle = (status: BlockchainStatus | null): React.CSSProperties => ({
+  marginTop: 20,
+  padding: '14px 18px',
+  borderRadius: 12,
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: 12,
+  flexWrap: 'wrap',
+  border: `1px solid ${status?.live === true ? 'rgba(16,185,129,0.35)' : 'rgba(245,158,11,0.35)'}`,
+  background: status?.live === true ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.08)',
+});
+
+const modeBadgeStyle = (status: BlockchainStatus | null): React.CSSProperties => ({
+  fontSize: 12,
+  fontWeight: 800,
+  padding: '5px 12px',
+  borderRadius: 999,
+  whiteSpace: 'nowrap',
+  color: status?.live === true ? '#6ee7b7' : status ? '#fcd34d' : '#cbd5e1',
+  background: status?.live === true ? 'rgba(16,185,129,0.18)' : status ? 'rgba(245,158,11,0.18)' : 'rgba(148,163,184,0.15)',
+  border: `1px solid ${status?.live === true ? 'rgba(16,185,129,0.4)' : status ? 'rgba(245,158,11,0.4)' : 'rgba(148,163,184,0.3)'}`,
+});
 
 const tabsContainerStyle: React.CSSProperties = {
   display: 'flex',

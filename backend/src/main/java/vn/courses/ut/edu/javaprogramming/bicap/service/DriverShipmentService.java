@@ -17,9 +17,11 @@ import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.FarmingSeason;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Order;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Product;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.SeasonExport;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Shipment;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.ShipmentTracking;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Vehicle;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ForbiddenException;
@@ -29,6 +31,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.OrderRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ProductRepository;
+import vn.courses.ut.edu.javaprogramming.bicap.repository.SeasonExportRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ShipmentRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ShipmentTrackingRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
@@ -63,6 +66,7 @@ public class DriverShipmentService {
     private final ProductRepository         productRepository;
     private final FarmingSeasonRepository   seasonRepository;
     private final FarmRepository            farmRepository;
+    private final SeasonExportRepository    seasonExportRepository;
     private final NotificationService       notificationService;
 
     public DriverShipmentService(ShipmentRepository shipmentRepository,
@@ -74,6 +78,7 @@ public class DriverShipmentService {
                                  ProductRepository productRepository,
                                  FarmingSeasonRepository seasonRepository,
                                  FarmRepository farmRepository,
+                                 SeasonExportRepository seasonExportRepository,
                                  NotificationService notificationService) {
         this.shipmentRepository  = shipmentRepository;
         this.trackingRepository  = trackingRepository;
@@ -84,6 +89,7 @@ public class DriverShipmentService {
         this.productRepository   = productRepository;
         this.seasonRepository    = seasonRepository;
         this.farmRepository      = farmRepository;
+        this.seasonExportRepository = seasonExportRepository;
         this.notificationService = notificationService;
     }
 
@@ -146,6 +152,9 @@ public class DriverShipmentService {
     /**
      * Driver confirms pickup at the farm (PICKING_UP → IN_TRANSIT).
      * Records a tracking checkpoint and sets pickupTime.
+     *
+     * <p>F11: the driver must scan the product's traceability QR — the scanned hash is
+     * matched against the export attached to the ordered product before the shipment moves.
      */
     public ShipmentDetailResponse confirmPickup(Long shipmentId, PickupConfirmRequest request) {
         Driver driver = requireDriverProfile();
@@ -156,6 +165,8 @@ public class DriverShipmentService {
                     "Shipment must be in PICKING_UP state to confirm pickup (current: " + shipment.getStatus() + ")");
         }
 
+        verifyPickupTraceHash(shipment, request.getTraceHash());
+
         // Persist tracking checkpoint
         ShipmentTracking tracking = new ShipmentTracking();
         tracking.setShipmentId(shipmentId);
@@ -163,7 +174,9 @@ public class DriverShipmentService {
         tracking.setGpsLat(request.getGpsLat());
         tracking.setGpsLng(request.getGpsLng());
         tracking.setImages(ImagesJson.toJson(request.getImages()));
-        tracking.setNotes(request.getNotes());
+        tracking.setNotes(request.getNotes() == null ? null
+                : request.getNotes() + (request.getTraceHash() != null
+                        ? " [QR:" + request.getTraceHash().trim() + "]" : ""));
         trackingRepository.save(tracking);
 
         shipment.setStatus(Shipment.STATUS_IN_TRANSIT);
@@ -292,13 +305,23 @@ public class DriverShipmentService {
         tracking.setNotes("[" + request.getReportType() + "] " + request.getDescription());
         TrackingResponse saved = TrackingResponse.from(trackingRepository.save(tracking));
 
-        // Notify Shipping Manager — look up via Order→no direct SM link, use a broadcast type
-        // notification so any SHIPPING_MGR user sees it in their in-app inbox
+        // F10 fix: the driver report must reach the Shipping Manager. The previous code
+        // only notified the retailer (despite the comment claiming otherwise), so an
+        // incident/delay report never showed up in the Shipping Manager's inbox.
         User driverUser = driver.getUserId() != null
                 ? userRepository.findById(driver.getUserId()).orElse(null) : null;
         String driverName = driverUser != null ? driverUser.getFullName() : "Tài xế #" + driver.getId();
 
-        orderRepository.findById(shipment.getOrderId()).ifPresent(order -> {
+        final Long orderId = shipment.getOrderId();
+        userRepository.findDistinctByRoles_NameIn(Set.of("SHIPPING_MGR")).stream()
+                .filter(manager -> manager.getStatus() == UserStatus.ACTIVE)
+                .forEach(manager -> notificationService.sendNotification(manager.getId(), "WARNING",
+                        "Báo cáo từ tài xế: " + request.getReportType(),
+                        "Tài xế " + driverName + " báo cáo cho lô #" + shipment.getId()
+                                + " (đơn #" + orderId + "). " + request.getDescription(),
+                        false));
+
+        orderRepository.findById(orderId).ifPresent(order -> {
             // Notify the retailer as well so they are aware of delays/incidents
             if (order.getRetailerId() != null) {
                 notificationService.sendNotification(order.getRetailerId(), "WARNING",
@@ -313,6 +336,33 @@ public class DriverShipmentService {
     }
 
     // ── HELPERS ───────────────────────────────────────────────────────────────
+
+    /**
+     * F11: verifies the QR scanned at the farm against the trace hash of the export that
+     * backs the ordered product. A product whose export has no trace hash yet cannot be
+     * verified, so a scan is rejected as well rather than silently accepted.
+     */
+    private void verifyPickupTraceHash(Shipment shipment, String scannedTraceHash) {
+        Order order = shipment.getOrderId() != null
+                ? orderRepository.findById(shipment.getOrderId()).orElse(null) : null;
+        Product product = (order != null && order.getProductId() != null)
+                ? productRepository.findById(order.getProductId()).orElse(null) : null;
+        String expected = (product != null && product.getExportId() != null)
+                ? seasonExportRepository.findById(product.getExportId())
+                        .map(SeasonExport::getTraceHash).orElse(null)
+                : null;
+
+        if (expected == null || expected.isBlank()) {
+            throw new BadRequestException(
+                    "Lô hàng này chưa có mã truy xuất blockchain để đối chiếu — không thể xác nhận lấy hàng");
+        }
+        if (scannedTraceHash == null || scannedTraceHash.isBlank()) {
+            throw new BadRequestException("Vui lòng quét mã QR truy xuất của lô hàng trước khi xác nhận lấy hàng");
+        }
+        if (!expected.equalsIgnoreCase(scannedTraceHash.trim())) {
+            throw new BadRequestException("Mã QR không khớp với lô hàng được phân công");
+        }
+    }
 
     /** BR5: Driver may only access their own shipments. */
     private Shipment findOwnedShipment(Long shipmentId, Long driverId) {

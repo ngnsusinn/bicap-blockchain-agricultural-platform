@@ -88,14 +88,36 @@ public class ShipmentService {
     // ── READ ──────────────────────────────────────────────────────────────────
 
     /**
-     * Orders in DEPOSIT_PAID state awaiting shipment creation (BICAP-54).
-     * Returns full OrderResponse so the frontend can display product/retailer/farm info.
+     * F8: orders a Shipping Manager can actually ship right now — deposit paid and no
+     * shipment created yet.
+     *
+     * <p>This is what the "successful orders between Retailer and Farm" screen needs. The
+     * previous implementation returned every DEPOSIT_PAID order under the name
+     * {@code getCompletedOrders}, which was both mislabelled and included orders that
+     * already had a shipment (making the create-shipment form fail with a conflict).
+     */
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getReadyToShipOrders() {
+        requireShippingMgr();
+        Set<Long> ordersWithShipment = shipmentRepository.findAll().stream()
+                .map(Shipment::getOrderId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        return orderRepository.findAll().stream()
+                .filter(o -> Order.STATUS_DEPOSIT_PAID.equals(o.getStatus()))
+                .filter(o -> !ordersWithShipment.contains(o.getId()))
+                .map(this::buildOrderResponse)
+                .toList();
+    }
+
+    /**
+     * F8: genuinely completed orders (retailer confirmed receipt) for the Shipping Manager.
      */
     @Transactional(readOnly = true)
     public List<OrderResponse> getCompletedOrders() {
         requireShippingMgr();
         return orderRepository.findAll().stream()
-                .filter(o -> Order.STATUS_DEPOSIT_PAID.equals(o.getStatus()))
+                .filter(o -> Order.STATUS_COMPLETED.equals(o.getStatus()))
                 .map(this::buildOrderResponse)
                 .toList();
     }

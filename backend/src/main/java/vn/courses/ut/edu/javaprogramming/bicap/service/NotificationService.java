@@ -47,5 +47,11 @@ public interface NotificationService {
      */
     void sendNotification(Long userId, String type, String title, String content, boolean sendEmail);
 
+    /**
+     * Publishes a platform-wide announcement (no individual recipient). These are the
+     * only notifications visible to unauthenticated guests on {@code GET /api/notifications}.
+     */
+    NotificationResponse publishSystemAnnouncement(String type, String title, String content);
+
     int broadcast(BroadcastNotificationRequest request);
 }

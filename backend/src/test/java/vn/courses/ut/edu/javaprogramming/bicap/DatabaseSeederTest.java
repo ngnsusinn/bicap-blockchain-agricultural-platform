@@ -45,8 +45,14 @@ class DatabaseSeederTest {
         assertEquals(FarmStatus.APPROVED, songHong.get().getStatus());
         assertEquals(FarmStatus.REJECTED, tienGiang.get().getStatus());
 
-        // One farm per name — no duplicates from repeated seeder runs
-        assertEquals(4, farmRepository.count());
+        // One farm per name — no duplicates from repeated seeder runs. The shared in-memory
+        // database also holds farms created by other integration tests, so assert the dedup
+        // invariant instead of a global row count.
+        java.util.Set<String> names = new java.util.HashSet<>();
+        for (Farm farm : farmRepository.findAll()) {
+            assertTrue(names.add(farm.getName()),
+                    "duplicate farm name from repeated seeding: " + farm.getName());
+        }
     }
 
     @Test
@@ -59,10 +65,13 @@ class DatabaseSeederTest {
 
     @Test
     void eachSeedFarm_shouldHaveAtLeastOneCertification() {
-        List<Farm> farms = farmRepository.findAll();
-        for (Farm farm : farms) {
+        // Only the four demo farms are seeded with a certification document; farms created by
+        // cross-role integration tests are not part of this invariant.
+        for (String name : List.of("Trang Trại Xanh Đồng Nai", "HTX Nông Sản Sạch Lâm Đồng",
+                "Trang Trại Hữu Cơ Sông Hồng", "Vườn Sạch Tiền Giang")) {
+            Farm farm = farmRepository.findByName(name).orElseThrow();
             List<FarmCertification> certs = certificationRepository.findByFarmId(farm.getId());
-            assertFalse(certs.isEmpty(), "Farm " + farm.getName() + " should have a certification document");
+            assertFalse(certs.isEmpty(), "Farm " + name + " should have a certification document");
         }
     }
 }

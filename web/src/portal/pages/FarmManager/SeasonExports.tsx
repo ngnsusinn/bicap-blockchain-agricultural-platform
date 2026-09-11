@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { API_BASE_URL, getAuthHeaders } from '../../utils/auth';
 
 type ExportItem = { id:number; seasonId:number; quantity:number; unit:string; exportDate:string;
-  warehouse:string; status:string; transactionHash?:string; traceHash:string; qrImage?:string };
+  warehouse:string; status:string; transactionHash?:string; traceHash:string; qrImage?:string;
+  chainMode?: 'LIVE' | 'MOCK' | string | null };
 type Season = { id:number; name?:string; harvestedQuantity?:number; harvestUnit?:string };
 
 export default function SeasonExports({ farmId }: { farmId?: number }) {
@@ -74,6 +75,13 @@ export default function SeasonExports({ farmId }: { farmId?: number }) {
         {items.map(item=><article key={item.id} style={cardStyle}>
           <div style={{display:'flex',justifyContent:'space-between',gap:12}}><strong>Lô xuất #{item.id}</strong><span style={badgeStyle(item.status)}>{item.status}</span></div>
           <p>Mùa vụ #{item.seasonId}, {item.quantity} {item.unit}</p><p>{item.exportDate}, {item.warehouse}</p>
+          <div style={chainModeStyle(item.chainMode)}>
+            {item.chainMode === 'LIVE'
+              ? '⛓️ Đã neo lên VeChainThor'
+              : item.chainMode === 'MOCK'
+                ? '🧪 Bản ghi mô phỏng (chưa broadcast on-chain)'
+                : '❔ Chưa xác định chế độ ghi chuỗi'}
+          </div>
           {item.transactionHash && <p style={hashStyle}>TX: {item.transactionHash}</p>}
           {item.qrImage && <div style={{display:'flex',alignItems:'center',gap:16}}><img src={item.qrImage} alt={`QR lô ${item.id}`} width="112" height="112"/>
             <div><a href={`/trace/${item.traceHash}`} target="_blank" rel="noreferrer" style={{color:'#34d399'}}>Mở trang truy xuất</a><br/>
@@ -93,3 +101,10 @@ const alertStyle:React.CSSProperties={padding:12,margin:'12px 0',border:'1px sol
 const cardStyle:React.CSSProperties={padding:16,marginTop:12,border:'1px solid #334155',borderRadius:10,color:'#cbd5e1'};
 const hashStyle:React.CSSProperties={fontFamily:'monospace',fontSize:11,overflowWrap:'anywhere',color:'#94a3b8'};
 const badgeStyle=(status:string):React.CSSProperties=>({fontSize:11,padding:'4px 8px',borderRadius:999,color:status==='READY'?'#6ee7b7':'#fcd34d',background:status==='READY'?'rgba(16,185,129,.15)':'rgba(245,158,11,.15)'});
+// chainMode do backend trả về: LIVE = broadcast thật lên VeChainThor, MOCK = bản ghi mô phỏng.
+const chainModeStyle=(mode?: string | null):React.CSSProperties=>({
+  display:'inline-block',marginTop:8,fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:999,
+  color: mode==='LIVE' ? '#6ee7b7' : mode==='MOCK' ? '#fcd34d' : '#94a3b8',
+  background: mode==='LIVE' ? 'rgba(16,185,129,.15)' : mode==='MOCK' ? 'rgba(245,158,11,.15)' : 'rgba(148,163,184,.15)',
+  border: `1px solid ${mode==='LIVE' ? 'rgba(16,185,129,.35)' : mode==='MOCK' ? 'rgba(245,158,11,.35)' : 'rgba(148,163,184,.3)'}`,
+});

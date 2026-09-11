@@ -3,6 +3,7 @@ package vn.courses.ut.edu.javaprogramming.bicap.dto;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.Map;
 
 public class AdminResponse {
     private Long id;
@@ -12,10 +13,21 @@ public class AdminResponse {
     private UserStatus status;
     private String avatarUrl;
     private Set<RoleResponse> roles;
+    /**
+     * F2: effective permission set = permissions granted by the roles PLUS permissions
+     * granted directly to the account. Previously direct grants were discarded on write
+     * and never returned, so the admin permission picker was a no-op.
+     */
+    private Set<PermissionResponse> permissions = new HashSet<>();
 
     public AdminResponse() {}
 
     public AdminResponse(Long id, String email, String fullName, String phone, UserStatus status, String avatarUrl, Set<RoleResponse> roles) {
+        this(id, email, fullName, phone, status, avatarUrl, roles, new HashSet<>());
+    }
+
+    public AdminResponse(Long id, String email, String fullName, String phone, UserStatus status,
+                         String avatarUrl, Set<RoleResponse> roles, Set<PermissionResponse> permissions) {
         this.id = id;
         this.email = email;
         this.fullName = fullName;
@@ -23,6 +35,7 @@ public class AdminResponse {
         this.status = status;
         this.avatarUrl = avatarUrl;
         this.roles = roles;
+        this.permissions = permissions == null ? new HashSet<>() : permissions;
     }
 
     public Long getId() { return id; }
@@ -45,6 +58,11 @@ public class AdminResponse {
 
     public Set<RoleResponse> getRoles() { return roles; }
     public void setRoles(Set<RoleResponse> roles) { this.roles = roles; }
+
+    public Set<PermissionResponse> getPermissions() { return permissions; }
+    public void setPermissions(Set<PermissionResponse> permissions) {
+        this.permissions = permissions == null ? new HashSet<>() : permissions;
+    }
 
 
     public static class RoleResponse {
@@ -228,6 +246,28 @@ public class AdminResponse {
             }
         }
 
+        // F2: effective permissions = union(role permissions, directly granted permissions),
+        // de-duplicated by code (two PermissionResponse instances for the same code would
+        // otherwise both survive because the DTO has no value equality).
+        Map<String, PermissionResponse> effectiveByCode = new java.util.LinkedHashMap<>();
+        for (RoleResponse role : roleResponses) {
+            if (role.getPermissions() != null) {
+                for (PermissionResponse permission : role.getPermissions()) {
+                    effectiveByCode.putIfAbsent(permission.getCode(), permission);
+                }
+            }
+        }
+        if (user.getPermissions() != null) {
+            for (vn.courses.ut.edu.javaprogramming.bicap.entity.Permission perm : user.getPermissions()) {
+                effectiveByCode.putIfAbsent(perm.getCode(), PermissionResponse.builder()
+                        .id(perm.getId())
+                        .code(perm.getCode())
+                        .description(perm.getDescription())
+                        .build());
+            }
+        }
+        Set<PermissionResponse> effectivePermissions = new HashSet<>(effectiveByCode.values());
+
         return AdminResponse.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -236,6 +276,7 @@ public class AdminResponse {
                 .status(user.getStatus())
                 .avatarUrl(user.getAvatarUrl())
                 .roles(roleResponses)
+                .permissions(effectivePermissions)
                 .build();
     }
 
@@ -251,6 +292,7 @@ public class AdminResponse {
         private UserStatus status;
         private String avatarUrl;
         private Set<RoleResponse> roles;
+        private Set<PermissionResponse> permissions = new HashSet<>();
 
         AdminResponseBuilder() {}
 
@@ -289,8 +331,13 @@ public class AdminResponse {
             return this;
         }
 
+        public AdminResponseBuilder permissions(Set<PermissionResponse> permissions) {
+            this.permissions = permissions;
+            return this;
+        }
+
         public AdminResponse build() {
-            return new AdminResponse(id, email, fullName, phone, status, avatarUrl, roles);
+            return new AdminResponse(id, email, fullName, phone, status, avatarUrl, roles, permissions);
         }
     }
 }

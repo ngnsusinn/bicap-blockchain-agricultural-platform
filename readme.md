@@ -229,14 +229,26 @@ Sao chép `.env.example` thành `.env` và điền giá trị. Các biến quan 
 | `SPRING_DATASOURCE_URL` | H2 in-memory | JDBC URL (MySQL ở production) |
 | `SPRING_DATASOURCE_USERNAME` / `_PASSWORD` | `sa` / rỗng | Thông tin DB |
 | `DDL_AUTO` | `update` (dev) | Production nên dùng `validate` + migration |
-| `JWT_SECRET` | giá trị dev | **Bắt buộc đổi ở production** — `openssl rand -base64 48` |
+| `JWT_SECRET` | rỗng → random mỗi lần chạy (dev) | **Bắt buộc ở production** — `openssl rand -base64 48`. Giá trị template/đã từng public trong repo sẽ bị **từ chối khởi động** (xem mục Bảo mật) |
 | `FRONTEND_URL` | `http://localhost:5174` | Dùng để sinh link xác thực email & QR trace |
 | `UPLOAD_DIR` | `uploads` | Thư mục lưu file tải lên |
-| `SEPAY_API_KEY` | giá trị test | Khoá cổng thanh toán Sepay |
+| `SEPAY_API_KEY` | rỗng → random mỗi lần chạy (dev) | Khoá cổng thanh toán Sepay; giá trị template bị từ chối khởi động |
 | `SPRING_REDIS_*` | localhost | Redis cache (tự fallback in-memory nếu không kết nối được) |
 | `BLOCKCHAIN_MODE` | `mock` | `mock` (dev/CI) hoặc `live` (ký & broadcast thật) |
+| `BLOCKCHAIN_EXPORT_MODE` | `vechain` | `vechain` (neo lô xuất kho qua `BlockchainService`) hoặc `local` (stub SHA-256, chỉ dùng khi dev) |
 | `BLOCKCHAIN_PRIVATE_KEY` | rỗng | Khoá riêng ví ký giao dịch khi `live` |
 | `VITE_API_BASE_URL` | `http://localhost:8080` | Build-time của `web/` — origin backend |
+
+### 🔐 Bảo mật triển khai (quan trọng)
+
+- Backend **không còn ship secret mặc định**. Khi `JWT_SECRET`/`SEPAY_API_KEY` để trống, `SecureSecretInitializer`
+  sinh secret ngẫu nhiên cho **riêng tiến trình đang chạy** (token sẽ hết hiệu lực sau khi restart).
+- Ở profile `prod`/`production`, để trống các biến này là **lỗi khởi động**.
+- Bất kỳ giá trị nào từng được công bố trong repo (`test-jwt-secret-key-*`, `test-sepay-api-key`) hoặc
+  còn nguyên dạng template (`replace-with-…`, `your_…`) đều bị **từ chối khởi động**.
+- `/api/admin/**` (bao gồm danh sách sản phẩm) yêu cầu xác thực — khách vãng lai dùng
+  `/api/public/products` và `/api/public/education`.
+- Guest chỉ nhận được **thông báo hệ thống** (`is_system = true`) qua `GET /api/notifications`.
 
 ---
 
@@ -261,9 +273,32 @@ cd backend && mvn test
 ## ⛓️ Tích hợp Blockchain (VeChainThor)
 
 - `BLOCKCHAIN_MODE=mock` (mặc định) — hash được mô phỏng, không cần mạng; dùng cho dev và CI.
-- `BLOCKCHAIN_MODE=live` — giao dịch được RLP-encode, ký bằng secp256k1 và broadcast lên node; job nền xác nhận và tự retry (tối đa 3 lần).
+- `BLOCKCHAIN_MODE=live` — giao dịch legacy type-0 được RLP-encode, ký secp256k1 (RFC 6979,
+  low-s) và broadcast lên node; `BlockchainMaintenanceJob` xác nhận receipt mỗi 15s và tự
+  retry tối đa 3 lần. Export trả `chainMode = "LIVE"` (mock trả `"MOCK"`).
+- Lô xuất kho + mã QR được neo qua `VeChainExportBlockchainGateway` (mặc định);
+  `BLOCKCHAIN_EXPORT_MODE=local` chỉ là stub SHA-256 dùng khi dev.
 - Hợp đồng mẫu: `dev/blockchain/contracts/Traceability.sol`.
 - Trang truy xuất công khai: `/trace/{hash}`.
+
+### Bật broadcast thật (testnet)
+
+```bash
+# 1. Sinh ví signer (ghi BLOCKCHAIN_PRIVATE_KEY vào ./.env, chỉ in ra địa chỉ)
+BC=$(find ~/.m2/repository/org/bouncycastle -name 'bcprov-jdk18on-*.jar' | head -1)
+java -cp "backend/target/classes:$BC" dev/tools/WalletGen.java
+
+# 2. Nạp VTHO (gas) cho địa chỉ vừa in tại https://faucet.vecha.in
+#    Kiểm tra:  curl -s https://testnet.vechain.org/accounts/<diaChi>
+
+# 3. Bật live trong .env  (BLOCKCHAIN_MODE=live, BLOCKCHAIN_NODE_URL=https://testnet.vechain.org)
+#    rồi chạy — LƯU Ý: app KHÔNG tự đọc .env, phải export:
+cd backend && set -a && source ../.env && set +a && mvn spring-boot:run
+```
+
+Tra giao dịch: `https://explore-testnet.vechain.org/transactions/<txHash>`.
+Trạng thái on-chain trong app: `GET /api/admin/contracts/blockchain-status` và
+`GET /api/blockchain/transactions` (admin, kèm header `X-Actor-Email`).
 
 ---
 

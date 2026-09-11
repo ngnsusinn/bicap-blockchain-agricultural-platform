@@ -11,9 +11,14 @@ import java.util.List;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
     List<Notification> findByUserIdOrderByCreatedAtDesc(Long userId);
-    
-    // [BICAP-69] Lấy tất cả thông báo hệ thống sắp xếp theo thời gian mới nhất
-    List<Notification> findAllByOrderByCreatedAtDesc();
+
+    /**
+     * C-3 fix: the guest-visible feed. Only platform-wide announcements flagged as
+     * system notifications are returned — never other users' private notifications
+     * (the previous implementation returned {@code findAll()} for unauthenticated
+     * callers, leaking farm/retailer conversations).
+     */
+    List<Notification> findBySystemTrueOrderByCreatedAtDesc();
 
     long countByUserIdAndIsReadFalse(Long userId);
 
