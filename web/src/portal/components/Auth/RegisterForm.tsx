@@ -4,7 +4,7 @@ import { API_BASE_URL } from '../../utils/auth';
 
 interface RegisterFormProps {
   role: 'FARM_MANAGER' | 'RETAILER';
-  onSuccess: (data: { token?: string; user?: any; pendingVerification?: boolean }) => void;
+  onSuccess: (data: { token?: string; user?: any }) => void;
   onSwitchToLogin: () => void;
 }
 
@@ -87,10 +87,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ role, onSuccess, onS
 
       if (response.ok) {
         const data = await response.json();
-        if (data.verificationRequired) {
-          setSuccessMessage('Đăng ký thành công! Vui lòng kiểm tra email và mở liên kết xác nhận trước khi đăng nhập.');
-          return;
-        }
+        // Không còn xác thực email: tài khoản được kích hoạt ngay khi đăng ký.
         setSuccessMessage('Đăng ký tài khoản thành công! Đang chuyển đến cổng thông tin của bạn.');
         setTimeout(() => {
           onSuccess({

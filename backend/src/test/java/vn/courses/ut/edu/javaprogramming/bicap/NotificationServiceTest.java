@@ -16,22 +16,19 @@ import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundExcepti
 import vn.courses.ut.edu.javaprogramming.bicap.repository.NotificationRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.service.NotificationService;
-import vn.courses.ut.edu.javaprogramming.bicap.service.VerificationEmailService;
 import vn.courses.ut.edu.javaprogramming.bicap.service.impl.NotificationServiceImpl;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
  * BICAP-77 / SRS-API-006: read/mark-as-read ownership checks, mark-all, and
- * persist + SSE/email fan-out for sendNotification.
+ * persist + SSE fan-out for sendNotification.
  */
 @ExtendWith(MockitoExtension.class)
 class NotificationServiceTest {
@@ -40,22 +37,14 @@ class NotificationServiceTest {
     private NotificationRepository notificationRepository;
     @Mock
     private UserRepository userRepository;
-    @Mock
-    private VerificationEmailService emailService;
 
     private NotificationService notificationService;
 
-    private User farmOwner;
     private Notification notification;
 
     @BeforeEach
     void setUp() {
-        notificationService = new NotificationServiceImpl(notificationRepository, userRepository, emailService);
-
-        farmOwner = User.builder()
-                .id(10L).email("farmer@bicap.com").password("x")
-                .fullName("Chủ Trang Trại").status(UserStatus.ACTIVE).roles(Set.of())
-                .build();
+        notificationService = new NotificationServiceImpl(notificationRepository, userRepository);
 
         notification = Notification.builder()
                 .id(1L).userId(10L).type("IOT_ALERT").title("Cảnh báo IoT")
@@ -132,7 +121,7 @@ class NotificationServiceTest {
             return n;
         });
 
-        notificationService.sendNotification(10L, "ORDER_CREATED", "Đơn hàng mới", "Có đơn mới", false);
+        notificationService.sendNotification(10L, "ORDER_CREATED", "Đơn hàng mới", "Có đơn mới");
 
         ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
         verify(notificationRepository).save(captor.capture());
@@ -142,41 +131,7 @@ class NotificationServiceTest {
         assertEquals("IN_APP", saved.getChannel());
         assertFalse(saved.getIsRead());
 
-        // No email requested → no email send, no user lookup.
-        verify(emailService, never()).sendNotificationEmail(any(), any(), any());
+        // In-app only: no user lookup needed for delivery.
         verify(userRepository, never()).findById(any());
-    }
-
-    @Test
-    void sendNotification_withEmail_sendsToUser() {
-        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(userRepository.findById(10L)).thenReturn(Optional.of(farmOwner));
-
-        notificationService.sendNotification(10L, "FARM_APPROVED", "Duyệt trang trại", "Trang trại đã được duyệt", true);
-
-        verify(emailService).sendNotificationEmail(eq("farmer@bicap.com"), eq("Duyệt trang trại"), eq("Trang trại đã được duyệt"));
-    }
-
-    @Test
-    void sendNotification_emailForMissingUser_isSkipped() {
-        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(userRepository.findById(10L)).thenReturn(Optional.empty());
-
-        notificationService.sendNotification(10L, "FARM_APPROVED", "Duyệt trang trại", "nội dung", true);
-
-        verify(emailService, never()).sendNotificationEmail(any(), any(), any());
-    }
-
-    @Test
-    void sendNotification_emailFailure_doesNotBreak() {
-        when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(userRepository.findById(10L)).thenReturn(Optional.of(farmOwner));
-        doThrow(new RuntimeException("SMTP down")).when(emailService)
-                .sendNotificationEmail(any(), any(), any());
-
-        // Must not propagate — the persisted notification still succeeds.
-        assertDoesNotThrow(() ->
-                notificationService.sendNotification(10L, "ORDER_ACCEPTED", "Đơn được duyệt", "nội dung", true));
-        verify(emailService).sendNotificationEmail(any(), any(), any());
     }
 }

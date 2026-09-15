@@ -175,21 +175,11 @@ class AuthControllerTest {
     }
 
     @Test
-    void retailerEmailVerificationReturnsOk() throws Exception {
-        mockMvc.perform(post("/api/auth/retailer/verify-email")
-                        .param("token", "verification-token"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Email verified successfully"));
-
-        verify(authService).verifyRetailerEmail("verification-token");
-    }
-
-    @Test
     void retailerRefreshReturnsRotatedTokens() throws Exception {
         AuthResponse refreshed = new AuthResponse(
                 "new-access-token", "new-refresh-token", "Bearer", 10L,
                 "retailer@example.com", "0912345678", "Retailer User",
-                Set.of("RETAILER"), false
+                Set.of("RETAILER")
         );
         when(authService.refreshRetailerToken("refresh-token")).thenReturn(refreshed);
 

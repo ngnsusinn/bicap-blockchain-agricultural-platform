@@ -3,7 +3,7 @@ package vn.courses.ut.edu.javaprogramming.bicap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.mock.env.MockEnvironment;
 import vn.courses.ut.edu.javaprogramming.bicap.config.SecretConfigValidator;
 import vn.courses.ut.edu.javaprogramming.bicap.controller.BlockchainController;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.BlockchainTransaction;
@@ -97,41 +97,93 @@ class BlockchainSecurityTest {
         verify(blockchainService, never()).retryTransaction(anyLong());
     }
 
-    // ── Live-mode key requirement (SecretConfigValidator) ──────────────────
+    // ── Deploy-time infrastructure validation (SecretConfigValidator) ──────
+    /** Cấu hình production tối thiểu hợp lệ: MySQL remote + blockchain live + ví hợp lệ. */
+    private MockEnvironment prodEnv() {
+        return new MockEnvironment()
+                .withProperty("spring.datasource.url", "jdbc:mysql://db.example.com:3306/bicap_db?useSSL=true")
+                .withProperty("spring.datasource.username", "bicap_app")
+                .withProperty("spring.datasource.password", "s3cret-value")
+                .withProperty("blockchain.mode", "live")
+                .withProperty("blockchain.private-key",
+                        "4646464646464646464646464646464646464646464646464646464646464646")
+                .withProperty("blockchain.node-url", "https://testnet.vechain.org")
+                .withProperty("bicap.blockchain.export-mode", "vechain");
+    }
+
     @Test
     void validator_liveModeWithoutPrivateKey_failsFast() {
-        SecretConfigValidator validator = new SecretConfigValidator();
-        ReflectionTestUtils.setField(validator, "jwtSecret",
-                "dGVzdC1qd3Qtc2VjcmV0LWtleS1hdC1sZWFzdC0zMi1ieXRlcw==");
-        ReflectionTestUtils.setField(validator, "sepayApiKey", "real-key");
-        ReflectionTestUtils.setField(validator, "blockchainMode", "live");
-        ReflectionTestUtils.setField(validator, "blockchainPrivateKey", "");
+        MockEnvironment env = prodEnv().withProperty("blockchain.private-key", "");
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> ReflectionTestUtils.invokeMethod(validator, "validate"));
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> SecretConfigValidator.validateInfrastructure(env));
         assertTrue(ex.getMessage().contains("BLOCKCHAIN_PRIVATE_KEY"));
     }
 
     @Test
     void validator_liveModeWithKey_passes() {
-        SecretConfigValidator validator = new SecretConfigValidator();
-        ReflectionTestUtils.setField(validator, "jwtSecret",
-                "dGVzdC1qd3Qtc2VjcmV0LWtleS1hdC1sZWFzdC0zMi1ieXRlcw==");
-        ReflectionTestUtils.setField(validator, "sepayApiKey", "real-key");
-        ReflectionTestUtils.setField(validator, "blockchainMode", "live");
-        ReflectionTestUtils.setField(validator, "blockchainPrivateKey", "4646464646464646464646464646464646464646464646464646464646464646");
-
-        ReflectionTestUtils.invokeMethod(validator, "validate");
+        assertDoesNotThrow(() -> SecretConfigValidator.validateInfrastructure(prodEnv()));
     }
 
     @Test
-    void validator_mockModeWithoutKey_passes() {
-        SecretConfigValidator validator = new SecretConfigValidator();
-        ReflectionTestUtils.setField(validator, "jwtSecret",
-                "dGVzdC1qd3Qtc2VjcmV0LWtleS1hdC1sZWFzdC0zMi1ieXRlcw==");
-        ReflectionTestUtils.setField(validator, "sepayApiKey", "real-key");
-        ReflectionTestUtils.setField(validator, "blockchainMode", "mock");
-        ReflectionTestUtils.setField(validator, "blockchainPrivateKey", "");
+    void validator_liveModeWithMalformedPrivateKey_failsFast() {
+        MockEnvironment env = prodEnv().withProperty("blockchain.private-key", "not-a-hex-key");
 
-        ReflectionTestUtils.invokeMethod(validator, "validate");
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> SecretConfigValidator.validateInfrastructure(env));
+        assertTrue(ex.getMessage().contains("BLOCKCHAIN_PRIVATE_KEY"));
+    }
+
+    @Test
+    void validator_mockMode_isRejectedUnlessSimulationExplicitlyAllowed() {
+        // Production posture: mock = hash giả lập, không được phép chạy ngầm.
+        MockEnvironment env = prodEnv().withProperty("blockchain.mode", "mock");
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> SecretConfigValidator.validateInfrastructure(env));
+        assertTrue(ex.getMessage().contains("BLOCKCHAIN_MODE=mock"));
+
+        // Test/CI bật cờ này một cách có ý thức thì được phép.
+        MockEnvironment simulated = prodEnv()
+                .withProperty("blockchain.mode", "mock")
+                .withProperty("app.allow-simulation", "true");
+        assertDoesNotThrow(() -> SecretConfigValidator.validateInfrastructure(simulated));
+    }
+
+    @Test
+    void validator_localExportStub_isRejectedUnlessSimulationExplicitlyAllowed() {
+        MockEnvironment env = prodEnv().withProperty("bicap.blockchain.export-mode", "local");
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> SecretConfigValidator.validateInfrastructure(env));
+        assertTrue(ex.getMessage().contains("BLOCKCHAIN_EXPORT_MODE=local"));
+    }
+
+    @Test
+    void validator_h2Datasource_isRejected() {
+        MockEnvironment env = prodEnv()
+                .withProperty("spring.datasource.url", "jdbc:h2:mem:bicap_db;DB_CLOSE_DELAY=-1;MODE=MySQL");
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> SecretConfigValidator.validateInfrastructure(env));
+        assertTrue(ex.getMessage().contains("H2"));
+    }
+
+    @Test
+    void validator_missingDatasourceUrl_failsFast() {
+        MockEnvironment env = prodEnv().withProperty("spring.datasource.url", "");
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> SecretConfigValidator.validateInfrastructure(env));
+        assertTrue(ex.getMessage().contains("SPRING_DATASOURCE_URL"));
+    }
+
+    @Test
+    void validator_placeholderDatasourceCredentials_failFast() {
+        MockEnvironment env = prodEnv().withProperty("spring.datasource.password", "REPLACE_WITH_REMOTE_DB_PASSWORD");
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> SecretConfigValidator.validateInfrastructure(env));
+        assertTrue(ex.getMessage().contains("REPLACE_WITH"));
     }
 }

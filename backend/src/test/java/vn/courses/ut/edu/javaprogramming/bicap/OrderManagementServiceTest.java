@@ -170,7 +170,7 @@ class OrderManagementServiceTest {
         assertEquals(Order.STATUS_PENDING, response.getStatus());
         assertEquals(new BigDecimal("15000"), response.getPrice());
         assertEquals(30.0, response.getQuantity());
-        verify(notificationService).sendNotification(eq(FM_ID), eq("INFO"), anyString(), anyString(), eq(false));
+        verify(notificationService).sendNotification(eq(FM_ID), eq("INFO"), anyString(), anyString());
     }
 
     @Test
@@ -225,7 +225,7 @@ class OrderManagementServiceTest {
         assertEquals(Order.STATUS_CANCELLED, response.getStatus());
         assertEquals(Order.STATUS_CANCELLED, order.getStatus());
         assertEquals("Thay đổi kế hoạch", order.getCancelledReason());
-        verify(notificationService).sendNotification(eq(FM_ID), eq("WARNING"), anyString(), anyString(), eq(false));
+        verify(notificationService).sendNotification(eq(FM_ID), eq("WARNING"), anyString(), anyString());
     }
 
     @Test
@@ -286,7 +286,7 @@ class OrderManagementServiceTest {
         assertEquals(Order.STATUS_CANCEL_REQUESTED, response.getStatus());
         assertEquals("Change plan", order.getCancelledReason());
         assertNotNull(order.getCancelRequestedAt());
-        verify(notificationService).sendNotification(eq(99L), eq("WARNING"), anyString(), anyString(), eq(false));
+        verify(notificationService).sendNotification(eq(99L), eq("WARNING"), anyString(), anyString());
     }
 
     // ── confirmDelivery ──────────────────────────────────────────────────────
@@ -301,7 +301,7 @@ class OrderManagementServiceTest {
         OrderResponse response = service.markInTransit(ORDER_ID);
 
         assertEquals(Order.STATUS_IN_TRANSIT, response.getStatus());
-        verify(notificationService).sendNotification(eq(RETAILER_ID), eq("INFO"), anyString(), anyString(), eq(false));
+        verify(notificationService).sendNotification(eq(RETAILER_ID), eq("INFO"), anyString(), anyString());
     }
 
     @Test
@@ -318,7 +318,7 @@ class OrderManagementServiceTest {
         assertEquals(Order.STATUS_DELIVERED, response.getStatus());
         assertEquals(Order.STATUS_DELIVERED, order.getStatus());
         assertNotNull(order.getDeliveredAt());
-        verify(notificationService).sendNotification(eq(RETAILER_ID), eq("INFO"), anyString(), anyString(), eq(false));
+        verify(notificationService).sendNotification(eq(RETAILER_ID), eq("INFO"), anyString(), anyString());
     }
 
     @Test
@@ -364,7 +364,7 @@ class OrderManagementServiceTest {
         assertEquals(Order.STATUS_COMPLETED, response.getStatus());
         assertEquals(Order.STATUS_COMPLETED, order.getStatus());
         assertNotNull(order.getCompletedAt());
-        verify(notificationService).sendNotification(eq(FM_ID), eq("SUCCESS"), anyString(), anyString(), eq(false));
+        verify(notificationService).sendNotification(eq(FM_ID), eq("SUCCESS"), anyString(), anyString());
     }
 
     @Test

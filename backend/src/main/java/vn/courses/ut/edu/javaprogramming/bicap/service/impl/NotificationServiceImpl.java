@@ -7,8 +7,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,11 +25,10 @@ import vn.courses.ut.edu.javaprogramming.bicap.exception.ResourceNotFoundExcepti
 import vn.courses.ut.edu.javaprogramming.bicap.repository.NotificationRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.service.NotificationService;
-import vn.courses.ut.edu.javaprogramming.bicap.service.VerificationEmailService;
 
 /**
- * In-app notification service backed by {@link NotificationRepository} for persistence,
- * SSE for real-time delivery and {@link VerificationEmailService} for critical-event emails.
+ * In-app notification service backed by {@link NotificationRepository} for persistence
+ * and SSE for real-time delivery.
  *
  * <p>SSE emitters are tracked per user (a list, so several browser tabs survive
  * simultaneously); a scheduled heartbeat keeps idle connections alive through proxies.
@@ -40,24 +37,22 @@ import vn.courses.ut.edu.javaprogramming.bicap.service.VerificationEmailService;
 @Service
 public class NotificationServiceImpl implements NotificationService {
 
-    private static final Logger log = LoggerFactory.getLogger(NotificationServiceImpl.class);
-
     /** Constant for the in-app channel recorded on every persisted notification. */
     public static final String CHANNEL_IN_APP = "IN_APP";
 
+    /** Event mở đầu stream — client biết kết nối đã được thiết lập (không phải thông báo). */
+    public static final String CONNECTED_EVENT = "connected";
+
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
-    private final VerificationEmailService emailService;
 
     // Active SSE connections, one emitter per open browser tab.
     private final Map<Long, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
 
     public NotificationServiceImpl(NotificationRepository notificationRepository,
-                                   UserRepository userRepository,
-                                   VerificationEmailService emailService) {
+                                   UserRepository userRepository) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
-        this.emailService = emailService;
     }
 
     @Override
@@ -121,12 +116,21 @@ public class NotificationServiceImpl implements NotificationService {
         emitter.onTimeout(() -> removeEmitter(userId, emitter));
         emitter.onError(e -> removeEmitter(userId, emitter));
 
+        // Gửi ngay một event "connected" (được Spring buffer lại vì emitter chưa được
+        // khởi tạo): giúp trình duyệt nhận header + mở kết nối ngay lập tức thay vì đợi
+        // nhịp heartbeat 25s, và giúp phân biệt "stream đang sống" với "stream treo".
+        try {
+            emitter.send(SseEmitter.event().name(CONNECTED_EVENT).data("ok"));
+        } catch (Exception e) {
+            removeEmitter(userId, emitter);
+        }
+
         return emitter;
     }
 
     @Override
     @Transactional
-    public void sendNotification(Long userId, String type, String title, String content, boolean sendEmail) {
+    public void sendNotification(Long userId, String type, String title, String content) {
         Notification saved = notificationRepository.save(Notification.builder()
                 .userId(userId)
                 .type(type)
@@ -137,10 +141,6 @@ public class NotificationServiceImpl implements NotificationService {
                 .build());
 
         sendToEmitters(userId, NotificationResponse.from(saved));
-
-        if (sendEmail) {
-            sendAlertEmail(userId, title, content);
-        }
     }
 
     @Override
@@ -180,7 +180,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .filter(user -> user.getStatus() == UserStatus.ACTIVE)
                 .toList();
         recipients.forEach(user -> sendNotification(
-                user.getId(), "SHIPPING", request.getTitle().trim(), request.getContent().trim(), request.isSendEmail()));
+                user.getId(), "SHIPPING", request.getTitle().trim(), request.getContent().trim()));
         return recipients.size();
     }
 
@@ -195,7 +195,15 @@ public class NotificationServiceImpl implements NotificationService {
                 emitter.send(SseEmitter.event().comment("keep-alive"));
             } catch (Exception e) {
                 // send() throws IllegalStateException too when the response is gone.
+                // complete() để Spring đóng emitter hẳn, tránh ghi lại vào socket đã chết
+                // ở nhịp heartbeat kế tiếp (mỗi lần ghi lỗi sinh một IOException lan ra
+                // tầng async của servlet container).
                 removeEmitter(userId, emitter);
+                try {
+                    emitter.complete();
+                } catch (Exception ignored) {
+                    // emitter đã chết — không còn gì để dọn.
+                }
             }
         }));
     }
@@ -210,6 +218,11 @@ public class NotificationServiceImpl implements NotificationService {
                 emitter.send(SseEmitter.event().name("notification").data(notification));
             } catch (Exception e) {
                 removeEmitter(userId, emitter);
+                try {
+                    emitter.complete();
+                } catch (Exception ignored) {
+                    // emitter đã chết — không còn gì để dọn.
+                }
             }
         });
     }
@@ -221,20 +234,6 @@ public class NotificationServiceImpl implements NotificationService {
             if (userEmitters.isEmpty()) {
                 emitters.remove(userId, userEmitters);
             }
-        }
-    }
-
-    private void sendAlertEmail(Long userId, String title, String content) {
-        User user = userRepository.findById(userId).orElse(null);
-        if (user == null) {
-            log.warn("Notification email skipped: user {} not found", userId);
-            return;
-        }
-        try {
-            emailService.sendNotificationEmail(user.getEmail(), title, content);
-        } catch (RuntimeException ex) {
-            // An SMTP outage must not roll back the persisted notification.
-            log.error("Failed to send notification email to {}: {}", user.getEmail(), ex.getMessage());
         }
     }
 }

@@ -191,11 +191,11 @@ export default function RetailerOrdersPage() {
   };
 
   return (
-    <section style={{ color: '#e2e8f0' }}>
-      <div style={s.heading}>
+    <section>
+      <div style={{ ...s.heading, marginBottom: 24 }}>
         <div>
-          <h1 style={{ marginBottom: 7 }}>Lịch sử đơn mua</h1>
-          <p style={s.muted}>Theo dõi, xác nhận nhận hàng và quản lý các yêu cầu mua nông sản.</p>
+          <h1 className="dashboard-title">Lịch sử đơn mua</h1>
+          <p className="dashboard-subtitle" style={{ marginBottom: 0 }}>Theo dõi, xác nhận nhận hàng và quản lý các yêu cầu mua nông sản.</p>
         </div>
         <span style={s.badge}>{loading ? 'Đang tải...' : `${items.length} đơn hàng`}</span>
       </div>
@@ -217,7 +217,7 @@ export default function RetailerOrdersPage() {
       )}
       <div style={{ display: 'grid', gap: 14 }}>
         {items.map(o => (
-          <article key={o.id} style={s.card}>
+          <article key={o.id} className="glass-panel" style={s.card}>
             <div style={{ display: 'flex', gap: 15, alignItems: 'center', flex: '1 1 500px' }}>
               <div style={s.thumb}>
                 {o.productImage
@@ -382,7 +382,7 @@ function Detail({
           {order.deliveryImages?.length ? (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
               {order.deliveryImages.map(url => (
-                <img key={url} src={assetUrl(url)} alt="Ảnh nhận hàng" style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 8, border: '1px solid #334155' }} />
+                <img key={url} src={assetUrl(url)} alt="Ảnh nhận hàng" style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border-color)' }} />
               ))}
             </div>
           ) : (
@@ -409,9 +409,9 @@ function Detail({
         <div>
           {steps.map(([label, reached, at]) => (
             <div key={label} style={s.step}>
-              <span style={{ ...s.dot, background: reached ? '#10b981' : '#334155' }} />
+              <span style={{ ...s.dot, background: reached ? '#10b981' : 'var(--border-color)' }} />
               <div>
-                <b style={{ color: reached ? '#e2e8f0' : '#64748b' }}>{label}</b>
+                <b style={{ color: reached ? 'var(--text-primary)' : 'var(--text-muted)' }}>{label}</b>
                 {at && <p style={s.muted}>{date(at)}</p>}
               </div>
             </div>
@@ -432,8 +432,8 @@ function Detail({
 
 function Modal({ title, close, wide = false, children }: { title: string; close: () => void; wide?: boolean; children: React.ReactNode }) {
   return (
-    <div style={s.overlay} role="dialog" aria-modal="true">
-      <div style={{ ...s.modal, ...(wide ? { width: 'min(760px,94vw)', maxHeight: '90vh', overflowY: 'auto' } : {}) }}>
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal-content glass-panel" style={{ position: 'relative', width: wide ? 'min(760px,94vw)' : 'min(480px,94vw)' }}>
         <button style={s.close} onClick={close} aria-label="Đóng">×</button>
         <h2>{title}</h2>
         {children}
@@ -448,36 +448,34 @@ function Info({ k, v, hi = false }: { k: string; v?: string; hi?: boolean }) {
   return (
     <div style={s.info}>
       <span style={s.muted}>{k}</span>
-      <b style={{ color: hi ? '#6ee7b7' : '#e2e8f0', textAlign: 'right' }}>{v || '—'}</b>
+      <b style={{ color: hi ? '#6ee7b7' : 'var(--text-primary)', textAlign: 'right' }}>{v || '—'}</b>
     </div>
   );
 }
 
 const s: Record<string, React.CSSProperties> = {
   heading: { display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' },
-  muted: { color: '#94a3b8', fontSize: 13, lineHeight: 1.5, margin: '5px 0' },
+  muted: { color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.5, margin: '5px 0' },
   badge: { padding: '5px 10px', borderRadius: 999, background: 'rgba(148,163,184,.14)', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' },
   filters: { display: 'flex', gap: 8, overflowX: 'auto', padding: '18px 0' },
-  filter: { border: '1px solid #334155', borderRadius: 999, padding: '8px 13px', background: '#0f172a', color: '#94a3b8', cursor: 'pointer', whiteSpace: 'nowrap' },
+  filter: { border: '1px solid var(--border-color)', borderRadius: 999, padding: '8px 13px', background: 'rgba(255,255,255,0.03)', color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' },
   filterActive: { color: '#ecfeff', borderColor: '#0891b2', background: 'rgba(6,182,212,.16)' },
-  card: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20, padding: 20, border: '1px solid #334155', borderRadius: 14, background: '#0f172a' },
-  thumb: { width: 72, height: 72, flex: '0 0 72px', borderRadius: 12, overflow: 'hidden', background: '#172033', display: 'grid', placeItems: 'center', fontSize: 26 },
+  card: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20, padding: 20 },
+  thumb: { width: 72, height: 72, flex: '0 0 72px', borderRadius: 12, overflow: 'hidden', background: 'rgba(255,255,255,0.03)', display: 'grid', placeItems: 'center', fontSize: 26 },
   actions: { display: 'flex', justifyContent: 'flex-end', gap: 9, flexWrap: 'wrap' },
   primary: { border: 0, borderRadius: 8, padding: '10px 14px', background: '#10b981', color: '#fff', fontWeight: 700, cursor: 'pointer' },
-  secondary: { border: '1px solid #475569', borderRadius: 8, padding: '9px 13px', background: '#1e293b', color: '#e2e8f0', fontWeight: 650, cursor: 'pointer' },
+  secondary: { border: '1px solid var(--border-color-hover)', borderRadius: 8, padding: '9px 13px', background: 'rgba(255,255,255,0.03)', color: 'var(--text-primary)', fontWeight: 650, cursor: 'pointer' },
   danger: { border: '1px solid rgba(244,63,94,.45)', borderRadius: 8, padding: '9px 13px', background: 'rgba(244,63,94,.14)', color: '#fda4af', fontWeight: 700, cursor: 'pointer' },
   error: { padding: '11px 14px', borderRadius: 10, color: '#fecaca', background: 'rgba(239,68,68,.13)' },
   success: { padding: '11px 14px', borderRadius: 10, color: '#a7f3d0', background: 'rgba(16,185,129,.13)' },
-  empty: { textAlign: 'center', padding: 48, border: '1px dashed #334155', borderRadius: 14 },
-  overlay: { position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 16, background: 'rgba(0,0,0,.78)', zIndex: 99 },
-  modal: { position: 'relative', width: 'min(480px,94vw)', padding: 28, borderRadius: 18, background: '#0f172a', border: '1px solid #334155', boxShadow: '0 24px 80px rgba(0,0,0,.5)' },
+  empty: { textAlign: 'center', padding: 48, border: '1px dashed var(--border-color)', borderRadius: 14 },
   close: { position: 'absolute', right: 18, top: 15, border: 0, background: 'transparent', color: '#cbd5e1', fontSize: 24, cursor: 'pointer' },
   label: { display: 'block', margin: '18px 0 7px', fontWeight: 650 },
-  textarea: { width: '100%', boxSizing: 'border-box', resize: 'vertical', borderRadius: 10, border: '1px solid #475569', background: '#111827', color: '#f8fafc', padding: 12, font: 'inherit' },
+  textarea: { width: '100%', boxSizing: 'border-box', resize: 'vertical', borderRadius: 10, border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-primary)', padding: 12, font: 'inherit' },
   modalActions: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 14 },
-  box: { padding: 16, marginTop: 12, borderRadius: 12, background: '#111827', border: '1px solid #273449' },
-  info: { display: 'flex', justifyContent: 'space-between', gap: 20, padding: '7px 0', borderBottom: '1px solid rgba(148,163,184,.09)' },
+  box: { padding: 16, marginTop: 12, borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' },
+  info: { display: 'flex', justifyContent: 'space-between', gap: 20, padding: '7px 0', borderBottom: '1px solid var(--border-color)' },
   reason: { padding: 14, marginTop: 14, borderRadius: 10, color: '#fecdd3', background: 'rgba(244,63,94,.1)', border: '1px solid rgba(244,63,94,.28)' },
   step: { display: 'grid', gridTemplateColumns: '22px 1fr', gap: 10, minHeight: 55 },
   dot: { width: 11, height: 11, borderRadius: '50%', marginTop: 5 },

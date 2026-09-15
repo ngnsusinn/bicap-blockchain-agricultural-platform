@@ -19,9 +19,13 @@ export default function IotDashboard() {
   const [currentPh, setCurrentPh] = useState<number>(6.5);
   const [isSimulating, setIsSimulating] = useState(false);
   const user = getCurrentUser();
+  // userId là giá trị nguyên thủy: dùng nó làm dependency thay cho object `user`
+  // (getCurrentUser() trả object mới mỗi lần render → [user] gây vòng lặp vô hạn
+  // gọi lại /notifications và mở lại SSE liên tục).
+  const userId = user?.id;
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
 
     // Fetch alerts (URGENT and PERIODIC notifications)
     const fetchAlerts = async () => {
@@ -66,7 +70,7 @@ export default function IotDashboard() {
     return () => {
       eventSource.close();
     };
-  }, [user]);
+  }, [userId]);
 
   const simulateData = async () => {
     if (!user || !user.farmId) {

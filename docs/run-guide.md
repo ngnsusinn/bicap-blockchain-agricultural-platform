@@ -21,11 +21,16 @@ A template `.env.example` is provided at the root of the project. Copy it to `.e
 copy .env.example .env
 ```
 
-For local development you do **not** have to edit anything: the backend defaults to an H2 in-memory database, blockchain `mock` mode and an in-memory cache. Real `JWT_SECRET` and `SEPAY_API_KEY` values are required only when deploying (the app fails fast on missing/weak defaults).
+There is **no development fallback anymore**: the values in `.env` are the production posture and apply to every profile. A missing infrastructure dependency or secret **stops the application at startup** with an explicit error message.
 
-*   **Database Configs** (`SPRING_DATASOURCE_*`): H2 in-memory by default; set them to your MySQL host to use a shared/cloud database.
-*   **Redis Caching** (`SPRING_REDIS_*`): connects to the Redis host when provided, otherwise the app automatically falls back to an in-memory cache.
+*   **Configuration is loaded from `.env`**: the backend imports it itself via `spring.config.import=optional:file:./.env[.properties],optional:file:../.env[.properties]`, so `mvn spring-boot:run` works from `backend/` as well as from the repo root. The helper script `dev/run-backend.ps1` exports every `.env` entry into the process environment and then runs `mvn spring-boot:run` (use it, or the IntelliJ EnvFile plugin, if you prefer explicit export).
+*   **Database Configs** (`SPRING_DATASOURCE_*`): a **remote MySQL** server is required — `spring.datasource.url` has no H2 default. A blank or H2 URL stops the application (H2 is accepted only for test/CI together with `ALLOW_SIMULATION=true`).
+*   **Redis Caching** (`SPRING_REDIS_*`): a reachable **remote Redis** is required. There is no in-memory cache fallback: if Redis cannot be reached, the backend refuses to start. Cache is switched off only by deliberately setting `APP_CACHE_ENABLED=false` (test/CI).
+*   **Secrets** (`JWT_SECRET`, `SEPAY_API_KEY`): mandatory in **every** profile — no secret is generated at runtime. Template values (including the ones previously published in this repo/`.env.example`) are rejected and the application stops.
+*   **Blockchain** (`BLOCKCHAIN_MODE=live` + `BLOCKCHAIN_PRIVATE_KEY`): required, with a signer wallet holding VTHO. `BLOCKCHAIN_MODE=mock` and `BLOCKCHAIN_EXPORT_MODE=local` are accepted only when `ALLOW_SIMULATION=true` (test/CI).
 *   **Web API URL** (`VITE_API_BASE_URL`, a build-time variable of `web/`): points the web app to the backend, `http://localhost:8080`.
+
+> **Test/CI only flag:** `ALLOW_SIMULATION=true` is the single switch that permits H2 + mock blockchain + local export stub. Never enable it for a real deployment.
 
 ---
 
@@ -37,9 +42,9 @@ The Maven project lives in the `backend/` directory.
 1. Open the repository (or the `backend/` folder) in IntelliJ IDEA.
 2. IntelliJ will detect the Maven configuration from `backend/pom.xml` automatically.
 3. Open `backend/src/main/java/vn/courses/ut/edu/javaprogramming/bicap/Application.java` and click the green **Run** button.
-4. To pass the environment variables from the `.env` file, install the **EnvFile** plugin in IntelliJ or set them in the Run Configuration settings.
+4. The `.env` file is imported automatically by `spring.config.import`, so no extra plugin is strictly required; the **EnvFile** plugin (or Run Configuration env vars) is still handy if you prefer explicit export.
 
-The backend starts on **port 8080** with H2 in-memory by default.
+The backend starts on **port 8080** only when the required production dependencies are reachable: remote MySQL, remote Redis, live blockchain (`BLOCKCHAIN_MODE=live` + `BLOCKCHAIN_PRIVATE_KEY`) and the `JWT_SECRET` / `SEPAY_API_KEY` secrets. Missing infrastructure stops the startup with an explicit error instead of falling back to H2 / mock / in-memory cache.
 
 ### Option B: Running via Terminal (PowerShell)
 If Maven (`mvn`) is not registered in your global system `PATH`, you can use the Maven executable bundled with your IntelliJ installation:
@@ -48,7 +53,7 @@ If Maven (`mvn`) is not registered in your global system `PATH`, you can use the
    ```powershell
    cd backend
    ```
-2. Export the database environment variables to your session (only needed when connecting to an external MySQL/Redis instead of the H2 default). Lấy giá trị thật từ file `.env` — **không ghi thông tin đăng nhập thật vào tài liệu**:
+2. Make sure `.env` exists at the repo root (copy `.env.example` and fill in the real MySQL / Redis / VeChain / Sepay values). The backend imports it on its own; the helper script does the export for you. If you prefer to override a variable in the session, export it like this (values here are placeholders — **never write real credentials into documentation**):
    ```powershell
    $env:SPRING_DATASOURCE_URL="jdbc:mysql://<mysql-host>:3306/<database>?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
    $env:SPRING_DATASOURCE_USERNAME="<db-user>"
@@ -57,10 +62,18 @@ If Maven (`mvn`) is not registered in your global system `PATH`, you can use the
    $env:SPRING_REDIS_PORT="<redis-port>"
    $env:SPRING_REDIS_PASSWORD="<redis-password>"
    $env:SPRING_REDIS_SSL="true"
+   $env:JWT_SECRET="<base64 secret, >=32 bytes>"
+   $env:SEPAY_API_KEY="<real Sepay key>"
+   $env:BLOCKCHAIN_MODE="live"
+   $env:BLOCKCHAIN_PRIVATE_KEY="<signer wallet hex key with VTHO>"
    ```
 3. Run the Spring Boot application from the `backend/` directory:
    ```powershell
    mvn spring-boot:run
+   ```
+   Or from the repo root, load `.env` first and then start Maven:
+   ```powershell
+   .\dev\run-backend.ps1
    ```
    If `mvn` is not on `PATH`, use the IntelliJ Maven bundle path instead:
    ```powershell
@@ -70,7 +83,7 @@ If Maven (`mvn`) is not registered in your global system `PATH`, you can use the
 Other backend commands (run from `backend/`):
 
 ```bash
-mvn test                        # 326 tests
+mvn test                        # 345 tests — no MySQL/Redis needed (H2 create-drop + cache off + ALLOW_SIMULATION=true in src/test/resources)
 node ../dev/tests/cross-role-matrix.mjs   # 122 probe HTTP đa vai trò (cần app đang chạy)
 mvn clean package -DskipTests   # → backend/target/*.jar
 ```
@@ -154,7 +167,7 @@ Other web commands (run from `web/`):
 ```bash
 npm ci              # clean install from package-lock.json (used by CI)
 npm run lint        # oxlint
-npm test            # vitest run — 52 tests
+npm test            # vitest run — 84 tests (22 test files)
 npm run build       # tsc -b && vite build → web/dist
 npm run preview     # preview the production build on port 5174
 ```

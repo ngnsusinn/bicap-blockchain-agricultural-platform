@@ -24,14 +24,14 @@
 
 ## 2. Kết quả kiểm thử chức năng (BICAP-86/87)
 
-### 2.1 Tổng hợp — chạy ngày 11/09/2026 sau đợt audit (C-1…C-4, F1…F12) + vá đường live + kiểm thử cross-role
+### 2.1 Tổng hợp — chạy ngày 15/09/2026 sau đợt audit (C-1…C-4, F1…F12) + vá đường live + kiểm thử cross-role + gỡ email/SMTP + gia cố SSE
 | Suite | Số test | Kết quả |
 |---|---|---|
-| Backend (`cd backend && mvn test`) | **326** | ✅ 326 pass / 0 fail / 0 skip |
-| Web hợp nhất (`cd web && npm test`, 16 file test) | **52** | ✅ 52 pass (portal + admin) |
+| Backend (`cd backend && mvn test`) | **345** | ✅ 345 pass / 0 fail / 0 skip |
+| Web hợp nhất (`cd web && npm test`, 22 file test) | **84** | ✅ 84 pass (portal + admin) |
 | Ma trận cross-role HTTP thật (`node dev/tests/cross-role-matrix.mjs`) | **122** | ✅ 122 probe pass / 0 fail |
-| Web build + lint (`npm run build`, `npm run lint`) | — | ✅ build pass · 0 error (57 warning style/hooks) |
-| **Tổng** | **378 test + 122 probe** | ✅ **PASS** |
+| Web build + lint (`npm run build`, `npm run lint`) | — | ✅ build pass · 0 error (58 warning style/hooks) |
+| **Tổng** | **429 test + 122 probe** | ✅ **PASS** |
 
 Bổ sung so với bản 1.0 (279 test): +42 test backend và +24 test frontend, tập trung vào các lỗi
 đã phát hiện khi audit (xem 2.4), các trang trước đây chưa có test (guest, driver, shipping, admin),
@@ -148,7 +148,9 @@ webhook Sepay **có văn bản kèm theo** → đơn `DEPOSIT_PAID` → shipping
 | Đơn hàng (BICAP-20/42→46/75) | `OrderServiceTest`, `OrderManagementServiceTest`, `FarmManagerOrderServiceTest` | 40 | Vòng đời PENDING→…→COMPLETED, hủy, đặt cọc |
 | Vận chuyển (BICAP-22/23/76) | `ShipmentService` qua lifecycle IT, `FarmShipmentServiceTest` | 6 | Quyền farm, đếm trạng thái, tỷ lệ đúng hạn |
 | Báo cáo (BICAP-27) | `ReportServiceTest` | 9 | Gửi mọi role, admin-only xử lý, thông báo 2 chiều |
-| Notification (BICAP-77) | `NotificationServiceTest`, `NotificationControllerTest` | 17 | unread count, đánh dấu đọc, SSE |
+| Notification (BICAP-77) | `NotificationServiceTest`, `NotificationControllerTest`, `SseNotificationStreamTest` | 20 | unread count, đánh dấu đọc, SSE (frame `connected`, emitter chết được `complete()` + xoá) |
+| Xử lý lỗi response đã commit | `GlobalExceptionHandlerTest` | 7 | Client ngắt kết nối SSE ⇒ không log ERROR, không cố ghi `ErrorResponse`; lỗi thật vẫn 500 + log ERROR |
+| Dispatch ASYNC/ERROR của container | `SseAsyncDispatchSecurityTest` | 3 | SSE không bị `AuthorizationFilter` chặn ở lần dispatch ASYNC; trang lỗi `/error` (dispatch ERROR) không bị trả 401/403 — hết log "Access Denied / response is already committed" |
 | Blockchain (BICAP-6/74/80/81) | `BlockchainServiceTest`, `VeChainCryptoTest`, `BlockchainSecurityTest` | 22 | RLP vectors, RFC6979 deterministic, low-s, recovery id, địa chỉ ví/contract, RBAC tx |
 | Thanh toán (BICAP-78) | `SepayServiceTest`, `SubscriptionServiceTest` | 19 | Webhook chữ ký, khớp mã trong văn bản tự do (C-2), kích hoạt gói |
 | Bảo mật/guest hồi quy | `SecurityAndGuestRegressionIntegrationTest` | 15 | C-1/C-3/C-4, catalogue & education công khai (F3/F5), F8, F11, F12 |
@@ -246,9 +248,9 @@ Kế hoạch + kịch bản + biên bản mẫu: xem `docs/uat-plan.md`.
 
 ## 7. Phụ lục — cách chạy
 ```bash
-cd backend && mvn test                # backend 326 TC (port 8080 khi chạy app)
+cd backend && mvn test                # backend 345 TC (port 8080 khi chạy app)
 cd backend && mvn -Dtest='CrossRoleMatrixIntegrationTest,RateLimitFilterTest' test   # cross-role (30) + rate limit (3)
-cd web     && npm test                # web 52 TC (hợp nhất portal + admin)
+cd web     && npm test                # web 84 TC (hợp nhất portal + admin)
 node dev/tests/cross-role-matrix.mjs  # 122 probe HTTP đa vai trò (cần backend đang chạy)
 node dev/loadtest/node-loadtest.mjs --vus 100 --requests 500   # stress
 k6 run dev/loadtest/k6-loadtest.js    # k6 (cài k6 trước)

@@ -1,106 +1,118 @@
 package vn.courses.ut.edu.javaprogramming.bicap.config;
 
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import org.springframework.core.env.Environment;
+
+import java.util.Locale;
 
 /**
- * Fail-fast validation of deploy-time secrets (C-1, C-3):
- * the app refuses to boot when JWT_SECRET or SEPAY_API_KEY are missing or set to a
- * known placeholder/weak value. This removes the "known default secret" backdoor —
- * a deployment that forgets to configure them stops instead of running insecure.
+ * Fail-fast validation of the deploy-time infrastructure configuration (BICAP-74/80/81).
+ *
+ * <p>Chạy <b>trước khi bean nào được tạo</b> (được gọi từ
+ * {@link vn.courses.ut.edu.javaprogramming.bicap.common.security.SecureSecretInitializer},
+ * một {@code ApplicationContextInitializer}) nên cấu hình sai sẽ dừng ứng dụng ngay với
+ * thông báo rõ ràng, thay vì để Hibernate/Redis báo lỗi khó hiểu ở giai đoạn dựng bean.
+ *
+ * <p>Cấu hình production (mặc định, {@code ALLOW_SIMULATION=false}) yêu cầu:
+ * <ul>
+ *   <li>{@code SPRING_DATASOURCE_URL} trỏ tới MySQL remote (không H2, không placeholder);</li>
+ *   <li>{@code BLOCKCHAIN_MODE=live} + {@code BLOCKCHAIN_PRIVATE_KEY} 32 byte hex +
+ *       {@code BLOCKCHAIN_NODE_URL}; {@code BLOCKCHAIN_EXPORT_MODE=vechain}.</li>
+ * </ul>
+ * Test/CI đặt {@code ALLOW_SIMULATION=true} để bỏ qua hai nhóm kiểm tra này (H2 + mock chain).
+ * Redis vẫn được kiểm tra thật khi khởi tạo cache (xem {@link RedisCacheConfig}).
  */
-@Component
-public class SecretConfigValidator {
+public final class SecretConfigValidator {
 
     private static final Logger log = LoggerFactory.getLogger(SecretConfigValidator.class);
 
-    /** Secrets that are publicly shipped and must never be accepted at runtime. */
-    private static final String[] FORBIDDEN_JWT_SECRETS = {
-            "dGVzdF9zdXBlcl9zZWNyZXRfa2V5X3doaWNoX2lzX2F0X2xlYXN0XzMyX2J5dGVzX2xvbmc=",
-            "defaultSecretKeyWhichShouldBeAtLeast32BytesLongForHS256Algorithm"
-    };
+    private SecretConfigValidator() {
+    }
 
-    private static final String[] FORBIDDEN_SEPAY_KEYS = {
-            "YOUR_SEPAY_API_KEY"
-    };
+    public static void validateInfrastructure(Environment environment) {
+        boolean allowSimulation = environment.getProperty("app.allow-simulation", Boolean.class, false);
 
-    @Value("${app.jwt.secret:}")
-    private String jwtSecret;
-
-    @Value("${sepay.api-key:}")
-    private String sepayApiKey;
-
-    @Value("${blockchain.mode:mock}")
-    private String blockchainMode;
-
-    @Value("${blockchain.private-key:}")
-    private String blockchainPrivateKey;
-
-    @PostConstruct
-    void validate() {
-        if (isBlank(jwtSecret)) {
-            throw new IllegalStateException(
-                    "JWT_SECRET is not configured. Set the JWT_SECRET environment variable "
-                            + "(a random Base64 value of at least 32 bytes) before starting the application.");
-        }
-        if (containsForbidden(jwtSecret, FORBIDDEN_JWT_SECRETS)) {
-            throw new IllegalStateException(
-                    "JWT_SECRET is set to a known, publicly-shipped default value. "
-                            + "Generate a new random secret before starting the application.");
-        }
-        if (decodedKeyLength(jwtSecret) < 32) {
-            throw new IllegalStateException(
-                    "JWT_SECRET decodes to fewer than 32 bytes — it must be at least 32 bytes of key material.");
+        if (allowSimulation) {
+            log.warn("ALLOW_SIMULATION=true — bỏ qua kiểm tra MySQL/blockchain (H2 + hash giả lập). "
+                    + "Cấu hình này CHỈ dùng cho test/CI, không dùng cho production.");
+            return;
         }
 
-        if (isBlank(sepayApiKey)) {
-            throw new IllegalStateException(
-                    "SEPAY_API_KEY is not configured. Set the SEPAY_API_KEY environment variable "
-                            + "before starting the application.");
-        }
-        if (containsForbidden(sepayApiKey, FORBIDDEN_SEPAY_KEYS)) {
-            throw new IllegalStateException(
-                    "SEPAY_API_KEY is set to the placeholder value '" + sepayApiKey
-                            + "'. Configure the real Sepay API key before starting the application.");
-        }
+        validateDatasource(environment);
+        validateBlockchain(environment);
+    }
 
-        // BICAP-74/81: live VeChainThor mode is useless (and misleading) without a signer key.
-        if ("live".equalsIgnoreCase(blockchainMode) && isBlank(blockchainPrivateKey)) {
+    /** Production dùng MySQL remote; H2 in-memory chỉ dành cho test/CI. */
+    private static void validateDatasource(Environment environment) {
+        String url = environment.getProperty("spring.datasource.url", "");
+        String username = environment.getProperty("spring.datasource.username", "");
+        String password = environment.getProperty("spring.datasource.password", "");
+
+        if (isBlank(url)) {
+            throw new IllegalStateException(
+                    "SPRING_DATASOURCE_URL is not configured. Production yêu cầu MySQL remote, "
+                            + "ví dụ jdbc:mysql://<host>:3306/bicap_db?useSSL=true&serverTimezone=UTC"
+                            + "&allowPublicKeyRetrieval=true (xem .env.example).");
+        }
+        if (containsPlaceholder(url) || containsPlaceholder(username) || containsPlaceholder(password)) {
+            throw new IllegalStateException(
+                    "Cấu hình MySQL vẫn còn giá trị mẫu 'REPLACE_WITH_...'. Điền host/tài khoản/mật khẩu thật "
+                            + "của server MySQL remote vào .env (SPRING_DATASOURCE_URL, "
+                            + "SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD).");
+        }
+        if (url.trim().toLowerCase(Locale.ROOT).startsWith("jdbc:h2:")) {
+            throw new IllegalStateException(
+                    "SPRING_DATASOURCE_URL đang trỏ tới H2 in-memory — chỉ dùng cho test/CI. "
+                            + "Production yêu cầu MySQL remote; nếu đây là test/CI hãy đặt ALLOW_SIMULATION=true.");
+        }
+    }
+
+    private static void validateBlockchain(Environment environment) {
+        String mode = environment.getProperty("blockchain.mode", "live");
+        String exportMode = environment.getProperty("bicap.blockchain.export-mode", "vechain");
+        String privateKey = environment.getProperty("blockchain.private-key", "");
+        String nodeUrl = environment.getProperty("blockchain.node-url", "");
+
+        if (!"live".equalsIgnoreCase(mode)) {
+            throw new IllegalStateException(
+                    "BLOCKCHAIN_MODE=" + mode + " là chế độ giả lập (hash sinh tại chỗ, không lên chain). "
+                            + "Cấu hình production yêu cầu BLOCKCHAIN_MODE=live cùng BLOCKCHAIN_PRIVATE_KEY. "
+                            + "Nếu đây là test/CI và bạn thật sự muốn giả lập, đặt ALLOW_SIMULATION=true.");
+        }
+        if ("local".equalsIgnoreCase(exportMode)) {
+            throw new IllegalStateException(
+                    "BLOCKCHAIN_EXPORT_MODE=local là stub SHA-256 (không neo lên VeChainThor). "
+                            + "Đặt BLOCKCHAIN_EXPORT_MODE=vechain cho production, hoặc ALLOW_SIMULATION=true "
+                            + "nếu chỉ chạy test/CI.");
+        }
+        if (isBlank(privateKey)) {
             throw new IllegalStateException(
                     "BLOCKCHAIN_PRIVATE_KEY is required when BLOCKCHAIN_MODE=live. "
-                            + "Set it to the hex private key of the platform signer wallet, "
-                            + "or run with BLOCKCHAIN_MODE=mock.");
+                            + "Đặt private key hex của ví signer (sinh ví bằng dev/tools/WalletGen.java "
+                            + "rồi nạp VTHO tại https://faucet.vecha.in).");
+        }
+        String key = privateKey.trim();
+        if (key.startsWith("0x") || key.startsWith("0X")) {
+            key = key.substring(2);
+        }
+        if (!key.matches("[0-9a-fA-F]{64}")) {
+            throw new IllegalStateException(
+                    "BLOCKCHAIN_PRIVATE_KEY không hợp lệ: phải là 32 byte hex (64 ký tự, có thể kèm tiền tố 0x).");
+        }
+        if (isBlank(nodeUrl)) {
+            throw new IllegalStateException(
+                    "BLOCKCHAIN_NODE_URL is required when BLOCKCHAIN_MODE=live (ví dụ https://testnet.vechain.org).");
         }
 
-        log.info("Deploy-time secrets validated (JWT_SECRET, SEPAY_API_KEY, blockchain mode={})", blockchainMode);
+        log.info("Deploy-time configuration validated (MySQL remote, blockchain=live node={})", nodeUrl);
     }
 
-    private boolean isBlank(String value) {
+    private static boolean containsPlaceholder(String value) {
+        return value != null && value.toUpperCase(Locale.ROOT).contains("REPLACE_WITH");
+    }
+
+    private static boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
-    }
-
-    private boolean containsForbidden(String value, String[] forbidden) {
-        for (String f : forbidden) {
-            if (value.equalsIgnoreCase(f)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** Returns the decoded byte length of the key, tolerating Base64, Base64URL or raw text. */
-    private int decodedKeyLength(String value) {
-        try {
-            return java.util.Base64.getDecoder().decode(value).length;
-        } catch (IllegalArgumentException e) {
-            try {
-                return java.util.Base64.getUrlDecoder().decode(value).length;
-            } catch (IllegalArgumentException ex) {
-                return value.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
-            }
-        }
     }
 }

@@ -26,19 +26,19 @@ BICAP được triển khai theo mô hình **monorepo** gồm 3 thành phần:
 ### 2.1 Backend
 - **Kiến trúc lớp**: Controller → Service → Repository (Spring Data JPA), DTO riêng cho từng luồng (record cho request bất biến, class POJO cho response — không dùng Lombok).
 - **Bảo mật** (BICAP-72/80/81): Spring Security 6 + JWT (HS256, base64 ≥32 bytes, fail-fast qua `SecretConfigValidator`), RBAC theo vai trò (`ActorAuthorizer`, `CurrentUser`), `RateLimitFilter` (30 req/phút/IP cho `/api/auth/**`), CSP headers, BCrypt password, khóa tài khoản sau nhiều lần đăng nhập sai (`LoginAttemptService`).
-- **Realtime**: SSE (`/api/notifications/stream`) cho thông báo in-app (BICAP-77).
-- **Cache** (BICAP-79): `RedisCacheConfig` — tự chọn Redis khi ping được, tự fallback in-memory khi Redis vắng mặt (không chặn khởi động). `@Cacheable` cho danh mục & chi tiết sản phẩm sàn; `@CacheEvict` khi ghi.
+- **Realtime**: SSE (`/api/notifications/stream`) cho thông báo in-app (BICAP-77) — JWT qua `?token=` (EventSource không gửi được header), heartbeat 25 giây, frame mở đầu `event: connected`. Khi client ngắt kết nối, emitter chết được `complete()` + loại khỏi registry ngay nhịp lỗi đầu tiên và `GlobalExceptionHandler` bỏ qua lỗi ghi trên response SSE đã commit (không log ERROR, không cố ghi `ErrorResponse`). Security chain cho phép **cả dispatch `ASYNC` và `ERROR`** (trang lỗi `/error`) đi qua: hai lần dispatch nội bộ này do container tạo và không có `SecurityContext`, nếu để `anyRequest().authenticated()` chặn thì chính chúng ném `AccessDeniedException` + *"Unable to handle the Spring Security Exception because the response is already committed"* lặp lại mỗi nhịp heartbeat (client không thể tự tạo dispatch ASYNC/ERROR nên không nới lỏng bảo mật). **Toàn bộ email/SMTP đã bị xoá** (`spring-boot-starter-mail` không còn trong `pom.xml`): đăng ký Retailer được **kích hoạt ngay** (không còn xác thực email, `VerificationEmailService`, endpoint `POST /api/auth/retailer/verify-email` hay trường `verificationRequired`), thông báo chỉ có **in-app + realtime SSE**.
+- **Cache** (BICAP-79): `RedisCacheConfig` — Redis là **dependency bắt buộc**: `app.cache.enabled=true` (mặc định) mà không ping được Redis ⇒ **dừng khởi động** (không còn fallback in-memory ngầm). Chỉ khi chủ động đặt `APP_CACHE_ENABLED=false` (test/CI) mới dùng `ConcurrentMapCacheManager`. `@Cacheable` cho danh mục & chi tiết sản phẩm sàn; `@CacheEvict` khi ghi.
 - **Blockchain** (BICAP-6/74/80/81): 2 chế độ qua `BLOCKCHAIN_MODE`:
-  - `mock`: hash mô phỏng, xác nhận tức thì (dev/CI).
-  - `live`: giao dịch type-0 được **RLP-encode, ký secp256k1 (RFC 6979, canonical low-s, recovery id), broadcast qua REST node VeChainThor** (`POST /transactions`), nhận diện kết quả qua receipt. Gói `common/blockchain`: `RlpEncoder`, `VeChainTxSigner`, `VeChainClient`, `VeChainWallet`, `Hashes` (blake2b-256 + keccak-256).
+  - `live` (**bắt buộc cho production/dev thật**): giao dịch type-0 được **RLP-encode, ký secp256k1 (RFC 6979, canonical low-s, recovery id), broadcast qua REST node VeChainThor** (`POST /transactions`), nhận diện kết quả qua receipt. Gói `common/blockchain`: `RlpEncoder`, `VeChainTxSigner`, `VeChainClient`, `VeChainWallet`, `Hashes` (blake2b-256 + keccak-256). Cần `BLOCKCHAIN_PRIVATE_KEY` (ví signer có VTHO).
+  - `mock`: hash mô phỏng, xác nhận tức thì — **chỉ chấp nhận khi `ALLOW_SIMULATION=true`** (test/CI), giống `BLOCKCHAIN_EXPORT_MODE=local`.
   - **Tự phục hồi** (BICAP-80): `BlockchainMaintenanceJob` chạy nền — 15s xác nhận PENDING từ receipt, 60s auto-retry FAILED (tối đa 3 lần), hết hạn PENDING kẹt >30 phút.
 - **Thanh toán** (BICAP-78): cổng Sepay — webhook đối chiếu chữ ký, mã đặt cọc `paymentCode`, tự kích hoạt subscription/order.
 - **Định tuyến SPA** (chế độ 1 port): `SpaForwardController` forward `/`, `/trace/**` → PortalApp (Farm/Retailer/Shipping/Guest); `/admin/**` → AdminApp (Vite `base=/admin/`).
 
 ### 2.2 Dữ liệu
-- **MySQL 5.7.41** (production, `DDL_AUTO=validate`) / **H2 MODE=MySQL** (dev/test, `update`).
+- **MySQL 5.7.41 remote** là cấu hình duy nhất cho dev/production (`spring.datasource.url` **không còn default H2**; production nên dùng `DDL_AUTO=validate`). **H2 MODE=MySQL `create-drop`** chỉ tồn tại trong `backend/src/test/resources/application.properties` — tức chỉ test/CI, và chỉ được chấp nhận nhờ `app.allow-simulation=true`.
 - Schema tham chiếu: `docs/bicap-79-database-setup.md` + `docs/sql/*.sql` (migration thủ công theo ticket).
-- **Redis 8.6**: cache tầng application (TTL 60s mặc định, cấu hình `APP_CACHE_TTL_SECONDS`).
+- **Redis 8.6 remote**: cache tầng application (TTL 60s mặc định, cấu hình `APP_CACHE_TTL_SECONDS`) — **bắt buộc**, không kết nối được là backend không khởi động.
 
 ### 2.3 Frontend
 - SPA không router thư viện — điều hướng bằng state + History API; session trong `localStorage`.
@@ -47,26 +47,28 @@ BICAP được triển khai theo mô hình **monorepo** gồm 3 thành phần:
 
 ## 3. Cấu hình triển khai (environment variables)
 
-Toàn bộ qua `.env` (xem `.env.example`):
+Toàn bộ qua `.env` (xem `.env.example`) — file đã `.gitignore` và được backend **tự nạp** nhờ `spring.config.import=optional:file:./.env[.properties],optional:file:../.env[.properties]`; script `dev/run-backend.ps1` nạp `.env` rồi chạy `mvn spring-boot:run`. Không còn secret sinh tạm và không còn fallback: thiếu hạ tầng/key là **dừng khởi động**.
 
 | Nhóm | Biến | Ghi chú |
 |---|---|---|
 | Server | `SERVER_PORT` | mặc định 8080 |
-| Database | `SPRING_DATASOURCE_URL/USERNAME/PASSWORD`, `DDL_AUTO` | production: MySQL + `validate` |
-| Redis | `SPRING_REDIS_HOST/PORT/PASSWORD/SSL`, `APP_CACHE_ENABLED`, `APP_CACHE_TTL_SECONDS` | thiếu Redis → tự fallback in-memory |
-| JWT | `JWT_SECRET` (bắt buộc), `JWT_EXPIRATION_MS`, `REFRESH_TOKEN_EXPIRATION_MS`, `VERIFICATION_TOKEN_EXPIRATION_MS` | fail-fast nếu yếu/placeholder |
-| Blockchain | `BLOCKCHAIN_MODE` (`mock`/`live`), `BLOCKCHAIN_NODE_URL`, `BLOCKCHAIN_PRIVATE_KEY` (bắt buộc khi live), `BLOCKCHAIN_GAS_PRICE/GAS_ATTEST/GAS_DEPLOY/EXPIRATION`, `BLOCKCHAIN_CONFIRM_INTERVAL_MS/RETRY_INTERVAL_MS` | ví signer cần VTHO trả phí gas |
-| Thanh toán | `SEPAY_ACCOUNT_NO/BANK_NAME/API_KEY` | fail-fast nếu placeholder |
-| Email | `SMTP_*`, `MAIL_FROM`, `FRONTEND_URL` | xác minh email retailer |
+| Database | `SPRING_DATASOURCE_URL/USERNAME/PASSWORD`, `DDL_AUTO` | **bắt buộc**: MySQL remote (không còn default H2); production đặt `validate` |
+| Redis | `SPRING_REDIS_HOST/PORT/PASSWORD/SSL`, `APP_CACHE_ENABLED`, `APP_CACHE_TTL_SECONDS` | **bắt buộc**: Redis remote không tới được ⇒ dừng khởi động; chỉ tắt cache bằng `APP_CACHE_ENABLED=false` (test/CI) |
+| JWT | `JWT_SECRET` (bắt buộc ở **mọi profile**), `JWT_EXPIRATION_MS`, `RETAILER_ACCESS_EXPIRATION_MS`, `REFRESH_TOKEN_EXPIRATION_MS` | fail-fast nếu thiếu/yếu/placeholder; không còn secret sinh ngẫu nhiên cho dev |
+| Blockchain | `BLOCKCHAIN_MODE` (`live` bắt buộc), `BLOCKCHAIN_NODE_URL`, `BLOCKCHAIN_PRIVATE_KEY` (bắt buộc khi live), `BLOCKCHAIN_EXPORT_MODE` (`vechain`), `BLOCKCHAIN_GAS_PRICE_COEF/GAS_ATTEST/GAS_DEPLOY/EXPIRATION`, `BLOCKCHAIN_CONFIRM_INTERVAL_MS/RETRY_INTERVAL_MS` | ví signer cần VTHO trả phí gas; `mock`/`local` chỉ khi `ALLOW_SIMULATION=true` |
+| Mô phỏng (test/CI) | `ALLOW_SIMULATION` | mặc định `false`; `true` mới cho phép H2 + blockchain mock/local stub |
+| Thanh toán | `SEPAY_ACCOUNT_NO/BANK_NAME/API_KEY` | `SEPAY_API_KEY` bắt buộc ở mọi profile; fail-fast nếu thiếu/placeholder |
 | Upload | `UPLOAD_DIR` | mặc định `uploads/`, phục vụ tại `/uploads/**` |
-| Frontend | `VITE_API_BASE_URL` | build-time (`web/`) |
+| Frontend | `VITE_API_BASE_URL` (build-time, `web/`), `FRONTEND_URL` (backend — dùng để sinh link truy xuất `/trace/<hash>` trong QR) | |
+
+> Không còn nhóm `SMTP_*` / `MAIL_FROM` trong `.env.example`: email đã bị xoá hoàn toàn khỏi backend.
 
 ## 4. Quy trình phát triển & đóng gói
 
 ### 4.1 Branching & CI
 - Nhánh tính năng `feature/BICAP-xx-*` → PR → merge `main`. CI (`.github/workflows/ci.yml`) gồm **2 job**:
   - `web-ci` (`web/`): `npm ci` → `npm run lint` → `npm test` → `npm run build`.
-  - `backend-ci` (`backend/`): `mvn clean test` (251 test) → `mvn package -DskipTests` → upload JAR artifact.
+  - `backend-ci` (`backend/`): `mvn clean test` (345 test) → `mvn package -DskipTests` → upload JAR artifact.
 - Không còn job build/push Docker image.
 
 ### 4.2 Đóng gói một port (khuyến nghị demo/test)
@@ -80,17 +82,18 @@ JAR chứa sẵn bundle: portal tại `/`, Admin dashboard tại `/admin/`.
 
 ### 4.3 Phát triển song song (2 tiến trình)
 ```bash
-cd backend && mvn spring-boot:run   # API :8080 (H2)
+cd backend && mvn spring-boot:run   # API :8080 (cần MySQL remote + Redis remote + blockchain live trong .env)
 cd web && npm run dev               # Vite dev server :5174 ( / và /admin )
 ```
+Backend không tự chạy H2/mock nữa: nếu `.env` thiếu MySQL/Redis/key blockchain thì tiến trình dừng ngay khi khởi động. Bộ `mvn test` thì vẫn chạy độc lập, không cần MySQL/Redis (H2 `create-drop` + `app.cache.enabled=false` + `app.allow-simulation=true` trong `src/test/resources`).
 Vite dev server chạy port **5174**; khi build tĩnh thì dùng chung port 8080 với backend.
 
 ### 4.4 Docker (đã gỡ)
 Repo **không còn** Docker: đã xoá `Dockerfile`, `docker-compose.db.yml`, `web/Dockerfile`, `web/nginx.conf` và job Docker trong CI. Không dùng `docker build`/`docker-compose` trong quy trình phát triển hay triển khai.
 
 ## 5. Kiểm soát chất lượng đã áp dụng
-- 251 test backend (unit + integration + security + crypto vectors).
-- 28 test frontend (vitest + Testing Library).
+- 345 test backend (unit + integration + security + crypto vectors), 45 test class — chạy không cần MySQL/Redis.
+- 84 test frontend (vitest + Testing Library) trong 22 file test.
 - Load test `dev/loadtest/` (k6 + node runner) — kết quả trong `docs/testing-document.md`.
 - Seed dữ liệu nhất quán (`DatabaseSeeder` — không ghi đè tài khoản đã tồn tại).
 - Tài khoản test chuẩn (bảng trong `docs/run-guide.md` §4).

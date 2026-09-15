@@ -121,18 +121,20 @@ export default function RetailerNotificationsPage() {
   const displayed = filter === 'UNREAD' ? items.filter((n) => !n.isRead) : items;
 
   return (
-    <section style={{ color: '#e2e8f0' }}>
+    <section>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
-        <div>
-          <h1 style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 700 }}>Thông Báo</h1>
-          <p style={{ margin: 0, color: '#94a3b8', fontSize: 13 }}>
-            Nhận cập nhật từ Farm Manager và người vận chuyển (đang giao, đã giao, sự cố).
-          </p>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <h1 className="dashboard-title">Thông Báo</h1>
+            <p className="dashboard-subtitle" style={{ marginBottom: 0 }}>
+              Nhận cập nhật từ Farm Manager và người vận chuyển (đang giao, đã giao, sự cố).
+            </p>
+          </div>
+          {unreadCount > 0 && (
+            <span style={s.unreadBadge}>{unreadCount} chưa đọc</span>
+          )}
         </div>
-        {unreadCount > 0 && (
-          <span style={s.unreadBadge}>{unreadCount} chưa đọc</span>
-        )}
       </div>
 
       {/* Toolbar */}
@@ -185,7 +187,7 @@ export default function RetailerNotificationsPage() {
             style={{
               ...s.card,
               background: n.isRead ? 'rgba(255,255,255,0.02)' : 'rgba(6,182,212,0.06)',
-              borderColor: n.isRead ? '#334155' : 'rgba(6,182,212,0.35)',
+              borderColor: n.isRead ? 'var(--border-color)' : 'rgba(6,182,212,0.35)',
               cursor: n.isRead ? 'default' : 'pointer',
             }}
           >
@@ -200,10 +202,10 @@ export default function RetailerNotificationsPage() {
                   </strong>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
                     {!n.isRead && <span style={s.dot} />}
-                    <span style={{ fontSize: 11, color: '#64748b' }}>{formatDate(n.createdAt)}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{formatDate(n.createdAt)}</span>
                   </div>
                 </div>
-                <p style={{ margin: '5px 0 0', fontSize: 13, color: '#94a3b8', lineHeight: 1.5 }}>
+                <p style={{ margin: '5px 0 0', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                   {n.content}
                 </p>
                 {!n.isRead && (
@@ -236,9 +238,9 @@ const s: Record<string, React.CSSProperties> = {
   filterBtn: {
     padding: '8px 14px',
     borderRadius: 999,
-    border: '1px solid #334155',
-    background: '#0f172a',
-    color: '#94a3b8',
+    border: '1px solid var(--border-color)',
+    background: 'rgba(255,255,255,0.03)',
+    color: 'var(--text-secondary)',
     cursor: 'pointer',
     fontSize: 13,
   },
@@ -250,9 +252,9 @@ const s: Record<string, React.CSSProperties> = {
   secondaryBtn: {
     padding: '7px 13px',
     borderRadius: 8,
-    border: '1px solid #475569',
-    background: '#1e293b',
-    color: '#e2e8f0',
+    border: '1px solid var(--border-color-hover)',
+    background: 'rgba(255,255,255,0.03)',
+    color: 'var(--text-primary)',
     cursor: 'pointer',
     fontSize: 13,
     fontWeight: 600,
@@ -267,14 +269,14 @@ const s: Record<string, React.CSSProperties> = {
   emptyBox: {
     textAlign: 'center',
     padding: '48px 24px',
-    border: '1px dashed #334155',
+    border: '1px dashed var(--border-color-hover)',
     borderRadius: 14,
-    color: '#94a3b8',
+    color: 'var(--text-secondary)',
   },
   card: {
     padding: '14px 16px',
     borderRadius: 12,
-    border: '1px solid #334155',
+    border: '1px solid var(--border-color)',
     transition: 'border-color 0.15s, background 0.15s',
   },
   dot: {

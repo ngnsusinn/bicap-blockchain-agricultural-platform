@@ -37,7 +37,6 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
-    private final VerificationEmailService verificationEmailService;
     private final LoginAttemptService loginAttemptService;
 
     public AuthService(
@@ -46,14 +45,12 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
             JwtTokenProvider jwtTokenProvider,
-            VerificationEmailService verificationEmailService,
             LoginAttemptService loginAttemptService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
-        this.verificationEmailService = verificationEmailService;
         this.loginAttemptService = loginAttemptService;
     }
 
@@ -146,28 +143,6 @@ public class AuthService {
         String accessToken = jwtTokenProvider.generateRetailerAccessToken(user);
         String refreshToken = jwtTokenProvider.generateRefreshToken(user);
         return AuthResponse.fromUser(accessToken, refreshToken, user);
-    }
-
-    public void verifyRetailerEmail(String token) {
-        if (!jwtTokenProvider.isTokenType(token, "email_verification")) {
-            throw new BadRequestException("Verification token is invalid or expired");
-        }
-        String email = jwtTokenProvider.getUsernameFromJWT(token);
-        User user = userRepository.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Retailer account was not found"));
-        boolean isRetailer = user.getRoles().stream()
-                .anyMatch(role -> RETAILER_ROLE.equalsIgnoreCase(role.getName()));
-        if (!isRetailer) {
-            throw new BadRequestException("Verification token is not for a Retailer account");
-        }
-        if (user.getStatus() == UserStatus.ACTIVE) {
-            return;
-        }
-        if (user.getStatus() != UserStatus.PENDING_VERIFICATION) {
-            throw new BadRequestException("Retailer account cannot be verified");
-        }
-        user.setStatus(UserStatus.ACTIVE);
-        userRepository.save(user);
     }
 
     public AuthResponse refreshRetailerToken(String refreshToken) {

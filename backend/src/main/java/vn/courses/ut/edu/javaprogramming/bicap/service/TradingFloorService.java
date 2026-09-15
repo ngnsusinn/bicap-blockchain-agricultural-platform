@@ -26,6 +26,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.FarmingSeasonRepositor
 import vn.courses.ut.edu.javaprogramming.bicap.repository.ProductRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.SeasonExportRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -123,13 +124,20 @@ public class TradingFloorService {
         return ProductListingResponse.fromEntity(saved, category, season, export);
     }
 
-    /** Danh mục sản phẩm để form đăng ký đẩy lên sàn (BICAP-18). Cached — public read (BICAP-79). */
+    /**
+     * Danh mục sản phẩm để form đăng ký đẩy lên sàn (BICAP-18). Cached — public read (BICAP-79).
+     *
+     * <p>Trả về {@link java.util.ArrayList} (collection mutable) chứ không phải
+     * {@code Stream.toList()}/{@code List.of()}: value serializer của Redis chỉ ghi type
+     * hint cho collection mutable, nên cache HIT với immutable list sẽ ném
+     * {@code SerializationException} → HTTP 500 (xem {@code RedisCacheConfigTest}).
+     */
     @org.springframework.cache.annotation.Cacheable(vn.courses.ut.edu.javaprogramming.bicap.config.RedisCacheConfig.CACHE_CATEGORIES)
     @Transactional(readOnly = true)
     public List<CategoryResponse> getCategories() {
-        return categoryRepository.findAll().stream()
+        return new ArrayList<>(categoryRepository.findAll().stream()
                 .map(CategoryResponse::fromEntity)
-                .toList();
+                .toList());
     }
 
     /**

@@ -6,7 +6,7 @@ import {
 } from '../FarmManager/ui';
 
 export default function ShippingNotificationsPage() {
-  const [form, setForm] = useState({ target: 'BOTH', title: '', content: '', sendEmail: false });
+  const [form, setForm] = useState({ target: 'BOTH', title: '', content: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -25,7 +25,7 @@ export default function ShippingNotificationsPage() {
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.message || 'Không thể gửi thông báo.');
       setNotice(`Đã gửi thông báo tới ${body.recipientCount ?? 0} tài khoản.`);
-      setForm({ target: 'BOTH', title: '', content: '', sendEmail: false });
+      setForm({ target: 'BOTH', title: '', content: '' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể gửi thông báo.');
     } finally {
@@ -74,15 +74,6 @@ export default function ShippingNotificationsPage() {
           style={{ ...inputStyle, resize: 'vertical' }}
           placeholder="Nhập nội dung thông báo vận chuyển..."
         />
-
-        <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={form.sendEmail}
-            onChange={event => setForm(current => ({ ...current, sendEmail: event.target.checked }))}
-          />
-          Gửi thêm email nếu tài khoản có cấu hình email
-        </label>
 
         <button type="submit" disabled={busy} style={buttonStyle}>
           {busy ? 'Đang gửi…' : '📨 Gửi thông báo'}

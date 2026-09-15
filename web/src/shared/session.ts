@@ -68,19 +68,39 @@ export function isAdminRole(role: string | null | undefined): boolean {
   return role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'MODERATOR';
 }
 
+/**
+ * Giá trị "token" không dùng được: rỗng, hoặc chuỗi "null"/"undefined" do code cũ
+ * ghi `localStorage.setItem(key, someUndefinedValue)`. Nếu lọt vào header sẽ thành
+ * `Authorization: Bearer undefined` và backend phải log "Invalid JWT token".
+ */
+function isUsableToken(value: string | null | undefined): value is string {
+  if (!value) return false;
+  const trimmed = value.trim();
+  return trimmed !== '' && trimmed !== 'null' && trimmed !== 'undefined';
+}
+
 export function getToken(): string | null {
-  return localStorage.getItem(STORAGE_KEYS.token);
+  const raw = localStorage.getItem(STORAGE_KEYS.token);
+  if (!isUsableToken(raw)) {
+    // Tự dọn giá trị rác để không gửi `Bearer undefined` lên backend.
+    if (raw !== null) localStorage.removeItem(STORAGE_KEYS.token);
+    return null;
+  }
+  return raw;
 }
 
 export function getRefreshToken(): string | null {
-  return localStorage.getItem(STORAGE_KEYS.refreshToken);
+  const raw = localStorage.getItem(STORAGE_KEYS.refreshToken);
+  return isUsableToken(raw) ? raw : null;
 }
 
 /** Persists the JWT + user profile after a successful login/registration. */
 export function saveSession(token: string, user: UserSession, refreshToken?: string): void {
-  localStorage.setItem(STORAGE_KEYS.token, token);
+  // Chỉ ghi token hợp lệ — trước đây `accessToken` rỗng/undefined của response vẫn
+  // được lưu thành chuỗi "undefined" và mọi request sau đó gửi `Bearer undefined`.
+  if (isUsableToken(token)) localStorage.setItem(STORAGE_KEYS.token, token.trim());
   localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));
-  if (refreshToken) localStorage.setItem(STORAGE_KEYS.refreshToken, refreshToken);
+  if (isUsableToken(refreshToken)) localStorage.setItem(STORAGE_KEYS.refreshToken, refreshToken.trim());
 }
 
 export function getCurrentUser(): UserSession | null {

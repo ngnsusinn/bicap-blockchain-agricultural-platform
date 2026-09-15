@@ -34,7 +34,7 @@ const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const c = STATUS_COLORS[status] ?? { color: '#94a3b8', bg: 'rgba(148,163,184,.15)' };
+  const c = STATUS_COLORS[status] ?? { color: 'var(--text-secondary)', bg: 'rgba(148,163,184,.15)' };
   return (
     <span style={{ fontSize: 11, padding: '4px 8px', borderRadius: 999, color: c.color, background: c.bg, whiteSpace: 'nowrap' }}>
       {status}
@@ -87,11 +87,11 @@ export default function RetailerReportsPage() {
   };
 
   return (
-    <section style={{ color: '#e2e8f0' }}>
+    <section>
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 700 }}>Gửi báo cáo cho Admin</h1>
-        <p style={{ margin: 0, color: '#94a3b8', fontSize: 13 }}>
+      <div style={{ marginBottom: 24 }}>
+        <h1 className="dashboard-title">Gửi báo cáo cho Admin</h1>
+        <p className="dashboard-subtitle" style={{ marginBottom: 0 }}>
           Gửi khiếu nại, phản hồi hoặc báo cáo sự cố tới ban quản trị nền tảng.
         </p>
       </div>
@@ -136,7 +136,7 @@ export default function RetailerReportsPage() {
             placeholder="Mô tả chi tiết vấn đề bạn gặp phải..."
             style={{ ...s.input, resize: 'vertical' }}
           />
-          <p style={{ textAlign: 'right', color: '#64748b', fontSize: 11, margin: '3px 0 0' }}>
+          <p style={{ textAlign: 'right', color: 'var(--text-muted)', fontSize: 11, margin: '3px 0 0' }}>
             {form.content.length}/4000
           </p>
 
@@ -173,7 +173,7 @@ export default function RetailerReportsPage() {
                   <strong style={{ fontSize: 14 }}>{r.subject}</strong>
                   <StatusBadge status={r.status} />
                 </div>
-                <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 6px' }}>
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 6px' }}>
                   {TYPE_LABELS[r.type] ?? r.type}
                   {r.relatedOrderId ? ` · Đơn #${r.relatedOrderId}` : ''}
                   {r.createdAt ? ` · ${new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }).format(new Date(r.createdAt))}` : ''}
@@ -184,7 +184,7 @@ export default function RetailerReportsPage() {
                     <strong style={{ color: '#6ee7b7', fontSize: 12 }}>Phản hồi của Admin:</strong>
                     <p style={{ margin: '4px 0 0', fontSize: 13 }}>{r.adminResponse}</p>
                     {r.handledAt && (
-                      <p style={{ margin: '4px 0 0', fontSize: 11, color: '#64748b' }}>
+                      <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
                         {new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(r.handledAt))}
                       </p>
                     )}
@@ -207,7 +207,7 @@ const s: Record<string, React.CSSProperties> = {
   primaryBtn: { padding: 12, border: 0, borderRadius: 8, background: '#0891b2', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14 },
   errorBox: { padding: '11px 14px', borderRadius: 10, color: '#fecaca', background: 'rgba(239,68,68,.13)', marginBottom: 12 },
   successBox: { padding: '11px 14px', borderRadius: 10, color: '#a7f3d0', background: 'rgba(16,185,129,.13)', marginBottom: 12 },
-  card: { padding: 16, border: '1px solid #334155', borderRadius: 10, background: '#0f172a' },
+  card: { padding: 16, border: '1px solid var(--border-color)', borderRadius: 10, background: 'rgba(255,255,255,0.03)' },
   adminReply: { marginTop: 10, padding: 10, borderRadius: 8, background: 'rgba(16,185,129,.08)', border: '1px solid rgba(16,185,129,.25)' },
-  emptyBox: { textAlign: 'center', padding: '32px 16px', color: '#94a3b8' },
+  emptyBox: { textAlign: 'center', padding: '32px 16px', color: 'var(--text-secondary)' },
 };

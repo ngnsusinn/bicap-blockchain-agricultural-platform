@@ -1,8 +1,12 @@
 package vn.courses.ut.edu.javaprogramming.bicap.exception;
 
+import jakarta.servlet.http.HttpServletResponse;
+
+import org.apache.catalina.connector.ClientAbortException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -11,12 +15,15 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -139,16 +146,56 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleAllExceptions(Exception ex, WebRequest request) {
+    public ResponseEntity<ErrorResponse> handleAllExceptions(Exception ex, WebRequest request,
+                                                             HttpServletResponse response) {
+        // SSE / streaming: khi client đóng tab hoặc reload, lần ghi kế tiếp (heartbeat 25s
+        // hoặc thông báo mới) sẽ ném IOException vì socket đã chết. Response lúc này đã
+        // commit với Content-Type text/event-stream nên KHÔNG thể ghi ErrorResponse nữa —
+        // trước đây việc này sinh ra một ERROR + stack trace mỗi 25 giây kèm
+        // HttpMessageNotWritableException. Đây là sự kiện bình thường, chỉ ghi ở mức debug.
+        if (response.isCommitted() || isStreamingResponse(response) || isClientDisconnect(ex)) {
+            log.debug("Bỏ qua lỗi trên response đã commit (client ngắt kết nối) tại {}: {}",
+                    request.getDescription(false), ex.getMessage());
+            return null;
+        }
         // Log the full stack server-side for diagnosis; never echo internal details to the client.
         log.error("Unhandled exception on {} {}", request.getDescription(false), ex.getClass().getSimpleName(), ex);
-        ErrorResponse response = ErrorResponse.builder()
+        ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .error(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase())
                 .message("An unexpected error occurred")
                 .build();
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    /** Response đang là SSE stream (đã set Content-Type text/event-stream). */
+    private static boolean isStreamingResponse(HttpServletResponse response) {
+        String contentType = response.getContentType();
+        return contentType != null
+                && contentType.toLowerCase(Locale.ROOT).startsWith(MediaType.TEXT_EVENT_STREAM_VALUE);
+    }
+
+    /**
+     * Nhận diện client ngắt kết nối giữa lúc server đang ghi: Spring 6.1 bọc thành
+     * {@link AsyncRequestNotUsableException}, Tomcat ném {@link ClientAbortException}, còn
+     * socket thuần thì chỉ có IOException với thông điệp tuỳ hệ điều hành ("aborted",
+     * "Broken pipe", "Connection reset").
+     */
+    private static boolean isClientDisconnect(Throwable ex) {
+        for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+            if (cause instanceof AsyncRequestNotUsableException || cause instanceof ClientAbortException) {
+                return true;
+            }
+            if (cause instanceof IOException) {
+                String message = cause.getMessage() == null ? "" : cause.getMessage().toLowerCase(Locale.ROOT);
+                if (message.contains("aborted") || message.contains("broken pipe")
+                        || message.contains("connection reset") || message.contains("connection was reset")) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String error, String message) {

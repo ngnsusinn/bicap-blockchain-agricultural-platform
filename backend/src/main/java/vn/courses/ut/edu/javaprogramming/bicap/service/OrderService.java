@@ -272,8 +272,7 @@ public class OrderService {
         notificationService.sendNotification(order.getRetailerId(), "SUCCESS",
                 "Đơn hàng đã được chấp nhận",
                 "Yêu cầu mua \"" + productName(ctx) + "\" (" + order.getQuantity() + " đơn vị) đã được Farm Manager "
-                        + "chấp nhận. Vui lòng đặt cọc 30% trong vòng 24h để xác nhận đơn hàng.",
-                false);
+                        + "chấp nhận. Vui lòng đặt cọc 30% trong vòng 24h để xác nhận đơn hàng.");
 
         return buildOrderResponse(ctx.withOrder(saved));
     }
@@ -298,8 +297,7 @@ public class OrderService {
         notificationService.sendNotification(order.getRetailerId(), "WARNING",
                 "Đơn hàng bị từ chối",
                 "Yêu cầu mua \"" + productName(ctx) + "\" (" + order.getQuantity() + " đơn vị) đã bị từ chối. "
-                        + "Lý do: " + reason.trim(),
-                false);
+                        + "Lý do: " + reason.trim());
 
         return buildOrderResponse(ctx.withOrder(saved));
     }
@@ -355,8 +353,7 @@ public class OrderService {
                 notificationService.sendNotification(farm.getUserId(), "INFO",
                         "Yêu cầu mua mới",
                         "Nhà bán lẻ " + actor.getFullName() + " đã đặt mua " + request.getQuantity()
-                                + " đơn vị \"" + product.getName() + "\". Vui lòng xem xét và xử lý.",
-                        false)
+                                + " đơn vị \"" + product.getName() + "\". Vui lòng xem xét và xử lý.")
             );
         }
 
@@ -405,8 +402,7 @@ public class OrderService {
                         requiresAdminReview ? "Yêu cầu hủy đơn đã đặt cọc" : "Đơn hàng bị hủy",
                         "Nhà bán lẻ " + actor.getFullName()
                                 + (requiresAdminReview ? " yêu cầu hủy đơn hàng #" : " đã hủy đơn hàng #") + id
-                                + (order.getCancelledReason() != null ? ". Lý do: " + order.getCancelledReason() : "."),
-                        false)
+                                + (order.getCancelledReason() != null ? ". Lý do: " + order.getCancelledReason() : "."))
             );
         }
 
@@ -415,7 +411,7 @@ public class OrderService {
                     notificationService.sendNotification(admin.getId(), "WARNING",
                             "Yêu cầu hủy đơn đã đặt cọc",
                             "Nhà bán lẻ " + actor.getFullName() + " yêu cầu hủy đơn #" + id
-                                    + ". Lý do: " + order.getCancelledReason(), false));
+                                    + ". Lý do: " + order.getCancelledReason()));
         }
 
         Farm farm = season != null && season.getFarmId() != null
@@ -437,7 +433,7 @@ public class OrderService {
         Order saved = orderRepository.save(order);
         notificationService.sendNotification(order.getRetailerId(), "INFO",
                 "Đơn hàng đang vận chuyển",
-                "Đơn hàng \"" + productName(ctx) + "\" đã bắt đầu vận chuyển.", false);
+                "Đơn hàng \"" + productName(ctx) + "\" đã bắt đầu vận chuyển.");
         return buildOrderResponse(ctx.withOrder(saved));
     }
 
@@ -462,8 +458,7 @@ public class OrderService {
         notificationService.sendNotification(order.getRetailerId(), "INFO",
                 "Đơn hàng đã được giao",
                 "Đơn hàng \"" + productName(ctx) + "\" (" + order.getQuantity()
-                        + " đơn vị) đã được giao. Vui lòng xác nhận đã nhận hàng.",
-                false);
+                        + " đơn vị) đã được giao. Vui lòng xác nhận đã nhận hàng.");
 
         return buildOrderResponse(ctx.withOrder(saved));
     }
@@ -593,8 +588,7 @@ public class OrderService {
                 notificationService.sendNotification(farm.getUserId(), "SUCCESS",
                         "Đơn hàng hoàn thành",
                         "Nhà bán lẻ " + actorName + " đã xác nhận nhận hàng. Đơn hàng #"
-                                + order.getId() + " đã hoàn thành.",
-                        false)
+                                + order.getId() + " đã hoàn thành.")
         );
     }
 

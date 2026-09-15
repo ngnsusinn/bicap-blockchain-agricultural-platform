@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { API_BASE_URL } from '../../utils/auth';
+import React, { useState } from 'react';
 import LoginForm from '../../components/Auth/LoginForm';
 import RegisterForm from '../../components/Auth/RegisterForm';
 import type { AuthRole } from '../../components/Auth/LoginForm';
@@ -17,7 +16,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 }) => {
   const [role, setRole] = useState<AuthRole>(defaultRole);
   const [mode, setMode] = useState<'login' | 'register'>(defaultMode);
-  const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error' | null>(null);
 
   const isFarm = role === 'FARM_MANAGER';
   const isAdmin = role === 'ADMIN';
@@ -32,7 +30,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     if (next === 'ADMIN' || next === 'SHIPPING_MGR') setMode('login');
   };
 
-  const handleSuccess = (data: { token?: string; refreshToken?: string; user?: any; pendingVerification?: boolean }) => {
+  const handleSuccess = (data: { token?: string; refreshToken?: string; user?: any }) => {
     if (data.token && data.user) {
       onLoginSuccess(data.token, data.user, data.refreshToken);
     } else {
@@ -40,24 +38,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       setMode('login');
     }
   };
-
-  useEffect(() => {
-    const token = new URLSearchParams(window.location.search).get('verifyToken');
-    if (!token) return;
-    setRole('RETAILER');
-    setMode('login');
-    setVerificationStatus('loading');
-    fetch(`${API_BASE_URL}/auth/retailer/verify-email?token=${encodeURIComponent(token)}`, {
-      method: 'POST',
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error('Verification failed');
-        setVerificationStatus('success');
-        sessionStorage.setItem('retailerProfileRequired', '1');
-        window.history.replaceState({}, document.title, window.location.pathname);
-      })
-      .catch(() => setVerificationStatus('error'));
-  }, []);
 
   return (
     <div
@@ -136,18 +116,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             className={`auth-card glass-panel ${!isFarm ? 'auth-card--retailer' : ''}`}
             style={cardStyle}
           >
-            {verificationStatus && (
-              <div
-                role={verificationStatus === 'error' ? 'alert' : 'status'}
-                aria-live="polite"
-                className={`retailer-verification retailer-verification--${verificationStatus}`}
-              >
-                {verificationStatus === 'loading' && 'Đang xác nhận địa chỉ email...'}
-                {verificationStatus === 'success' && 'Email đã được xác nhận. Bạn có thể đăng nhập ngay.'}
-                {verificationStatus === 'error' && 'Liên kết xác nhận không hợp lệ hoặc đã hết hạn.'}
-              </div>
-            )}
-            
             {/* 1. Role Selector Tablist (BICAP-7 vs BICAP-36 vs Admin) */}
             <div
               role="tablist"

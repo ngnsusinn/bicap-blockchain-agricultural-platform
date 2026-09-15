@@ -13,7 +13,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.dto.NotificationResponse;
  * {@link vn.courses.ut.edu.javaprogramming.bicap.common.security.CurrentUser}, so a user
  * can only ever see or mutate their own notifications. Other domain services (IoT, order,
  * farm approval, ...) call {@link #sendNotification} to fan out an event to a user's
- * in-app inbox and, for critical events, an email.
+ * in-app inbox.
  */
 public interface NotificationService {
 
@@ -42,10 +42,9 @@ public interface NotificationService {
     SseEmitter subscribe(Long userId);
 
     /**
-     * Persists a notification, pushes it to the user's live SSE stream and, when
-     * {@code sendEmail} is set, also emails the user.
+     * Persists a notification and pushes it to the user's live SSE stream.
      */
-    void sendNotification(Long userId, String type, String title, String content, boolean sendEmail);
+    void sendNotification(Long userId, String type, String title, String content);
 
     /**
      * Publishes a platform-wide announcement (no individual recipient). These are the

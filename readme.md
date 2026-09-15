@@ -141,19 +141,36 @@ bicap-blockchain-agricultural-platform/
 
 ### 1. Backend (`backend/`)
 
-```bash
-cd backend
+Backend chạy với **cấu hình kiểu production ngay từ đầu**:
 
-# (Tùy chọn) nạp biến môi trường từ file .env ở thư mục gốc
-#   JWT_SECRET, SEPAY_API_KEY … — nếu không đặt, backend dùng giá trị mặc định dev.
+- MySQL + Redis là **dịch vụ bắt buộc** (server remote) — Redis không kết nối được là **dừng khởi động**;
+- `JWT_SECRET` / `SEPAY_API_KEY` phải là **key thật**; thiếu hoặc còn placeholder là **dừng khởi động**;
+- blockchain ở chế độ **`live`** (mock chỉ dành cho test/CI).
 
-mvn spring-boot:run
+**Không còn secret sinh tạm hay fallback ngầm** (H2 in-memory, cache in-memory, hash giả lập) —
+cấu hình thiếu sẽ báo lỗi rõ ràng thay vì chạy ở chế độ giả lập.
+
+```powershell
+# 1) Tạo .env từ template rồi điền key thật (file .env đã được .gitignore)
+Copy-Item .env.example .env
+
+# 2) Chạy backend kèm .env — script export toàn bộ biến rồi gọi mvn
+.\dev\run-backend.ps1
 # → API tại http://localhost:8080
 ```
 
-Mặc định backend chạy với **H2 in-memory** (`jdbc:h2:mem:bicap_db`) nên có thể khởi động ngay mà không cần MySQL. Dữ liệu mẫu được seed tự động bởi `DatabaseSeeder`.
+```bash
+# Hoặc trên bash/macOS:
+set -a; source .env; set +a
+cd backend && mvn spring-boot:run
+```
 
-Chạy test backend:
+Chuẩn bị hạ tầng trước khi chạy: database MySQL trên server remote, Redis trên server remote,
+và ví signer VeChainThor đã nạp VTHO (nếu dùng tính năng xuất kho/QR). Dữ liệu mẫu được seed tự
+động bởi `DatabaseSeeder` ở lần chạy đầu.
+
+Chạy test backend (test dùng H2 + tắt cache + blockchain giả lập qua `src/test/resources/application.properties`,
+nên **không cần** MySQL/Redis):
 
 ```bash
 cd backend
@@ -165,7 +182,8 @@ mvn test
 ```bash
 cd backend
 mvn clean package -DskipTests     # → backend/target/*.jar
-java -jar target/bicap-blockchain-agricultural-platform-0.0.1-SNAPSHOT.jar
+# chạy kèm biến môi trường từ .env (ví dụ trên bash):
+set -a; source ../.env; set +a; java -jar target/bicap-blockchain-agricultural-platform-0.0.1-SNAPSHOT.jar
 ```
 
 ### 2. Web app — chế độ dev (`web/`)
@@ -226,26 +244,33 @@ Sao chép `.env.example` thành `.env` và điền giá trị. Các biến quan 
 | Biến | Mặc định | Mô tả |
 | --- | --- | --- |
 | `SERVER_PORT` | `8080` | Cổng backend |
-| `SPRING_DATASOURCE_URL` | H2 in-memory | JDBC URL (MySQL ở production) |
-| `SPRING_DATASOURCE_USERNAME` / `_PASSWORD` | `sa` / rỗng | Thông tin DB |
-| `DDL_AUTO` | `update` (dev) | Production nên dùng `validate` + migration |
-| `JWT_SECRET` | rỗng → random mỗi lần chạy (dev) | **Bắt buộc ở production** — `openssl rand -base64 48`. Giá trị template/đã từng public trong repo sẽ bị **từ chối khởi động** (xem mục Bảo mật) |
-| `FRONTEND_URL` | `http://localhost:5174` | Dùng để sinh link xác thực email & QR trace |
+| `SPRING_DATASOURCE_URL` | **bắt buộc** (MySQL remote) | JDBC URL của server MySQL, ví dụ `jdbc:mysql://host:3306/bicap_db?useSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=true` |
+| `SPRING_DATASOURCE_USERNAME` / `_PASSWORD` | **bắt buộc** | Tài khoản DB trên server remote |
+| `DDL_AUTO` | `update` | Production thật nên dùng `validate` + migration (`docs/sql/`) |
+| `JWT_SECRET` | **bắt buộc** | `openssl rand -base64 48` (≥ 32 byte). Thiếu/placeholder/đã từng public ⇒ **dừng khởi động** |
+| `FRONTEND_URL` | `http://localhost:5174` | Dùng để sinh link QR trace |
 | `UPLOAD_DIR` | `uploads` | Thư mục lưu file tải lên |
-| `SEPAY_API_KEY` | rỗng → random mỗi lần chạy (dev) | Khoá cổng thanh toán Sepay; giá trị template bị từ chối khởi động |
-| `SPRING_REDIS_*` | localhost | Redis cache (tự fallback in-memory nếu không kết nối được) |
-| `BLOCKCHAIN_MODE` | `mock` | `mock` (dev/CI) hoặc `live` (ký & broadcast thật) |
-| `BLOCKCHAIN_EXPORT_MODE` | `vechain` | `vechain` (neo lô xuất kho qua `BlockchainService`) hoặc `local` (stub SHA-256, chỉ dùng khi dev) |
-| `BLOCKCHAIN_PRIVATE_KEY` | rỗng | Khoá riêng ví ký giao dịch khi `live` |
+| `SEPAY_API_KEY` | **bắt buộc** | Khoá webhook Sepay (dán key thật từ dashboard Sepay) — placeholder ⇒ **dừng khởi động** |
+| `SPRING_REDIS_HOST` / `_PORT` / `_PASSWORD` / `_SSL` | **bắt buộc** (Redis remote) | Cache BICAP-79. Không kết nối được ⇒ **dừng khởi động** (không còn fallback in-memory) |
+| `APP_CACHE_ENABLED` | `true` | Chỉ đặt `false` khi chủ động tắt cache (test/CI) |
+| `BLOCKCHAIN_MODE` | `live` | Production **phải** là `live` (ký & broadcast thật) |
+| `ALLOW_SIMULATION` | `false` | Chỉ test/CI mới đặt `true` để cho phép chế độ giả lập |
+| `BLOCKCHAIN_EXPORT_MODE` | `vechain` | `vechain` (neo lô xuất kho thật); `local` (stub SHA-256) bị chặn như `ALLOW_SIMULATION=false` |
+| `BLOCKCHAIN_PRIVATE_KEY` | **bắt buộc khi `live`** | Private key 32 byte hex của ví signer (sinh bằng `dev/tools/WalletGen.java`), ví cần VTHO để trả gas |
 | `VITE_API_BASE_URL` | `http://localhost:8080` | Build-time của `web/` — origin backend |
 
-### 🔐 Bảo mật triển khai (quan trọng)
+### 🔐 Cấu hình kiểu production & bảo mật (quan trọng)
 
-- Backend **không còn ship secret mặc định**. Khi `JWT_SECRET`/`SEPAY_API_KEY` để trống, `SecureSecretInitializer`
-  sinh secret ngẫu nhiên cho **riêng tiến trình đang chạy** (token sẽ hết hiệu lực sau khi restart).
-- Ở profile `prod`/`production`, để trống các biến này là **lỗi khởi động**.
-- Bất kỳ giá trị nào từng được công bố trong repo (`test-jwt-secret-key-*`, `test-sepay-api-key`) hoặc
-  còn nguyên dạng template (`replace-with-…`, `your_…`) đều bị **từ chối khởi động**.
+- Backend **không ship secret và không tự sinh secret**. `JWT_SECRET`/`SEPAY_API_KEY` để trống hoặc còn
+  dạng template (`replace-with-…`, `your_…`) ⇒ `SecureSecretInitializer` **dừng khởi động ở mọi profile**,
+  kể cả dev — không còn "ephemeral development secret" khiến token chết sau mỗi lần restart.
+- `SecretConfigValidator` chặn thêm: `JWT_SECRET` giải mã < 32 byte; `BLOCKCHAIN_MODE` khác `live`
+  (trừ khi đặt `ALLOW_SIMULATION=true`); `BLOCKCHAIN_EXPORT_MODE=local`; thiếu hoặc sai định dạng
+  `BLOCKCHAIN_PRIVATE_KEY` khi chạy `live`.
+- **Redis là dependency bắt buộc**: không kết nối được ⇒ dừng khởi động (trước đây tự fallback cache
+  in-memory). Chỉ tắt cache khi chủ động đặt `APP_CACHE_ENABLED=false` (test/CI).
+- Bất kỳ giá trị nào từng được công bố trong repo (`test-jwt-secret-key-*`, `test-sepay-api-key`) đều bị
+  **từ chối khởi động**.
 - `/api/admin/**` (bao gồm danh sách sản phẩm) yêu cầu xác thực — khách vãng lai dùng
   `/api/public/products` và `/api/public/education`.
 - Guest chỉ nhận được **thông báo hệ thống** (`is_system = true`) qua `GET /api/notifications`.
@@ -272,16 +297,18 @@ cd backend && mvn test
 
 ## ⛓️ Tích hợp Blockchain (VeChainThor)
 
-- `BLOCKCHAIN_MODE=mock` (mặc định) — hash được mô phỏng, không cần mạng; dùng cho dev và CI.
-- `BLOCKCHAIN_MODE=live` — giao dịch legacy type-0 được RLP-encode, ký secp256k1 (RFC 6979,
-  low-s) và broadcast lên node; `BlockchainMaintenanceJob` xác nhận receipt mỗi 15s và tự
-  retry tối đa 3 lần. Export trả `chainMode = "LIVE"` (mock trả `"MOCK"`).
-- Lô xuất kho + mã QR được neo qua `VeChainExportBlockchainGateway` (mặc định);
-  `BLOCKCHAIN_EXPORT_MODE=local` chỉ là stub SHA-256 dùng khi dev.
+- `BLOCKCHAIN_MODE=live` (**cấu hình production**) — giao dịch legacy type-0 được RLP-encode, ký secp256k1
+  (RFC 6979, low-s) và broadcast lên node; `BlockchainMaintenanceJob` xác nhận receipt mỗi 15s và tự
+  retry tối đa 3 lần. Export trả `chainMode = "LIVE"`.
+- `BLOCKCHAIN_MODE=mock` — hash mô phỏng tại chỗ, **không** dùng cho production: `SecretConfigValidator`
+  sẽ chặn khởi động, chỉ cho phép khi đặt `ALLOW_SIMULATION=true` (dành cho test/CI — xem
+  `src/test/resources/application.properties`).
+- Lô xuất kho + mã QR được neo qua `VeChainExportBlockchainGateway`;
+  `BLOCKCHAIN_EXPORT_MODE=local` (stub SHA-256) cũng bị chặn như chế độ mock.
 - Hợp đồng mẫu: `dev/blockchain/contracts/Traceability.sol`.
 - Trang truy xuất công khai: `/trace/{hash}`.
 
-### Bật broadcast thật (testnet)
+### Ví signer & broadcast thật (testnet)
 
 ```bash
 # 1. Sinh ví signer (ghi BLOCKCHAIN_PRIVATE_KEY vào ./.env, chỉ in ra địa chỉ)
@@ -291,10 +318,13 @@ java -cp "backend/target/classes:$BC" dev/tools/WalletGen.java
 # 2. Nạp VTHO (gas) cho địa chỉ vừa in tại https://faucet.vecha.in
 #    Kiểm tra:  curl -s https://testnet.vechain.org/accounts/<diaChi>
 
-# 3. Bật live trong .env  (BLOCKCHAIN_MODE=live, BLOCKCHAIN_NODE_URL=https://testnet.vechain.org)
-#    rồi chạy — LƯU Ý: app KHÔNG tự đọc .env, phải export:
-cd backend && set -a && source ../.env && set +a && mvn spring-boot:run
+# 3. Chạy backend kèm .env (đã có BLOCKCHAIN_MODE=live + BLOCKCHAIN_PRIVATE_KEY):
+.\dev\run-backend.ps1        # PowerShell
+# hoặc: set -a; source .env; set +a; cd backend && mvn spring-boot:run
 ```
+
+> Chưa nạp VTHO thì backend **vẫn khởi động** (chỉ kiểm tra định dạng key), nhưng thao tác xuất kho/neo
+> giao dịch sẽ bị node từ chối do thiếu gas — xem log `BlockchainMaintenanceJob`.
 
 Tra giao dịch: `https://explore-testnet.vechain.org/transactions/<txHash>`.
 Trạng thái on-chain trong app: `GET /api/admin/contracts/blockchain-status` và
@@ -324,6 +354,7 @@ Trạng thái on-chain trong app: `GET /api/admin/contracts/blockchain-status` v
 | --- | --- |
 | `docs/requirement.md`, `docs/user-requirements.md` | Yêu cầu nghiệp vụ |
 | `docs/software-requirement-specifications.md` | Đặc tả yêu cầu phần mềm |
+| `docs/system-specification.md` | **Đặc tả chi tiết hệ thống theo mã nguồn hiện hành (As-Built)** — kiến trúc, mô hình dữ liệu, API, bảo mật, luồng nghiệp vụ, blockchain, cấu hình, kiểm thử |
 | `docs/architecture-design.md`, `docs/detail-design.md` | Thiết kế kiến trúc & chi tiết |
 | `docs/bicap-79-database-setup.md`, `docs/sql/` | Thiết lập CSDL & script schema |
 | `docs/run-guide.md`, `docs/installation-guide.md` | Hướng dẫn chạy/cài đặt |

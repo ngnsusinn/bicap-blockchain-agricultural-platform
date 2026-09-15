@@ -19,9 +19,14 @@ export default function NotificationBell() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const user = getCurrentUser();
+  // Chỉ phụ thuộc vào id (kiểu nguyên thủy) trong dependency array bên dưới:
+  // getCurrentUser() trả về object mới sau mỗi lần render, nên [user] sẽ khiến
+  // useEffect chạy lại vô hạn (mỗi lần chạy lại gọi /notifications + mở SSE mới
+  // → bắn hàng nghìn request như đã thấy trên Network tab).
+  const userId = user?.id;
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
 
     const fetchNotifications = async () => {
       try {
@@ -64,7 +69,7 @@ export default function NotificationBell() {
     return () => {
       eventSource.close();
     };
-  }, [user]);
+  }, [userId]); // Chỉ chạy lại khi userId thay đổi thực sự
 
   // Handle click outside to close dropdown
   useEffect(() => {

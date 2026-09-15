@@ -38,9 +38,6 @@ public class JwtTokenProvider {
     @Value("${app.jwt.refresh-expiration-ms:604800000}")
     private long refreshExpirationMs;
 
-    @Value("${app.jwt.verification-expiration-ms:86400000}")
-    private long verificationExpirationMs;
-
     private SecretKey key() {
         byte[] keyBytes;
         try {
@@ -71,10 +68,6 @@ public class JwtTokenProvider {
 
     public String generateRefreshToken(UserDetails userPrincipal) {
         return generateTypedToken(userPrincipal.getUsername(), "refresh", refreshExpirationMs);
-    }
-
-    public String generateEmailVerificationToken(UserDetails userPrincipal) {
-        return generateTypedToken(userPrincipal.getUsername(), "email_verification", verificationExpirationMs);
     }
 
     private String generateTypedToken(String subject, String type, long expirationMs) {
@@ -126,13 +119,15 @@ public class JwtTokenProvider {
             // verification tokens at the authentication filter.
             return type == null || "access".equals(type);
         } catch (MalformedJwtException ex) {
-            log.warn("Invalid JWT token: {}", ex.getMessage());
+            // Token sai/hết hạn là chuyện của client (tab cũ, localStorage rác) — request
+            // vẫn bị từ chối 401/403 như thường, không cần log ồn ào ở mức WARN.
+            log.debug("Invalid JWT token: {}", ex.getMessage());
         } catch (ExpiredJwtException ex) {
-            log.warn("Expired JWT token: {}", ex.getMessage());
+            log.debug("Expired JWT token: {}", ex.getMessage());
         } catch (UnsupportedJwtException ex) {
-            log.warn("Unsupported JWT token: {}", ex.getMessage());
+            log.debug("Unsupported JWT token: {}", ex.getMessage());
         } catch (IllegalArgumentException ex) {
-            log.warn("JWT claims string is empty: {}", ex.getMessage());
+            log.debug("JWT claims string is empty: {}", ex.getMessage());
         }
         return false;
     }

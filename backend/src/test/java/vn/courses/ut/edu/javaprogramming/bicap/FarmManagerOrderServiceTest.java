@@ -201,7 +201,7 @@ class FarmManagerOrderServiceTest {
 
         assertEquals(Order.STATUS_ACCEPTED, response.getStatus());
         assertEquals(Order.STATUS_ACCEPTED, order.getStatus());
-        verify(notificationService).sendNotification(eq(RETAILER_ID), eq("SUCCESS"), anyString(), anyString(), eq(false));
+        verify(notificationService).sendNotification(eq(RETAILER_ID), eq("SUCCESS"), anyString(), anyString());
     }
 
     @Test
@@ -214,7 +214,7 @@ class FarmManagerOrderServiceTest {
         assertThrows(BadRequestException.class, () -> service.acceptOrder(ORDER_ID));
         assertEquals(Order.STATUS_PENDING, order.getStatus());
         verify(orderRepository, never()).save(any());
-        verify(notificationService, never()).sendNotification(any(), any(), any(), any(), anyBoolean());
+        verify(notificationService, never()).sendNotification(any(), any(), any(), any());
     }
 
     @Test
@@ -245,7 +245,7 @@ class FarmManagerOrderServiceTest {
         // Reason check runs before the order is loaded, so no repository stubs are needed.
         assertThrows(BadRequestException.class, () -> service.rejectOrder(ORDER_ID, "   "));
         verifyNoInteractions(orderRepository);
-        verify(notificationService, never()).sendNotification(any(), any(), any(), any(), anyBoolean());
+        verify(notificationService, never()).sendNotification(any(), any(), any(), any());
     }
 
     @Test
@@ -260,7 +260,7 @@ class FarmManagerOrderServiceTest {
         assertEquals(Order.STATUS_REJECTED, response.getStatus());
         assertEquals("Hàng đã bán hết trong mùa vụ", response.getRejectReason());
         assertEquals("Hàng đã bán hết trong mùa vụ", order.getRejectReason());
-        verify(notificationService).sendNotification(eq(RETAILER_ID), eq("WARNING"), anyString(), contains("Hàng đã bán hết trong mùa vụ"), eq(false));
+        verify(notificationService).sendNotification(eq(RETAILER_ID), eq("WARNING"), anyString(), contains("Hàng đã bán hết trong mùa vụ"));
     }
 
     @Test
