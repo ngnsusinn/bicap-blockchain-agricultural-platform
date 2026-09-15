@@ -25,6 +25,9 @@ import Certificates from './pages/FarmManager/Certificates';
 import Settings from './pages/FarmManager/Settings';
 import TracePage from './pages/TracePage';
 import NotificationBell from './components/NotificationBell';
+import PortalSidebar from './components/PortalSidebar';
+import type { PortalNavItem } from './components/PortalSidebar';
+import useHashTab from './utils/useHashTab';
 import IotDashboard from './pages/FarmManager/IotDashboard';
 import GuestEducation from './pages/Guest/GuestEducation';
 import GuestProductSearch from './pages/Guest/GuestProductSearch';
@@ -48,140 +51,46 @@ function redirectToAdminPortal() {
   window.location.replace('/admin');
 }
 
-/* ── Sidebar Component (Dành cho Farm Manager - BICAP-7 / BICAP-8) ── */
-interface SidebarProps {
-  currentTab: string;
-  onTabChange: (tab: string) => void;
-  hasActiveSubscription: boolean;
-  user?: UserSession | null;
-}
+/* ── Menu điều hướng các portal (dùng chung PortalSidebar) ──
+ * Tab đang xem được lưu vào hash URL (`#farm/<tab>`, `#retailer/<tab>`) nên khi
+ * F5 / tải lại trang người dùng vẫn ở đúng màn hình trước đó. */
 
-const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange, hasActiveSubscription, user }) => {
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊', isProtected: false },
-    { id: 'guest-notifications', label: 'Thông Báo', icon: '🔔', isProtected: false },
-    { id: 'profile', label: 'Cập nhật hồ sơ', icon: '👤', isProtected: false },
-    { id: 'packages', label: 'Gói Dịch Vụ', icon: '📦', isProtected: false },
-    { id: 'farm-info', label: 'Nông Trại Của Tôi', icon: '🌾', isProtected: false },
-    { id: 'seasons', label: 'Quản Lý Mùa Vụ', icon: '🌱', isProtected: true },
-    { id: 'exports', label: 'Xuất Kho & QR', icon: '🏷️', isProtected: true },
-    { id: 'trading-floor', label: 'Sàn Giao Dịch', icon: '🛒', isProtected: true },
-    { id: 'products', label: 'Sản Phẩm Đã Đăng', icon: '📋', isProtected: true },
-    { id: 'orders', label: 'Đơn Hàng', icon: '🧾', isProtected: true },
-    { id: 'shipments', label: 'Vận Chuyển', icon: '🚚', isProtected: true },
-    { id: 'retailers', label: 'Nhà Bán Lẻ', icon: '🤝', isProtected: true },
-    { id: 'iot', label: 'Giám Sát IoT', icon: '🌡️', isProtected: true },
-    { id: 'certificates', label: 'Chứng Nhận', icon: '📜', isProtected: true },
-    { id: 'reports', label: 'Báo Cáo Cho Admin', icon: '📣', isProtected: true },
-    { id: 'guest-education', label: 'Nội Dung Giáo Dục', icon: '📚', isProtected: false },
-    { id: 'guest-products', label: 'Tìm Kiếm Sản Phẩm', icon: '🔍', isProtected: false },
-    { id: 'settings', label: 'Cài Đặt', icon: '⚙️', isProtected: false },
-  ];
+const FARM_MENU: PortalNavItem[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+  { id: 'guest-notifications', label: 'Thông Báo', icon: '🔔' },
+  { id: 'profile', label: 'Cập nhật hồ sơ', icon: '👤' },
+  { id: 'packages', label: 'Gói Dịch Vụ', icon: '📦' },
+  { id: 'farm-info', label: 'Nông Trại Của Tôi', icon: '🌾' },
+  { id: 'seasons', label: 'Quản Lý Mùa Vụ', icon: '🌱', isProtected: true },
+  { id: 'exports', label: 'Xuất Kho & QR', icon: '🏷️', isProtected: true },
+  { id: 'trading-floor', label: 'Sàn Giao Dịch', icon: '🛒', isProtected: true },
+  { id: 'products', label: 'Sản Phẩm Đã Đăng', icon: '📋', isProtected: true },
+  { id: 'orders', label: 'Đơn Hàng', icon: '🧾', isProtected: true },
+  { id: 'shipments', label: 'Vận Chuyển', icon: '🚚', isProtected: true },
+  { id: 'retailers', label: 'Nhà Bán Lẻ', icon: '🤝', isProtected: true },
+  { id: 'iot', label: 'Giám Sát IoT', icon: '🌡️', isProtected: true },
+  { id: 'certificates', label: 'Chứng Nhận', icon: '📜', isProtected: true },
+  { id: 'reports', label: 'Báo Cáo Cho Admin', icon: '📣', isProtected: true },
+  { id: 'guest-education', label: 'Nội Dung Giáo Dục', icon: '📚' },
+  { id: 'guest-products', label: 'Tìm Kiếm Sản Phẩm', icon: '🔍' },
+  { id: 'settings', label: 'Cài Đặt', icon: '⚙️' },
+];
 
-  const handleTabClick = (item: typeof menuItems[0]) => {
-    if (item.isProtected && !hasActiveSubscription) {
-      alert('Bạn cần đăng ký gói dịch vụ để sử dụng tính năng bảo vệ này.');
-      return;
-    }
-    onTabChange(item.id);
-  };
+const RETAILER_MENU: PortalNavItem[] = [
+  { id: 'dashboard', label: 'Tổng quan', icon: '📊' },
+  { id: 'marketplace', label: 'Sàn nông sản', icon: '🛒' },
+  { id: 'trace', label: 'Quét QR', icon: '📷' },
+  { id: 'orders', label: 'Đơn mua', icon: '🧾' },
+  { id: 'shipments', label: 'Vận chuyển', icon: '🚚' },
+  { id: 'notifications', label: 'Thông báo', icon: '🔔' },
+  { id: 'reports', label: 'Báo cáo', icon: '📣' },
+  { id: 'profile', label: 'Thông tin cá nhân', icon: '👤' },
+  { id: 'business', label: 'Giấy phép kinh doanh', icon: '📜' },
+];
 
-  return (
-    <aside style={sidebarStyle}>
-      <div style={logoContainerStyle}>
-        <div style={logoIconStyle}>B</div>
-        <span style={logoTextStyle}>BICAP Farm</span>
-      </div>
-      <nav style={navStyle}>
-        {menuItems.map((item) => {
-          const isActive = item.id === currentTab;
-          const isLocked = item.isProtected && !hasActiveSubscription;
-
-          return (
-            <button
-              key={item.id}
-              onClick={() => handleTabClick(item)}
-              style={{
-                ...navItemStyle,
-                color: isActive ? '#fff' : isLocked ? 'var(--text-muted)' : 'var(--text-secondary)',
-                background: isActive ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
-                borderLeft: isActive ? '3px solid #10b981' : '3px solid transparent',
-                cursor: 'pointer',
-              }}
-            >
-              <span style={{ fontSize: '18px' }}>{item.icon}</span>
-              <span style={{ fontWeight: isActive ? 600 : 400 }}>{item.label}</span>
-              {isLocked && <span style={tagStyle}>🔒 VIP</span>}
-            </button>
-          );
-        })}
-      </nav>
-      <div style={footerStyle}>
-        <div style={{ ...farmBadgeStyle, flexDirection: 'column', gap: '8px', padding: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
-            {/* Account Avatar */}
-            <div
-              style={{
-                width: '34px',
-                height: '34px',
-                borderRadius: '50%',
-                overflow: 'hidden',
-                background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: '14px',
-                flexShrink: 0,
-              }}
-            >
-              {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                user?.fullName?.charAt(0)?.toUpperCase() || '👤'
-              )}
-            </div>
-
-            {/* Account Info */}
-            <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {user?.fullName || 'Farm Manager'}
-              </div>
-              <div style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {user?.email || 'farm@bicap.com'}
-              </div>
-            </div>
-
-            {/* Edit Button next to Account Avatar (BICAP-8) */}
-            <button
-              onClick={() => onTabChange('profile')}
-              title="Cập nhật thông tin cá nhân"
-              style={{
-                background: 'rgba(16, 185, 129, 0.15)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                color: '#34d399',
-                borderRadius: '6px',
-                padding: '4px 8px',
-                fontSize: '11px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                transition: 'all 0.2s ease',
-                flexShrink: 0,
-              }}
-            >
-              ✏️ Edit
-            </button>
-          </div>
-        </div>
-        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '12px' }}>BICAP Platform v0.1</p>
-      </div>
-    </aside>
-  );
-};
+/** Danh sách id tab hợp lệ (hằng số ở module → identity ổn định cho useHashTab). */
+const FARM_TABS = FARM_MENU.map((item) => item.id);
+const RETAILER_TABS = RETAILER_MENU.map((item) => item.id);
 
 /* ── Shipping Manager Portal (BICAP-54 → BICAP-62) ── */
 type ShippingTab = 'orders' | 'shipments' | 'tracking' | 'vehicles' | 'drivers' | 'reports' | 'notifications';
@@ -245,7 +154,7 @@ const ShippingManagerPortal: React.FC<ShippingPortalProps> = ({ user, onLogout }
           }}>BICAP Shipping</span>
         </div>
 
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {navItems.map(item => (
             <button
               key={item.id}
@@ -354,9 +263,13 @@ export default function App() {
   const traceMatch = window.location.pathname.match(/^\/trace\/([a-zA-Z0-9]+)$/);
   const [authenticated, setAuthenticated] = useState<boolean>(isLoggedIn());
   const [user, setUser] = useState<UserSession | null>(getCurrentUser());
-  const [currentTab, setCurrentTab] = useState('guest-notifications');
+  const [currentTab, setCurrentTab] = useHashTab(FARM_TABS, 'guest-notifications', 'farm');
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
-  const [retailerTab, setRetailerTab] = useState<'dashboard' | 'marketplace' | 'trace' | 'orders' | 'notifications' | 'shipments' | 'reports' | 'profile' | 'business'>('dashboard');
+  // Đã kiểm tra xong gói dịch vụ hay chưa: chỉ chặn tab VIP SAU khi biết kết quả,
+  // nếu không thì việc F5 trên một tab VIP sẽ bị đẩy về "Gói Dịch Vụ" oan.
+  const [subscriptionChecked, setSubscriptionChecked] = useState(false);
+  // Tab Retailer cũng lưu vào hash để reload không mất màn hình đang xem.
+  const [retailerTab, setRetailerTab] = useHashTab(RETAILER_TABS, 'dashboard', 'retailer');
   
   // Quản lý chế độ xem khách (Guest) khi chưa đăng nhập
   const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
@@ -371,10 +284,6 @@ export default function App() {
     }
     setAuthenticated(true);
     setUser(userData);
-    if (userData?.role === 'RETAILER' && sessionStorage.getItem('retailerProfileRequired') === '1') {
-      setRetailerTab('profile');
-      sessionStorage.removeItem('retailerProfileRequired');
-    }
   };
 
   // Xử lý Đăng xuất
@@ -410,21 +319,40 @@ export default function App() {
         }
       } catch (err) {
         setHasActiveSubscription(false);
+      } finally {
+        setSubscriptionChecked(true);
       }
     };
 
     const resolveFarmId = async () => {
       if (user?.farmId) return;
       try {
-        const res = await fetch(`${API_BASE_URL}/farms/my`, { headers: getAuthHeaders() });
-        if (res.ok) {
-          const farms = await res.json();
-          if (Array.isArray(farms) && farms.length > 0 && typeof farms[0]?.id === 'number') {
-            const updated = { ...user!, farmId: farms[0].id };
-            saveSession(localStorage.getItem('accessToken') || '', updated);
-            setUser(updated);
-          }
-        }
+        const [farmsRes, subsRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/farms/my`, { headers: getAuthHeaders() }),
+          fetch(`${API_BASE_URL}/subscriptions/my`, { headers: getAuthHeaders() }),
+        ]);
+        const farms = farmsRes.ok ? await farmsRes.json() : null;
+        if (!Array.isArray(farms) || farms.length === 0) return;
+
+        const subs = subsRes.ok ? await subsRes.json() : null;
+        const activeSub = Array.isArray(subs)
+          ? subs.find((s: any) => s.status === 'ACTIVE')
+          : (subs?.status === 'ACTIVE' ? subs : null);
+
+        // Một tài khoản có thể sở hữu nhiều nông trại (có cái còn PENDING/bị từ chối).
+        // Tab VIP gắn với gói dịch vụ đang ACTIVE, còn mùa vụ/xuất kho chỉ chạy được ở
+        // nông trại đã duyệt — nên chọn theo thứ tự: nông trại của gói ACTIVE →
+        // nông trại APPROVED đầu tiên → phần tử đầu tiên. Trước đây luôn lấy farms[0]
+        // nên tài khoản có nông trại PENDING đứng trước bị chặn ở mọi tab nghiệp vụ.
+        const chosen =
+          farms.find((f: any) => activeSub?.farmId != null && f.id === activeSub.farmId) ||
+          farms.find((f: any) => f.status === 'APPROVED') ||
+          farms[0];
+        if (typeof chosen?.id !== 'number') return;
+
+        const updated = { ...user!, farmId: chosen.id };
+        saveSession(localStorage.getItem('accessToken') || '', updated);
+        setUser(updated);
       } catch (e) {
         // Non-fatal
       }
@@ -438,6 +366,9 @@ export default function App() {
   }, [authenticated, user?.role, currentTab]);
 
   useEffect(() => {
+    // Chờ biết chắc tình trạng gói dịch vụ rồi mới chặn tab VIP (tránh đẩy người
+    // dùng khỏi tab họ đang xem khi vừa F5 / mở link có hash).
+    if (!subscriptionChecked) return;
     const protectedTabs = new Set([
       'seasons', 'exports', 'trading-floor', 'products', 'orders', 'shipments',
       'retailers', 'iot', 'certificates', 'reports',
@@ -445,7 +376,7 @@ export default function App() {
     if (!hasActiveSubscription && protectedTabs.has(currentTab)) {
       setCurrentTab('packages');
     }
-  }, [hasActiveSubscription, currentTab]);
+  }, [hasActiveSubscription, currentTab, subscriptionChecked, setCurrentTab]);
 
   if (traceMatch) return <TracePage hash={traceMatch[1]} />;
 
@@ -487,100 +418,102 @@ export default function App() {
   }
 
   // 4. Render Retailer Portal nếu người dùng là RETAILER (BICAP-36)
+  //    Dùng đúng bố cục của các portal còn lại: sidebar dọc + header + main-content.
   if (user?.role === 'RETAILER') {
     return (
-      <div className="retailer-portal">
-        <header style={headerStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ ...logoIconStyle, background: 'linear-gradient(135deg, #0284c7 0%, #06b6d4 100%)' }}>R</div>
-            <span style={logoTextStyle}>BICAP Retailer</span>
-          </div>
+      <div className="app-container">
+        <PortalSidebar
+          brandLabel="BICAP Retailer"
+          brandIcon="R"
+          accent="#06b6d4"
+          accentSoft="#22d3ee"
+          gradient="linear-gradient(135deg, #06b6d4 0%, #0284c7 100%)"
+          menuItems={RETAILER_MENU}
+          currentTab={retailerTab}
+          onTabChange={setRetailerTab}
+          user={user}
+          onEditProfile={() => setRetailerTab('profile')}
+        />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <NotificationBell />
-            <span style={{ fontSize: '13px', color: '#cbd5e1' }}>
-              Xin chào, <strong>{user.fullName}</strong> <span style={roleBadgeRetailerStyle}>Retailer</span>
-            </span>
-            <button onClick={handleLogout} style={logoutButtonStyle}>
-              🚪 Đăng xuất
-            </button>
-          </div>
-        </header>
-
-        <nav className="retailer-nav" aria-label="Điều hướng hồ sơ Nhà bán lẻ">
-          <button className={retailerTab === 'dashboard' ? 'is-active' : ''} onClick={() => setRetailerTab('dashboard')}>Tổng quan</button>
-          <button className={retailerTab === 'marketplace' ? 'is-active' : ''} onClick={() => setRetailerTab('marketplace')}>Sàn nông sản</button>
-          <button className={retailerTab === 'trace' ? 'is-active' : ''} onClick={() => setRetailerTab('trace')}>Quét QR</button>
-          <button className={retailerTab === 'orders' ? 'is-active' : ''} onClick={() => setRetailerTab('orders')}>Đơn mua</button>
-          <button className={retailerTab === 'notifications' ? 'is-active' : ''} onClick={() => setRetailerTab('notifications')}>🔔 Thông báo</button>
-          <button className={retailerTab === 'shipments' ? 'is-active' : ''} onClick={() => setRetailerTab('shipments')}>🚚 Vận chuyển</button>
-          <button className={retailerTab === 'reports' ? 'is-active' : ''} onClick={() => setRetailerTab('reports')}>Báo cáo</button>
-          <button className={retailerTab === 'profile' ? 'is-active' : ''} onClick={() => setRetailerTab('profile')}>Thông tin cá nhân</button>
-          <button className={retailerTab === 'business' ? 'is-active' : ''} onClick={() => setRetailerTab('business')}>Giấy phép kinh doanh</button>
-        </nav>
-
-        <main className="retailer-main">
-          {retailerTab === 'profile' && (
-            <RetailerProfilePage
-              user={user}
-              onUserUpdated={(updated) => {
-                const updatedSession = { ...user, ...updated };
-                saveSession(localStorage.getItem('accessToken') || '', updatedSession, localStorage.getItem('refreshToken') || undefined);
-                setUser(updatedSession);
-              }}
-            />
-          )}
-          {retailerTab === 'business' && <RetailerBusinessPage />}
-          {retailerTab === 'marketplace' && <MarketplacePage />}
-          {retailerTab === 'trace' && <QrScannerPage />}
-          {retailerTab === 'orders' && <RetailerOrdersPage />}
-          {retailerTab === 'notifications' && <RetailerNotificationsPage />}
-          {retailerTab === 'shipments' && <RetailerShipmentsPage />}
-          {retailerTab === 'reports' && <RetailerReportsPage />}
-          {retailerTab === 'dashboard' && (
-            <div className="glass-panel retailer-panel">
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛒</div>
-              <h1 className="dashboard-title" style={{ background: 'linear-gradient(to right, #38bdf8, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                Sàn Giao Dịch Nông Sản Sạch - Nhà Bán Lẻ
-              </h1>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '15px', marginTop: '8px', lineHeight: 1.6 }}>
-                Chào mừng nhà bán lẻ <strong>{user.fullName}</strong> ({user.email}) đã đăng nhập thành công.
-              </p>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginTop: '32px' }}>
-                <button type="button" onClick={() => setRetailerTab('marketplace')} style={{ ...statCardStyle, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
-                  <div style={{ fontSize: '24px' }}>🔍</div>
-                  <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Tìm kiếm Nông sản</h3>
-                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>Duyệt danh mục sản phẩm đạt chứng nhận VietGAP/GlobalGAP.</p>
-                </button>
-
-                <button type="button" onClick={() => setRetailerTab('orders')} style={{ ...statCardStyle, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
-                  <div style={{ fontSize: '24px' }}>📦</div>
-                  <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Đơn hàng của tôi</h3>
-                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>Theo dõi đơn, xác nhận nhận hàng và tải ảnh giao nhận.</p>
-                </button>
-
-                <button type="button" onClick={() => setRetailerTab('shipments')} style={{ ...statCardStyle, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
-                  <div style={{ fontSize: '24px' }}>🚚</div>
-                  <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Theo dõi Vận chuyển</h3>
-                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>Tracking thời gian thực tiến trình giao nhận lô hàng.</p>
-                </button>
-
-                <button type="button" onClick={() => setRetailerTab('notifications')} style={{ ...statCardStyle, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
-                  <div style={{ fontSize: '24px' }}>🔔</div>
-                  <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Thông báo</h3>
-                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>Cập nhật từ trang trại và người vận chuyển.</p>
-                </button>
-
-                <button type="button" onClick={() => setRetailerTab('reports')} style={{ ...statCardStyle, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
-                  <div style={{ fontSize: '24px' }}>📣</div>
-                  <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Báo cáo Admin</h3>
-                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>Gửi khiếu nại, phản hồi hoặc báo cáo sự cố.</p>
-                </button>
-              </div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <header style={{ ...headerStyle, marginLeft: 'var(--sidebar-width)' }}>
+            <div style={{ fontSize: '14px', color: '#cbd5e1' }}>
+              Cổng Nhà Bán Lẻ
             </div>
-          )}
-        </main>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <NotificationBell />
+              <span style={{ fontSize: '13px', color: '#cbd5e1' }}>
+                Xin chào, <strong>{user.fullName}</strong> <span style={roleBadgeRetailerStyle}>Retailer</span>
+              </span>
+              <button onClick={handleLogout} style={logoutButtonStyle}>
+                🚪 Đăng xuất
+              </button>
+            </div>
+          </header>
+
+          <main className="main-content animate-fade-in" style={{ marginTop: '60px' }}>
+            {retailerTab === 'profile' && (
+              <RetailerProfilePage
+                user={user}
+                onUserUpdated={(updated) => {
+                  const updatedSession = { ...user, ...updated };
+                  saveSession(localStorage.getItem('accessToken') || '', updatedSession, localStorage.getItem('refreshToken') || undefined);
+                  setUser(updatedSession);
+                }}
+              />
+            )}
+            {retailerTab === 'business' && <RetailerBusinessPage />}
+            {retailerTab === 'marketplace' && <MarketplacePage />}
+            {retailerTab === 'trace' && <QrScannerPage />}
+            {retailerTab === 'orders' && <RetailerOrdersPage />}
+            {retailerTab === 'notifications' && <RetailerNotificationsPage />}
+            {retailerTab === 'shipments' && <RetailerShipmentsPage />}
+            {retailerTab === 'reports' && <RetailerReportsPage />}
+            {retailerTab === 'dashboard' && (
+              <div>
+                <h1 className="dashboard-title">Sàn Giao Dịch Nông Sản Sạch</h1>
+                <p className="dashboard-subtitle">
+                  Chào mừng nhà bán lẻ <strong>{user.fullName}</strong> ({user.email}) đã đăng nhập thành công.
+                </p>
+
+                <div className="glass-panel" style={{ padding: '32px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+                    <button type="button" onClick={() => setRetailerTab('marketplace')} style={{ ...statCardStyle, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
+                      <div style={{ fontSize: '24px' }}>🔍</div>
+                      <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Tìm kiếm Nông sản</h3>
+                      <p style={{ fontSize: '12px', color: '#94a3b8' }}>Duyệt danh mục sản phẩm đạt chứng nhận VietGAP/GlobalGAP.</p>
+                    </button>
+
+                    <button type="button" onClick={() => setRetailerTab('orders')} style={{ ...statCardStyle, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
+                      <div style={{ fontSize: '24px' }}>📦</div>
+                      <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Đơn hàng của tôi</h3>
+                      <p style={{ fontSize: '12px', color: '#94a3b8' }}>Theo dõi đơn, xác nhận nhận hàng và tải ảnh giao nhận.</p>
+                    </button>
+
+                    <button type="button" onClick={() => setRetailerTab('shipments')} style={{ ...statCardStyle, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
+                      <div style={{ fontSize: '24px' }}>🚚</div>
+                      <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Theo dõi Vận chuyển</h3>
+                      <p style={{ fontSize: '12px', color: '#94a3b8' }}>Tracking thời gian thực tiến trình giao nhận lô hàng.</p>
+                    </button>
+
+                    <button type="button" onClick={() => setRetailerTab('notifications')} style={{ ...statCardStyle, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
+                      <div style={{ fontSize: '24px' }}>🔔</div>
+                      <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Thông báo</h3>
+                      <p style={{ fontSize: '12px', color: '#94a3b8' }}>Cập nhật từ trang trại và người vận chuyển.</p>
+                    </button>
+
+                    <button type="button" onClick={() => setRetailerTab('reports')} style={{ ...statCardStyle, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}>
+                      <div style={{ fontSize: '24px' }}>📣</div>
+                      <h3 style={{ fontSize: '16px', color: '#fff', margin: '8px 0 4px 0' }}>Báo cáo Admin</h3>
+                      <p style={{ fontSize: '12px', color: '#94a3b8' }}>Gửi khiếu nại, phản hồi hoặc báo cáo sự cố.</p>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
       </div>
     );
   }
@@ -598,11 +531,18 @@ export default function App() {
   // 5. Render Farm Manager Portal (BICAP-7)
   return (
     <div className="app-container">
-      <Sidebar
+      <PortalSidebar
+        brandLabel="BICAP Farm"
+        brandIcon="B"
+        accent="#10b981"
+        accentSoft="#34d399"
+        gradient="linear-gradient(135deg, #10b981 0%, #06b6d4 100%)"
+        menuItems={FARM_MENU}
         currentTab={currentTab}
         onTabChange={setCurrentTab}
         hasActiveSubscription={hasActiveSubscription}
         user={user}
+        onEditProfile={() => setCurrentTab('profile')}
       />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -661,96 +601,9 @@ export default function App() {
   );
 }
 
-/* ── Component Styles ── */
-const sidebarStyle: React.CSSProperties = {
-  width: 'var(--sidebar-width)',
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  bottom: 0,
-  background: 'rgba(15, 16, 22, 0.95)',
-  borderRight: '1px solid var(--border-color)',
-  display: 'flex',
-  flexDirection: 'column',
-  zIndex: 1000,
-  padding: '24px 16px',
-};
-
-const logoContainerStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '12px',
-  marginBottom: '40px',
-  paddingLeft: '8px',
-};
-
-const logoIconStyle: React.CSSProperties = {
-  width: '36px',
-  height: '36px',
-  borderRadius: '10px',
-  background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
-  color: '#fff',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontWeight: 800,
-  fontSize: '18px',
-  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
-};
-
-const logoTextStyle: React.CSSProperties = {
-  fontSize: '18px',
-  fontWeight: 800,
-  letterSpacing: '-0.5px',
-  background: 'linear-gradient(to right, #fff, #06b6d4)',
-  WebkitBackgroundClip: 'text',
-  WebkitTextFillColor: 'transparent',
-};
-
-const navStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '4px',
-  flex: 1,
-};
-
-const navItemStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '12px 16px',
-  borderRadius: '0 8px 8px 0',
-  display: 'flex',
-  alignItems: 'center',
-  gap: '12px',
-  textAlign: 'left',
-  transition: 'all 0.2s ease',
-  fontSize: '14px',
-};
-
-const tagStyle: React.CSSProperties = {
-  marginLeft: 'auto',
-  fontSize: '9px',
-  background: 'rgba(239, 68, 68, 0.1)',
-  padding: '2px 6px',
-  borderRadius: '10px',
-  color: '#ef4444',
-  border: '1px solid rgba(239, 68, 68, 0.2)',
-};
-
-const footerStyle: React.CSSProperties = {
-  marginTop: 'auto',
-  paddingLeft: '8px',
-};
-
-const farmBadgeStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '10px',
-  padding: '10px 12px',
-  background: 'rgba(255, 255, 255, 0.03)',
-  border: '1px solid rgba(255, 255, 255, 0.06)',
-  borderRadius: '10px',
-};
-
+/* ── Component Styles ──
+ * Sidebar/nav đã chuyển sang `components/PortalSidebar` để Farm và Retailer
+ * dùng chung một bố cục. */
 const headerStyle: React.CSSProperties = {
   height: '64px',
   background: 'rgba(15, 23, 42, 0.9)',

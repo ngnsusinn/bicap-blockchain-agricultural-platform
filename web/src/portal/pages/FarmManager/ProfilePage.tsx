@@ -180,16 +180,6 @@ export default function ProfilePage({ onUserUpdated }: ProfilePageProps) {
     setMessage(null);
   };
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '01/01/2026';
-    try {
-      const d = new Date(dateStr);
-      return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('vi-VN');
-    } catch {
-      return dateStr;
-    }
-  };
-
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
@@ -353,58 +343,6 @@ export default function ProfilePage({ onUserUpdated }: ProfilePageProps) {
           </div>
         </div>
 
-        {/* Read-Only Fields Section */}
-        <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px', marginBottom: '32px', opacity: 0.9 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <h2 style={{ ...sectionHeaderStyle, margin: 0 }}>
-              <span>🔒</span> Thông tin hệ thống (Chỉ đọc - Read-only)
-            </h2>
-            <span style={readOnlyBadgeStyle}>🔒 Không được chỉnh sửa</span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
-            <div>
-              <label style={labelStyle}>Email đăng nhập</label>
-              <div style={{ position: 'relative' }}>
-                <input type="text" value={profile.email} disabled style={readOnlyInputStyle} />
-                <span style={lockIconStyle}>🔒</span>
-              </div>
-            </div>
-
-            <div>
-              <label style={labelStyle}>Mật khẩu</label>
-              <div style={{ position: 'relative' }}>
-                <input type="password" value="••••••••••••" disabled style={readOnlyInputStyle} />
-                <span style={lockIconStyle}>🔒</span>
-              </div>
-            </div>
-
-            <div>
-              <label style={labelStyle}>Vai trò (Role)</label>
-              <div style={{ position: 'relative' }}>
-                <input type="text" value={profile.role || 'FARM_MANAGER'} disabled style={readOnlyInputStyle} />
-                <span style={lockIconStyle}>🔒</span>
-              </div>
-            </div>
-
-            <div>
-              <label style={labelStyle}>Trạng thái tài khoản</label>
-              <div style={{ position: 'relative' }}>
-                <input type="text" value={profile.status || 'ACTIVE'} disabled style={readOnlyInputStyle} />
-                <span style={lockIconStyle}>🔒</span>
-              </div>
-            </div>
-
-            <div>
-              <label style={labelStyle}>Ngày khởi tạo (Created Date)</label>
-              <div style={{ position: 'relative' }}>
-                <input type="text" value={formatDate(profile.createdAt)} disabled style={readOnlyInputStyle} />
-                <span style={lockIconStyle}>🔒</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Action Buttons */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '16px' }}>
           <button
@@ -480,35 +418,4 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
   boxSizing: 'border-box',
   transition: 'border-color 0.2s ease',
-};
-
-const readOnlyInputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '11px 16px 11px 38px',
-  borderRadius: '10px',
-  border: '1px solid rgba(255, 255, 255, 0.05)',
-  background: 'rgba(255, 255, 255, 0.03)',
-  color: '#94a3b8',
-  fontSize: '14px',
-  cursor: 'not-allowed',
-  boxSizing: 'border-box',
-};
-
-const lockIconStyle: React.CSSProperties = {
-  position: 'absolute',
-  left: '12px',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  fontSize: '14px',
-  opacity: 0.6,
-};
-
-const readOnlyBadgeStyle: React.CSSProperties = {
-  fontSize: '11px',
-  background: 'rgba(239, 68, 68, 0.1)',
-  color: '#f87171',
-  padding: '4px 10px',
-  borderRadius: '20px',
-  border: '1px solid rgba(239, 68, 68, 0.2)',
-  fontWeight: 500,
 };

@@ -73,8 +73,8 @@ public class IotDataServiceImpl implements IotDataService {
             if (humidIssue) msg.append(String.format("Độ ẩm bất thường (%.1f%%). ", request.getHumidity()));
             if (phIssue) msg.append(String.format("Độ pH bất thường (%.1f). ", request.getPh()));
 
-            // Persist, push to the live SSE stream and email the farm owner.
-            notificationService.sendNotification(farm.getUserId(), "URGENT", "Cảnh báo khẩn cấp IoT", msg.toString(), true);
+            // Persist and push to the live SSE stream.
+            notificationService.sendNotification(farm.getUserId(), "URGENT", "Cảnh báo khẩn cấp IoT", msg.toString());
         }
         return saved;
     }
@@ -94,8 +94,7 @@ public class IotDataServiceImpl implements IotDataService {
                 double avgPh = dailyData.stream().mapToDouble(IotData::getPh).average().orElse(0.0);
 
                 notificationService.sendNotification(farm.getUserId(), "PERIODIC", "Báo cáo IoT tổng hợp ngày",
-                        String.format("Tổng kết ngày: Nhiệt độ TB %.1f°C, Độ ẩm TB %.1f%%, pH TB %.1f.", avgTemp, avgHumid, avgPh),
-                        false);
+                        String.format("Tổng kết ngày: Nhiệt độ TB %.1f°C, Độ ẩm TB %.1f%%, pH TB %.1f.", avgTemp, avgHumid, avgPh));
             }
         }
     }

@@ -306,33 +306,6 @@ button {
 }
 
 /* ── BICAP-36: Retailer authentication presentation ── */
-.retailer-verification {
-  margin-bottom: 20px;
-  padding: 12px 16px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.retailer-verification--loading {
-  color: var(--accent-hover);
-  background: var(--accent-light);
-  animation: pulse 1.4s ease-in-out infinite;
-}
-
-.retailer-verification--success {
-  color: var(--success-hover);
-  background: var(--success-light);
-  border-color: rgba(16, 185, 129, 0.3);
-}
-
-.retailer-verification--error {
-  color: var(--danger-hover);
-  background: var(--danger-light);
-  border-color: rgba(239, 68, 68, 0.3);
-}
-
 .auth-page-wrapper--retailer {
   background-color: #0b0f19 !important;
   background-image:
@@ -450,58 +423,23 @@ button {
   }
 }
 
-/* ── Retailer profile workspace (BICAP-37/38) ── */
-.retailer-portal {
-  min-height: 100vh;
-  padding: 24px;
-  background: #0b0f19;
-  color: var(--text-primary);
-}
-
-.retailer-nav {
-  display: flex;
-  gap: 8px;
-  width: min(100%, 1200px);
-  margin: 24px auto 0;
-  padding: 6px;
-  overflow-x: auto;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  background: var(--bg-surface);
-}
-
-.retailer-nav button {
-  flex: 1;
-  min-width: 150px;
-  padding: 10px 14px;
-  border-radius: 8px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.retailer-nav button:hover,
-.retailer-nav button.is-active {
-  color: var(--accent-hover);
-  background: var(--accent-light);
-}
-
-.retailer-nav button.is-active {
-  box-shadow: 0 2px 10px var(--accent-glow);
-}
-
-.retailer-main {
-  width: min(100%, 1200px);
-  margin: 24px auto 0;
-}
+/* ── Retailer workspace (BICAP-37/38) ──
+ * Portal Retailer dùng chung shell với các portal khác (PortalSidebar + header +
+ * .main-content) nên chỉ còn các helper cho nội dung trang. */
 
 .retailer-panel {
   padding: 32px;
   border: 1px solid var(--border-color);
   border-radius: 16px;
   background: var(--bg-surface);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   box-shadow: var(--shadow-lg);
+  transition: var(--transition-smooth);
+}
+
+.retailer-panel:hover {
+  border-color: var(--border-color-hover);
 }
 
 .retailer-section-heading {
@@ -513,15 +451,19 @@ button {
 }
 
 .retailer-section-heading h1 {
-  color: #fff;
-  font-size: 24px;
-  line-height: 1.25;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+  background: linear-gradient(to right, #ffffff, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .retailer-section-heading p {
   margin-top: 6px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .retailer-avatar {
@@ -649,14 +591,11 @@ button {
 }
 
 @media (max-width: 720px) {
-  .retailer-portal { padding: 12px; }
-  .retailer-portal > header { padding-inline: 16px !important; }
-  .retailer-portal > header > div:last-child > span { display: none; }
   .retailer-panel { padding: 20px 16px; }
   .retailer-form { grid-template-columns: 1fr; }
   .retailer-form__wide,
   .retailer-form__actions { grid-column: auto; }
-  .retailer-section-heading { align-items: flex-start; }
+  .retailer-section-heading { align-items: flex-start; flex-wrap: wrap; }
 }
 
 /* ────────────────────────────────────────────────────

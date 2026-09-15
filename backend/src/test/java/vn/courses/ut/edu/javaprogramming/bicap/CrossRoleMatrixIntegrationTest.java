@@ -963,7 +963,7 @@ class CrossRoleMatrixIntegrationTest {
 
         // broadcast is shipping-manager only
         Map<String, Object> broadcast = Map.of("target", "FARM_MANAGER", "title", "CR broadcast " + run,
-                "content", "Noi dung broadcast cross-role tren muoi ky tu.", "sendEmail", false);
+                "content", "Noi dung broadcast cross-role tren muoi ky tu.");
         expectDenied(postJson("/api/notifications/broadcast", broadcast, "FARM_A"), "farm broadcasts");
         expectDenied(postJson("/api/notifications/broadcast", broadcast, "RETAIL_A"), "retailer broadcasts");
         expectDenied(postJson("/api/notifications/broadcast", broadcast, "ADMIN"), "admin broadcasts");

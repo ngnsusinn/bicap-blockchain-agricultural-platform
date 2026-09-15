@@ -186,9 +186,7 @@ public class RetailerController {
                 farm.getUserId(),
                 "INFO",
                 "Tin nhắn từ Nhà bán lẻ",
-                actor.getFullName() + " (đơn #" + order.getId() + "): " + request.message().trim(),
-                false
-        );
+                actor.getFullName() + " (đơn #" + order.getId() + "): " + request.message().trim());
 
         return ResponseEntity.ok(Map.of("message", "Thông báo đã được gửi đến Farm Manager."));
     }

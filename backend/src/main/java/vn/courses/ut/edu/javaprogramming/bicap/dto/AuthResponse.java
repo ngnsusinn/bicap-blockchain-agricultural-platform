@@ -15,7 +15,6 @@ public class AuthResponse {
     private final String phone;
     private final String fullName;
     private final Set<String> roles;
-    private final boolean verificationRequired;
 
     public AuthResponse(
             String accessToken,
@@ -25,7 +24,7 @@ public class AuthResponse {
             String phone,
             String fullName,
             Set<String> roles) {
-        this(accessToken, null, tokenType, userId, email, phone, fullName, roles, false);
+        this(accessToken, null, tokenType, userId, email, phone, fullName, roles);
     }
 
     public AuthResponse(
@@ -36,8 +35,7 @@ public class AuthResponse {
             String email,
             String phone,
             String fullName,
-            Set<String> roles,
-            boolean verificationRequired) {
+            Set<String> roles) {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
         this.tokenType = tokenType;
@@ -46,7 +44,6 @@ public class AuthResponse {
         this.phone = phone;
         this.fullName = fullName;
         this.roles = roles;
-        this.verificationRequired = verificationRequired;
     }
 
     public static AuthResponse fromUser(String accessToken, User user) {
@@ -66,18 +63,7 @@ public class AuthResponse {
                 user.getEmail(),
                 user.getPhone(),
                 user.getFullName(),
-                roleNames,
-                false
-        );
-    }
-
-    public static AuthResponse pendingVerification(User user) {
-        Set<String> roleNames = user.getRoles().stream()
-                .map(role -> role.getName())
-                .collect(Collectors.toSet());
-        return new AuthResponse(
-                null, null, "Bearer", user.getId(), user.getEmail(), user.getPhone(),
-                user.getFullName(), roleNames, true
+                roleNames
         );
     }
 
@@ -111,9 +97,5 @@ public class AuthResponse {
 
     public Set<String> getRoles() {
         return roles;
-    }
-
-    public boolean isVerificationRequired() {
-        return verificationRequired;
     }
 }

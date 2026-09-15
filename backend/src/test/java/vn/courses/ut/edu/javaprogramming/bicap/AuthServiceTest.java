@@ -26,7 +26,6 @@ import vn.courses.ut.edu.javaprogramming.bicap.exception.UnauthorizedException;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.RoleRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.repository.UserRepository;
 import vn.courses.ut.edu.javaprogramming.bicap.service.AuthService;
-import vn.courses.ut.edu.javaprogramming.bicap.service.VerificationEmailService;
 import vn.courses.ut.edu.javaprogramming.bicap.service.LoginAttemptService;
 
 import java.util.Optional;
@@ -55,8 +54,6 @@ class AuthServiceTest {
     private AuthenticationManager authenticationManager;
     @Mock
     private JwtTokenProvider jwtTokenProvider;
-    @Mock
-    private VerificationEmailService verificationEmailService;
     @Mock
     private LoginAttemptService loginAttemptService;
 
@@ -106,9 +103,7 @@ class AuthServiceTest {
         assertEquals(UserStatus.ACTIVE, savedUser.getStatus());
         assertTrue(savedUser.getRoles().stream().anyMatch(role -> "RETAILER".equals(role.getName())));
         assertEquals("access-token", response.getAccessToken());
-        assertTrue(!response.isVerificationRequired());
         assertTrue(response.getRoles().contains("RETAILER"));
-        verifyNoInteractions(verificationEmailService);
     }
 
     @Test
@@ -249,20 +244,6 @@ class AuthServiceTest {
 
         assertEquals("Account is temporarily locked for 30 minutes", error.getMessage());
         verify(loginAttemptService).recordFailure(10L);
-    }
-
-    @Test
-    void verifyRetailerEmailActivatesPendingAccount() {
-        User retailer = retailerUser(Set.of(retailerRole));
-        retailer.setStatus(UserStatus.PENDING_VERIFICATION);
-        when(jwtTokenProvider.isTokenType("verification-token", "email_verification")).thenReturn(true);
-        when(jwtTokenProvider.getUsernameFromJWT("verification-token")).thenReturn("retailer@example.com");
-        when(userRepository.findByEmailIgnoreCase("retailer@example.com")).thenReturn(Optional.of(retailer));
-
-        authService.verifyRetailerEmail("verification-token");
-
-        assertEquals(UserStatus.ACTIVE, retailer.getStatus());
-        verify(userRepository).save(retailer);
     }
 
     @Test

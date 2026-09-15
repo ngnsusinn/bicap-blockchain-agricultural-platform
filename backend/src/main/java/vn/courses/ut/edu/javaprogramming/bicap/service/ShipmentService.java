@@ -240,8 +240,7 @@ public class ShipmentService {
             notificationService.sendNotification(order.getRetailerId(), "INFO",
                     "Đơn hàng đang được vận chuyển",
                     "Đơn hàng #" + order.getId() + " đã được giao cho tài xế "
-                            + userNameFor(driver.getUserId()) + " vận chuyển.",
-                    false);
+                            + userNameFor(driver.getUserId()) + " vận chuyển.");
         }
 
         // Notify the Farm Manager that their goods are being picked up (BICAP-61)
@@ -256,8 +255,7 @@ public class ShipmentService {
                     "Hàng của bạn đang được vận chuyển",
                     "Sản phẩm từ đơn hàng #" + order.getId()
                             + " đang được tài xế " + userNameFor(driver.getUserId())
-                            + " đến lấy hàng tại trang trại.",
-                    false);
+                            + " đến lấy hàng tại trang trại.");
         }
 
         User driverUser = driver.getUserId() != null
@@ -293,8 +291,7 @@ public class ShipmentService {
                 notificationService.sendNotification(order.getRetailerId(), "WARNING",
                         "Lô vận chuyển bị hủy",
                         "Lô vận chuyển đơn hàng #" + order.getId() + " đã bị hủy" + reason
-                                + " Đơn hàng sẽ được sắp xếp vận chuyển lại.",
-                        false);
+                                + " Đơn hàng sẽ được sắp xếp vận chuyển lại.");
             }
         });
 

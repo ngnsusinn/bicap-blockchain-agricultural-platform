@@ -189,8 +189,7 @@ public class DriverShipmentService {
                 notificationService.sendNotification(order.getRetailerId(), "INFO",
                         "Đơn hàng đang được vận chuyển",
                         "Tài xế đã lấy hàng cho đơn #" + order.getId()
-                                + ". Đơn hàng đang trên đường giao tới bạn.",
-                        false);
+                                + ". Đơn hàng đang trên đường giao tới bạn.");
             }
         });
 
@@ -249,8 +248,7 @@ public class DriverShipmentService {
                 notificationService.sendNotification(order.getRetailerId(), "SUCCESS",
                         "Đơn hàng đã được giao",
                         "Đơn hàng #" + order.getId()
-                                + " đã được giao thành công. Vui lòng xác nhận đã nhận hàng.",
-                        false);
+                                + " đã được giao thành công. Vui lòng xác nhận đã nhận hàng.");
             }
 
             // Notify Farm Manager that their goods were delivered (BICAP-61)
@@ -264,8 +262,7 @@ public class DriverShipmentService {
                                         notificationService.sendNotification(farm.getUserId(), "SUCCESS",
                                                 "Hàng của bạn đã được giao thành công",
                                                 "Sản phẩm từ đơn hàng #" + order.getId()
-                                                        + " đã được giao đến nhà bán lẻ.",
-                                                false);
+                                                        + " đã được giao đến nhà bán lẻ.");
                                     }
                                 });
                             }
@@ -318,8 +315,7 @@ public class DriverShipmentService {
                 .forEach(manager -> notificationService.sendNotification(manager.getId(), "WARNING",
                         "Báo cáo từ tài xế: " + request.getReportType(),
                         "Tài xế " + driverName + " báo cáo cho lô #" + shipment.getId()
-                                + " (đơn #" + orderId + "). " + request.getDescription(),
-                        false));
+                                + " (đơn #" + orderId + "). " + request.getDescription()));
 
         orderRepository.findById(orderId).ifPresent(order -> {
             // Notify the retailer as well so they are aware of delays/incidents
@@ -327,8 +323,7 @@ public class DriverShipmentService {
                 notificationService.sendNotification(order.getRetailerId(), "WARNING",
                         "Báo cáo từ tài xế: " + request.getReportType(),
                         "Tài xế " + driverName + " đã gửi báo cáo cho đơn hàng #" + order.getId()
-                                + ". " + request.getDescription(),
-                        false);
+                                + ". " + request.getDescription());
             }
         });
 

@@ -15,8 +15,6 @@ public class BroadcastNotificationRequest {
     @Size(min = 10, max = 4000)
     private String content;
 
-    private boolean sendEmail;
-
     public BroadcastNotificationRequest() {
     }
 
@@ -42,13 +40,5 @@ public class BroadcastNotificationRequest {
 
     public void setContent(String content) {
         this.content = content;
-    }
-
-    public boolean isSendEmail() {
-        return sendEmail;
-    }
-
-    public void setSendEmail(boolean sendEmail) {
-        this.sendEmail = sendEmail;
     }
 }

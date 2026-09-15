@@ -1,48 +1,37 @@
 package vn.courses.ut.edu.javaprogramming.bicap.common.security;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
-import org.springframework.core.env.MapPropertySource;
-import org.springframework.core.env.MutablePropertySources;
-import org.springframework.core.env.Profiles;
 
-import java.security.SecureRandom;
-import java.util.Base64;
-import java.util.HashMap;
+import vn.courses.ut.edu.javaprogramming.bicap.config.SecretConfigValidator;
+
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 
 /**
- * C-1 / C-3 (fixed): removes the "publicly known default secret" backdoor.
+ * C-1 / C-3: enforces that every deploy-time secret is a real, explicitly configured value.
  *
  * <p>The repository used to ship {@code app.jwt.secret} and {@code sepay.api-key} with
  * hard-coded fallback values in {@code application.properties}. Because those values live
  * in a public Git repository, anybody could mint a valid {@code SUPER_ADMIN} JWT (or forge
  * a Sepay payment webhook) against any deployment that did not override them.
  *
- * <p>This initializer runs before any bean is created and enforces three rules:
+ * <p>This initializer runs before any bean is created and applies the production rule to
+ * <b>every</b> profile:
  * <ol>
+ *   <li>a <b>missing</b> secret is a fatal configuration error — there is no ephemeral /
+ *       generated dev secret anymore, so an unconfigured deployment stops instead of
+ *       quietly running with throwaway key material;</li>
  *   <li>a <b>publicly known</b> secret (the previously shipped defaults and the documented
- *       placeholders) is rejected outright — the application refuses to boot;</li>
- *   <li>in a <b>production</b> profile ({@code prod}/{@code production}) a missing secret is a
- *       fatal configuration error;</li>
- *   <li>in development/test a missing secret is replaced with a fresh, per-boot
- *       cryptographically random value so local runs still work without env vars. Tokens
- *       generated with an ephemeral secret die with the process — set the env var for a
- *       stable secret.</li>
+ *       placeholders) is rejected outright.</li>
  * </ol>
  *
  * <p>Registered through {@code META-INF/spring.factories} so it applies to
- * {@code SpringApplication.run} and to {@code @SpringBootTest} alike.
+ * {@code SpringApplication.run} and to {@code @SpringBootTest} alike (tests provide their
+ * own throwaway key material in {@code src/test/resources/application.properties}).
  */
 public class SecureSecretInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
-
-    private static final Logger log = LoggerFactory.getLogger(SecureSecretInitializer.class);
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     public static final String JWT_SECRET_PROPERTY = "app.jwt.secret";
     public static final String SEPAY_KEY_PROPERTY = "sepay.api-key";
@@ -71,43 +60,27 @@ public class SecureSecretInitializer implements ApplicationContextInitializer<Co
     @Override
     public void initialize(ConfigurableApplicationContext context) {
         ConfigurableEnvironment environment = context.getEnvironment();
-        boolean production = environment.acceptsProfiles(Profiles.of("prod", "production"));
-        Map<String, Object> generated = new HashMap<>();
 
-        resolveSecret(environment, JWT_SECRET_PROPERTY, production, generated,
-                "JWT_SECRET", 48,
-                "openssl rand -base64 48");
+        requireSecret(environment, JWT_SECRET_PROPERTY, "JWT_SECRET", "openssl rand -base64 48");
+        requireSecret(environment, SEPAY_KEY_PROPERTY, "SEPAY_API_KEY", "openssl rand -hex 32");
 
-        resolveSecret(environment, SEPAY_KEY_PROPERTY, production, generated,
-                "SEPAY_API_KEY", 32,
-                "openssl rand -hex 32");
-
-        if (!generated.isEmpty()) {
-            MutablePropertySources sources = environment.getPropertySources();
-            sources.addFirst(new MapPropertySource("bicapEphemeralDevSecrets", generated));
-        }
+        // Cấu hình hạ tầng (MySQL remote / blockchain live) được kiểm tra ở đây — TRƯỚC khi
+        // bean nào được tạo — để lỗi cấu hình hiện ra rõ ràng thay vì để Hibernate báo
+        // "Unable to determine Dialect without JDBC metadata" khó hiểu.
+        SecretConfigValidator.validateInfrastructure(environment);
     }
 
-    private void resolveSecret(ConfigurableEnvironment environment,
+    private void requireSecret(ConfigurableEnvironment environment,
                                String property,
-                               boolean production,
-                               Map<String, Object> generated,
                                String envVarName,
-                               int randomBytes,
                                String generationHint) {
         String value = environment.getProperty(property);
         String normalized = value == null ? "" : value.trim();
 
         if (normalized.isEmpty()) {
-            if (production) {
-                throw new IllegalStateException(envVarName + " is not configured. Set the " + envVarName
-                        + " environment variable (" + generationHint + ") before starting in production.");
-            }
-            generated.put(property, randomBase64(randomBytes));
-            log.warn("{} is not configured — generated an ephemeral development secret for this process only. "
-                    + "Tokens/secrets are invalidated on restart; set {} for a stable value.",
-                    envVarName, envVarName);
-            return;
+            throw new IllegalStateException(envVarName + " is not configured. This application no longer "
+                    + "generates a development secret: set the " + envVarName + " environment variable "
+                    + "(" + generationHint + ") before starting. See .env.example.");
         }
 
         if (isInsecureSecret(property, normalized)) {
@@ -115,12 +88,6 @@ public class SecureSecretInitializer implements ApplicationContextInitializer<Co
                     + "Generate a fresh secret (" + generationHint + ") and set the " + envVarName
                     + " environment variable before starting the application.");
         }
-    }
-
-    private static String randomBase64(int bytes) {
-        byte[] buffer = new byte[bytes];
-        RANDOM.nextBytes(buffer);
-        return Base64.getEncoder().encodeToString(buffer);
     }
 
     /** Exposed for tests: checks whether a value is a publicly known insecure secret. */
@@ -138,7 +105,7 @@ public class SecureSecretInitializer implements ApplicationContextInitializer<Co
         return false;
     }
 
-    /** A template value such as {@code replace-with-...} or {@code your_smtp_username}. */
+    /** A template value such as {@code replace-with-...} or {@code your_api_key}. */
     private static boolean looksLikePlaceholder(String value) {
         String lower = value.toLowerCase(Locale.ROOT);
         for (String marker : PLACEHOLDER_MARKERS) {

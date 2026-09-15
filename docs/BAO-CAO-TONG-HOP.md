@@ -64,10 +64,10 @@ Dự án ứng dụng công nghệ **Blockchain** để truy xuất nguồn gố
 
 | Thành phần | Công nghệ |
 |---|---|
-| **Backend** | Java 21, Spring Boot 3.3.0, Spring Security, Spring Data JPA, Spring Validation, Spring Mail, Actuator |
+| **Backend** | Java 21, Spring Boot 3.3.0, Spring Security, Spring Data JPA, Spring Validation, Spring Data Redis/Cache, BouncyCastle, Actuator |
 | **Xác thực** | JWT (jjwt 0.12.5), HS256, BCrypt, RBAC (`@EnableMethodSecurity` + `@PreAuthorize`) |
-| **Database** | MySQL 5.7.41 (production), H2 in-memory (dev/test) |
-| **Cache** | Redis 8.6 (cấu hình đã chuẩn bị) |
+| **Database** | MySQL 5.7.41 remote (dev + production); H2 in-memory chỉ trong test/CI (`ALLOW_SIMULATION=true`) |
+| **Cache** | Redis 8.6 — **bắt buộc** (không kết nối được ⇒ backend dừng khởi động; không còn fallback in-memory, chỉ tắt bằng `APP_CACHE_ENABLED=false` cho test/CI) |
 | **Frontend** | React 19 + Vite 8 + TypeScript 6 (**1 ứng dụng web duy nhất** `web/`: portal ở `/` + admin ở `/admin`) |
 | **Blockchain** | VeChainThor (EVM-compatible), Solidity ^0.8.24, OpenZeppelin Upgradeable |
 | **Thanh toán** | Cổng Sepay (webhook bank transfer) |
@@ -91,8 +91,8 @@ Hệ thống theo **kiến trúc 3 tầng** (Presentation / Application / Data),
 │   └── SepayService (webhook thanh toán)                         │
 ├─────────────────────────────────────────────────────────────────┤
 │  Data Layer                                                     │
-│   ├── MySQL (dữ liệu vận hành - operational data)               │
-│   ├── Redis (cache, optional)                                   │
+│   ├── MySQL (dữ liệu vận hành - operational data, remote)       │
+│   ├── Redis (cache, bắt buộc)                                   │
 │   └── VeChainThor (dữ liệu truy xuất bất biến - on-chain)       │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -111,8 +111,8 @@ Hệ thống theo **kiến trúc 3 tầng** (Presentation / Application / Data),
 
 ### 2.4. Quy mô codebase
 
-- **Backend**: 238 file Java (main) + 35 file Java (test), ~18.800 dòng Java (main); 34 test class, `mvn test` = **251 test pass**.
-- **Web**: **1 ứng dụng React TS duy nhất** (70 file `.ts`/`.tsx`, ~16.300 dòng) — 45 file trong `web/src/portal`, 21 file trong `web/src/admin`; 6 file test, `npm test` = **28 test pass**.
+- **Backend**: 247 file Java (main) + 45 file Java (test), ~18.800 dòng Java (main); 45 test class, `mvn test` = **345 test pass** (chạy không cần MySQL/Redis nhờ H2 `create-drop` + `app.cache.enabled=false` + `ALLOW_SIMULATION=true` trong test resources).
+- **Web**: **1 ứng dụng React TS duy nhất** (70 file `.ts`/`.tsx`, ~16.300 dòng) — 45 file trong `web/src/portal`, 21 file trong `web/src/admin`; 22 file test, `npm test` = **84 test**.
 - **Blockchain**: 4 smart contract trong 1 file Solidity (`dev/blockchain/contracts/Traceability.sol`, ~19 KB).
 - **Docs**: 15 tài liệu `.md` + 6 script SQL trong `docs/sql/`.
 - **Tổng**: 144 commit, 5 thành viên.
@@ -129,7 +129,7 @@ Dự án phát triển qua **144 commits** theo các ticket Jira, chia thành 12
 | 2 | Core Security & RBAC | BICAP-72 | 25/07 | Spring Security + JWT + RBAC cốt lõi |
 | 3 | Quản trị Admin | BICAP-1 | 25–26/07 | Admin CRUD + phân quyền, UI admin |
 | 4 | Xác thực Farm Manager | BICAP-7 | 26/07–06/08 | Đăng ký/đăng nhập farm manager |
-| 5 | Xác thực Retailer | BICAP-36/37/38 | 28/07–05/08 | Đăng ký + xác thực email, hồ sơ KYC |
+| 5 | Xác thực Retailer | BICAP-36/37/38 | 28/07–05/08 | Đăng ký được **kích hoạt ngay** (không cần xác thực email), hồ sơ KYC |
 | 6 | Thanh toán & gói dịch vụ | BICAP-78 | 29–30/07 | Service Package, Subscription, Sepay webhook |
 | 7 | Phê duyệt đăng ký nông trại | BICAP-3 | 02/08 | Admin duyệt/từ chối nông trại |
 | 8 | Quản lý chi tiết nông trại | BICAP-4 | 02/08 | Chứng nhận, liên hệ, vị trí, ghi chú admin |
@@ -151,11 +151,10 @@ Dự án phát triển qua **144 commits** theo các ticket Jira, chia thành 12
 - **Entity đa vai trò**: `User` implements `UserDetails`, giữ `Set<Role>` (N:N). `Role` giữ `Set<Permission>` (N:N). Cho phép 1 user mang nhiều vai trò theo SRS.
 - **Vai trò hệ thống**: `SUPER_ADMIN`, `ADMIN`, `MODERATOR` (nhóm admin) + `FARM_MANAGER`, `RETAILER`, `SHIPPING_MGR`, `SHIP_DRIVER`, `GUEST` (nhóm chức năng).
 - **Quyền chi tiết**: `ADMIN_CREATE/READ/UPDATE/DELETE` — phân quyền mịn theo từng thao tác.
-- **JWT Token Provider** (`JwtTokenProvider`): thuật toán HS256, secret nạp từ env, token **có kiểu** (`type` claim):
+- **JWT Token Provider** (`JwtTokenProvider`): thuật toán HS256, secret **bắt buộc** nạp từ env ở mọi profile (`SecureSecretInitializer` từ chối secret thiếu/placeholder, không còn secret sinh tạm), token **có kiểu** (`type` claim):
   - `access` — mặc định 24 giờ.
   - `access` của retailer — 15 phút (chặt hơn).
   - `refresh` — 7 ngày (rotation).
-  - `email_verification` — 24 giờ.
 - **`JwtAuthenticationFilter`** (OncePerRequest): quét header `Authorization: Bearer`, xác thực chữ ký, đưa thông tin user + role vào `SecurityContextHolder`. Riêng endpoint SSE đọc JWT qua query `?token=` (EventSource không gửi được header). **Chống giả mạo header `X-Actor-Email`**: nếu header tồn tại phải khớp với user đã xác thực.
 - **`SecurityConfig`**: stateless, tắt CSRF (thuần REST), mở công khai (`permitAll`): `/api/auth/**`, `/api/public/**`, `GET /api/trace/**`, `GET /uploads/**`, `GET /api/service-packages/**`, `/actuator/health`. Phần còn lại yêu cầu token.
 - **`ActorAuthorizer`**: nhóm quyền admin theo header `X-Actor-Email` — `requireSuperAdmin()`, `requireAdminWrite()` (SUPER_ADMIN|ADMIN), `requireAdminView()` (+MODERATOR).
@@ -196,11 +195,11 @@ Dự án phát triển qua **144 commits** theo các ticket Jira, chia thành 12
 
 ### 4.4. Xác thực Retailer (BICAP-36/37/38)
 
-**Chức năng:** Đăng ký nhà bán lẻ kèm **xác thực email**, hồ sơ cá nhân, hồ sơ kinh doanh (giấy phép).
+**Chức năng:** Đăng ký nhà bán lẻ (kích hoạt ngay), hồ sơ cá nhân, hồ sơ kinh doanh (giấy phép).
 
 **Cách triển khai:**
 
-- **Xác thực email**: khi đăng ký, user được tạo với status `PENDING_VERIFICATION`; `VerificationEmailService` gửi email chứa link token. Frontend nhận `?verifyToken=` → gọi `POST /api/auth/retailer/verify-email` → kích hoạt.
+- **Kích hoạt ngay**: `POST /api/auth/retailer/register` tạo user với status `ACTIVE` và trả token dùng được ngay — **không còn xác thực email**: đã xoá `VerificationEmailService`, endpoint `POST /api/auth/retailer/verify-email`, trường `verificationRequired` và token type `email_verification`. Toàn bộ email/SMTP cũng đã bị xoá khỏi backend (không còn `spring-boot-starter-mail`).
 - **Refresh token rotation**: `POST /api/auth/retailer/refresh` — đổi refresh token sau khi dùng (bảo mật tốt hơn).
 - **Khóa tài khoản**: trường `failed_login_attempts`, `locked_until` (thêm vào `users` qua script `docs/sql/bicap-36-38-schema.sql`).
 - **Hồ sơ KYC**: entity `RetailerBusinessProfile` (OneToOne với User) — tên doanh nghiệp, địa chỉ, loại hình (`RETAIL_STORE/WHOLESALE/SUPERMARKET/OTHER`), file giấy phép kinh doanh.
@@ -268,7 +267,7 @@ Dự án phát triển qua **144 commits** theo các ticket Jira, chia thành 12
 **Cách triển khai:**
 
 - **API**: `POST /api/iot/sensors` (`IotDataController`, `@CrossOrigin("*")`) — nhận `{farmId, temperature, humidity, ph}`.
-- **Ngưỡng an toàn**: nhiệt độ 15–40°C, độ ẩm 30–90%, pH 5.5–7.5. Vượt ngưỡng → tạo thông báo **URGENT** + **push SSE real-time** + **email** cảnh báo.
+- **Ngưỡng an toàn**: nhiệt độ 15–40°C, độ ẩm 30–90%, pH 5.5–7.5. Vượt ngưỡng → tạo thông báo **URGENT** + **push SSE real-time** (chỉ in-app, không còn email cảnh báo).
 - **Job định kỳ**: `@Scheduled` tổng hợp cảnh báo **23:59:59 hàng ngày** (dùng `findByFarmIdAndMeasuredAtBetween`).
 - **UI**: `IotDashboard` — 3 thẻ số liệu với dải an toàn, nút **"Simulate IoT data"** (POST dữ liệu ngẫu nhiên để demo), lịch sử cảnh báo đọc từ **SSE**.
 
@@ -278,14 +277,16 @@ Dự án phát triển qua **144 commits** theo các ticket Jira, chia thành 12
 
 ### 4.10. Thông báo real-time (BICAP-77)
 
-**Chức năng:** Thông báo in-app real-time qua SSE; email cho sự kiện quan trọng.
+**Chức năng:** Thông báo in-app real-time qua SSE (không còn kênh email).
 
 **Cách triển khai:**
 
-- **Entity `Notification`**: user, type (INFO/SUCCESS/WARNING/ALARM), title, content, channel (IN_APP/PUSH/EMAIL), isRead.
-- **SSE fan-out theo user**: `GET /api/notifications/stream` (`text/event-stream`) — JWT qua `?token=`, **heartbeat mỗi 25 giây** giữ kết nối sống, hỗ trợ **nhiều tab/thiết bị** cho cùng user (theo dõi nhiều emitter).
+- **Entity `Notification`**: user, type (INFO/SUCCESS/WARNING/ALARM), title, content, channel (`IN_APP` — enum email đã bị xoá), isRead.
+- **SSE fan-out theo user**: `GET /api/notifications/stream` (`text/event-stream`) — JWT qua `?token=`, **heartbeat mỗi 25 giây** giữ kết nối sống, hỗ trợ **nhiều tab/thiết bị** cho cùng user (theo dõi nhiều emitter). Ngay khi mở stream, server gửi frame `event: connected` để trình duyệt biết kết nối đã sống (không phải chờ nhịp heartbeat đầu tiên).
+- **Client ngắt kết nối (reload/đóng tab)**: lần ghi kế tiếp vào emitter đã chết sẽ ném `IOException`; emitter được `complete()` + xoá khỏi registry ngay nhịp lỗi đầu tiên, và `GlobalExceptionHandler` **không** log ERROR/cố ghi body cho response SSE đã commit (trước đây sinh ERROR + stack trace + `HttpMessageNotWritableException` mỗi 25 giây).
+- **Dispatch nội bộ của container**: `SecurityConfig` cho phép `DispatcherType.ASYNC` **và** `DispatcherType.ERROR` (+ đường dẫn `/error`) đi qua — cả hai lần dispatch này do container tạo, không có `SecurityContext`, nên nếu để `anyRequest().authenticated()` chặn sẽ sinh `AccessDeniedException: Access Denied` + *"Unable to handle the Spring Security Exception because the response is already committed"* lặp mỗi 25 giây. Client không tạo được dispatch loại này ⇒ không nới lỏng bảo mật (`SseAsyncDispatchSecurityTest` khoá hành vi).
 - **API**: danh sách thông báo + đếm chưa đọc (`/unread-count`), đánh dấu đã đọc 1 cái hoặc tất cả (`/read-all`), **kiểm tra quyền sở hữu** khi đánh dấu đã đọc.
-- **Email** cho sự kiện critical (cảnh báo IoT).
+- **Không còn email**: broadcast chỉ tạo thông báo in-app + SSE cho người nhận (đã bỏ tham số `sendEmail`).
 - **UI**: `NotificationBell` — badge chưa đọc, dropdown danh sách, nhận real-time qua SSE, đánh dấu đã đọc.
 
 ---
@@ -355,7 +356,7 @@ Index cho các truy vấn tải cao: `users.phone`, `farms.status`, `farming_sea
 - **Bảng key pattern**: `session:{token}` (15'), `user:{id}` (30'), `farm:{id}` (1h), `product:list:*` (5'), `notification:{userId}:unread` (1'), `iot:{farmId}:latest` (5'), `rate_limit:*` (1'), `bc:tx:{hash}` (24h).
 - **Invalidation**: write-through/DEL key, TTL self-heal, event-driven khi đơn hàng đổi trạng thái.
 
-> ⚠️ Lưu ý: Redis đã được cấu hình trong `application.properties` và tài liệu, **nhưng hiện chưa có CacheManager tiêu thụ trong code** — là phần chuẩn bị cho giai đoạn tối ưu hiệu năng.
+> ⚠️ Lưu ý: Redis giờ là **dependency bắt buộc** của backend — `RedisCacheConfig` tạo `RedisCacheManager` và **dừng khởi động** nếu không ping được Redis (`APP_CACHE_ENABLED=true` mặc định, không còn fallback in-memory ngầm). Chỉ test/CI mới đặt `APP_CACHE_ENABLED=false` để dùng `ConcurrentMapCacheManager`.
 
 ### 5.4. Seeder dữ liệu (`DatabaseSeeder`)
 
@@ -415,8 +416,8 @@ Một file chứa **4 hợp đồng** (Solidity `^0.8.24`, MIT license, OpenZepp
 1. **Idempotency**: mỗi ghi chép có `idempotencyKey` (`SEASON_{id}`, `PROCESS_{id}`, `EXPORT_{id}`, `CONTRACT_{id}`) + ràng buộc unique → **chống submit trùng** khi gọi lại.
 2. **Retry**: tối đa 3 lần; thành công → `CONFIRMED` + cập nhật `txHash` lên entity; quá 3 lần → `FAILED`.
 3. **Chế độ hoạt động** (cấu hình `blockchain.mode`):
-   - `mock` (mặc định): sinh `txHash`/`address` giả định (UUID-based), đánh `CONFIRMED` — thuận tiện dev/test.
-   - `live`: gọi `{nodeUrl}/blocks/best` kiểm tra node VeChainThor phản hồi (không thành công → `FAILED`).
+   - `live` (**mặc định và bắt buộc cho dev/production thật**): giao dịch type-0 được RLP-encode, ký secp256k1 (RFC 6979, low-s) rồi `POST /transactions` lên node VeChainThor; kết quả xác nhận qua receipt. Cần `BLOCKCHAIN_PRIVATE_KEY` (ví signer có VTHO).
+   - `mock`: sinh `txHash`/`address` giả định (UUID-based), đánh `CONFIRMED` — **chỉ chấp nhận khi `ALLOW_SIMULATION=true`** (test/CI), tương tự `BLOCKCHAIN_EXPORT_MODE=local`; `SecretConfigValidator` chặn khởi động nếu dùng ngoài test/CI.
 
 **Endpoints blockchain:**
 
@@ -441,7 +442,7 @@ Dự án có **1 ứng dụng web React duy nhất** trong `web/` (React 19 + Ty
 - **Cấu trúc mã nguồn**: `web/src/portal/**` (chuyển từ `frontend/src/**`), `web/src/admin/**` (chuyển từ `admin-web/src/**`), `web/src/shared/session.ts` (session + API base dùng chung), `web/src/index.css` (design system gộp).
 - **Session dùng chung**: một cơ chế duy nhất trong `web/src/shared/session.ts` — lưu `accessToken` / `currentUser` / `refreshToken` trong `localStorage` cho cả portal và admin; đã **bỏ cơ chế chuyển token qua redirect `?token=`**.
 - **Phía portal (`/`)**:
-  - **Auth** với tab vai trò: Farm Manager (`/api/auth/farm/*`) & Retailer (`/api/auth/retailer/*`), hỗ trợ verify email qua `?verifyToken=`.
+  - **Auth** với tab vai trò: Farm Manager (`/api/auth/farm/*`) & Retailer (`/api/auth/retailer/*`); đăng ký Retailer được kích hoạt ngay (không còn luồng verify email `?verifyToken=`).
   - **ServicePackages**: danh mục gói dịch vụ, mua gói (`POST /subscriptions/purchase`), `PaymentModal` (hướng dẫn chuyển khoản, copy clipboard, **poll trạng thái mỗi 5s**).
   - **Khóa VIP theo subscription**: menu `products`, `iot`, `certificates` 🔒 chỉ mở khi có subscription ACTIVE (`GET /subscriptions/my`).
   - **IotDashboard**: 3 thẻ số liệu + nút simulate + lịch sử cảnh báo real-time (SSE).
@@ -472,28 +473,29 @@ Pipeline "Java & Node.js Multi-Service CI/CD" — chạy khi push `main`/`featur
 | Job | Nội dung |
 |---|---|
 | `web-ci` | `web/`: Node 22 (≥22.22.2 — jsdom 30/undici 8 bỏ hỗ trợ Node 20), `npm ci` → `npm run lint` (oxlint) → `npm test` → `npm run build` |
-| `backend-ci` | `backend/`: JDK 21 (Corretto), `mvn clean test` (251 test) → `mvn package -DskipTests`, upload artifact JAR |
+| `backend-ci` | `backend/`: JDK 21 (Corretto), `mvn clean test` (345 test) → `mvn package -DskipTests`, upload artifact JAR |
 
 ### 8.2. Triển khai
 
 - **Chạy 1 port (khuyến nghị)**: build web (`cd web && npm run build` → `web/dist`), copy toàn bộ `web/dist/*` vào `backend/src/main/resources/static/`, rồi chạy backend (`cd backend && mvn spring-boot:run`). Backend phục vụ tĩnh cả hai endpoint trên cùng cổng 8080: `http://localhost:8080/` (portal) và `http://localhost:8080/admin` (admin).
-- **Dev tách rời**: backend 8080 (H2 in-memory), web dev server 5174.
+- **Dev tách rời**: backend 8080 (bắt buộc MySQL remote + Redis remote + `BLOCKCHAIN_MODE=live` trong `.env`; thiếu là dừng khởi động, không còn H2/mock/in-memory mặc định), web dev server 5174.
 - **Docker đã được gỡ hoàn toàn khỏi repo**: không còn `Dockerfile`, `docker-compose.db.yml`, `web/Dockerfile`, `web/nginx.conf` và job `docker-build-push` trong CI. Triển khai thực hiện trực tiếp bằng Maven/npm như trên.
 
 ### 8.3. Cấu hình môi trường
 
-- `.env.example` liệt kê toàn bộ biến: DB, JWT (bắt buộc), SMTP (verify email), Sepay API key (bắt buộc), Redis, `VITE_API_BASE_URL`.
-- `SecretConfigValidator` **fail-fast**: thiếu `JWT_SECRET`/`SEPAY_API_KEY` → app không khởi động.
+- `.env.example` liệt kê toàn bộ biến: MySQL remote, Redis remote, JWT (bắt buộc ở mọi profile), Sepay API key (bắt buộc), blockchain `live` + `ALLOW_SIMULATION=false`, `VITE_API_BASE_URL` — **không còn `SMTP_*`/`MAIL_FROM`**.
+- `.env` (đã `.gitignore`) được backend **tự nạp** qua `spring.config.import=optional:file:./.env[.properties],optional:file:../.env[.properties]`; script `dev/run-backend.ps1` nạp `.env` rồi chạy `mvn spring-boot:run`.
+- `SecureSecretInitializer`/`SecretConfigValidator` **fail-fast**: thiếu/placeholder `JWT_SECRET` hoặc `SEPAY_API_KEY`, thiếu MySQL remote, Redis không tới được, hoặc blockchain `mock`/`local` ngoài test/CI → app không khởi động. Không còn secret sinh tạm cho dev.
 
 ---
 
 ## 9. Kiểm thử
 
-**Backend: 34 test class / 251 test pass** (JUnit 5 + MockMvc + Spring Security Test, H2 in-memory `create-drop`); **Web: 6 file test / 28 test pass** (`npm test`):
+**Backend: 45 test class / 345 test pass** (JUnit 5 + MockMvc + Spring Security Test, H2 in-memory `create-drop` khai báo riêng trong `src/test/resources/application.properties` cùng `app.cache.enabled=false` + `app.allow-simulation=true`, nên chạy được **không cần** MySQL/Redis); **Web: 22 file test / 84 test** (`npm test`):
 
 | File test | Phạm vi |
 |---|---|
-| `AuthControllerTest` / `AuthServiceTest` | Đăng ký, đăng nhập, validation, email verification |
+| `AuthControllerTest` / `AuthServiceTest` | Đăng ký, đăng nhập, validation, kích hoạt ngay tài khoản retailer (không còn email verification) |
 | `JwtAuthenticationFilterTest` / `ActorAuthorizerTest` | Filter JWT, chống giả mạo header, RBAC |
 | `AdminServiceTest` | CRUD admin, xóa mềm, phân quyền |
 | `FarmApprovalServiceTest` | Duyệt/từ chối nông trại + thông báo |
@@ -513,17 +515,18 @@ Pipeline "Java & Node.js Multi-Service CI/CD" — chạy khi push `main`/`featur
 ### Backend (Spring Boot, port 8080)
 
 ```bash
-# Tạo .env từ template rồi điền credentials
+# Tạo .env từ template rồi điền credentials THẬT (MySQL remote + Redis remote + ví VeChain có VTHO + Sepay key)
 cp .env.example .env
 
-# Chạy backend (H2 in-memory, MODE=MySQL)
+# Chạy backend — backend tự nạp .env; thiếu hạ tầng/key là dừng khởi động
 cd backend && mvn spring-boot:run
+# hoặc từ thư mục gốc:  .\dev\run-backend.ps1
 
-# Test: mvn test (251 test)
+# Test: mvn test (345 test — không cần MySQL/Redis)
 # Package: mvn clean package -DskipTests → backend/target/*.jar
 ```
 
-> Mặc định backend chạy với **H2 in-memory** (MODE=MySQL) nên không cần DB ngoài. Set `SPRING_DATASOURCE_*` để dùng MySQL cloud.
+> Không còn fallback: backend bắt buộc **MySQL remote + Redis remote + blockchain `live`** và secret thật (`JWT_SECRET`, `SEPAY_API_KEY`) ở **mọi profile**. H2 + mock blockchain + local stub chỉ chạy khi `ALLOW_SIMULATION=true` (test/CI); Redis không tới được cũng dừng khởi động (chỉ tắt cache bằng `APP_CACHE_ENABLED=false` khi test/CI).
 
 ### Web (React + Vite, dev port 5174)
 
@@ -533,7 +536,7 @@ cd web && npm install && npm run dev
 # → http://localhost:5174/admin  (admin)
 ```
 
-Các lệnh khác trong `web/`: `npm test` (28 test), `npm run lint` (oxlint), `npm run build` → `web/dist`.
+Các lệnh khác trong `web/`: `npm test` (84 test / 22 file), `npm run lint` (oxlint), `npm run build` → `web/dist`.
 
 ### Triển khai 1 port (không dùng Docker)
 
@@ -556,14 +559,14 @@ cd ../backend && mvn spring-boot:run
 
 | Nhóm | Tính năng |
 |---|---|
-| **Xác thực & phân quyền** | JWT + RBAC (8 vai trò, 4 quyền admin), đăng ký/đăng nhập Farm Manager & Retailer, xác thực email retailer, refresh token rotation, khóa tài khoản sau 5 lần sai, rate limiting, fail-fast secret |
+| **Xác thực & phân quyền** | JWT + RBAC (8 vai trò, 4 quyền admin), đăng ký/đăng nhập Farm Manager & Retailer (retailer **kích hoạt ngay**, không cần xác thực email), refresh token rotation, khóa tài khoản sau 5 lần sai, rate limiting, fail-fast secret |
 | **Quản trị** | CRUD admin, xóa mềm, quản lý nông trại (duyệt/từ chối, chứng nhận, ghi chú, GPS, trạng thái) |
 | **Nghiệp vụ nông nghiệp** | Mùa vụ (tạo/cập nhật/trạng thái), quy trình canh tác, xuất bán — đều được băm ghi lên blockchain |
 | **Thanh toán** | Gói dịch vụ, subscription, đặt cọc đơn hàng 30%, webhook Sepay an toàn (apiKey, idempotent, định tuyến theo memo) |
 | **Blockchain** | 4 smart contract UUPS chuẩn bảo mật OZ; BlockchainService mock/live + idempotency + retry; quản lý & triển khai contract trên admin UI |
-| **Thông báo** | In-app real-time **SSE** (heartbeat, multi-tab), email, cảnh báo IoT theo ngưỡng, tổng hợp cuối ngày |
+| **Thông báo** | In-app real-time **SSE** (heartbeat, multi-tab), cảnh báo IoT theo ngưỡng, tổng hợp cuối ngày — **không còn email/SMTP** |
 | **IoT** | API nhận dữ liệu cảm biến, dashboard simulate |
-| **Hạ tầng** | CI/CD **2 job** (`web-ci`, `backend-ci`), **không dùng Docker**; triển khai 1 port bằng cách build web → `static/` → chạy backend; **251 test backend + 28 test web**; 15 tài liệu kỹ thuật + 6 script SQL. App mobile tài xế đã gỡ khỏi repo (backend vẫn giữ `DriverMobileController` + `/api/driver/**`) |
+| **Hạ tầng** | CI/CD **2 job** (`web-ci`, `backend-ci`), **không dùng Docker**; triển khai 1 port bằng cách build web → `static/` → chạy backend; **345 test backend + 84 test web**; 15 tài liệu kỹ thuật + 6 script SQL. App mobile tài xế đã gỡ khỏi repo (backend vẫn giữ `DriverMobileController` + `/api/driver/**`) |
 
 ### 11.2. Còn thiếu / đang phát triển 🔜
 
@@ -572,8 +575,8 @@ cd ../backend && mvn spring-boot:run
 - **Truy xuất QR cho khách hàng**: `TraceabilityContract.verify()` đã có trên chain, **nhưng chưa có REST endpoint** (`/api/trace/**` đã mở permitAll trong security, chưa có controller) và chưa sinh QR thật.
 - **Guest web app** — chưa phát triển.
 - **App mobile tài xế**: chưa triển khai trong bản này — đã **gỡ khỏi repo** (`mobile-app/` không còn), trong khi backend **vẫn giữ** `DriverMobileController` + API `/api/driver/**` để sẵn sàng khi làm lại UI mobile.
-- **Live VeChainThor**: hiện `blockchain.mode=mock` (mặc định); chế độ `live` mới chỉ health-check node, chưa ký & gửi giao dịch thật (chưa có SDK web3j/VeChain trong `pom.xml`, chưa có script deploy, ABI/bytecode phải dán tay vào form admin).
-- **Redis**: cấu hình sẵn sàng nhưng chưa có CacheManager tiêu thụ trong code.
+- **Live VeChainThor**: `blockchain.mode=live` là **mặc định/bắt buộc** cho dev & production và **đã ký + broadcast giao dịch thật** (RLP-encode type-0, secp256k1 qua BouncyCastle rồi `POST /transactions`, xác nhận qua receipt); `mock`/`local` chỉ chấp nhận khi `ALLOW_SIMULATION=true` (test/CI). Chưa có script deploy tự động — ABI/bytecode vẫn phải dán tay vào form admin.
+- **Redis**: là **dependency bắt buộc** — `RedisCacheConfig` tạo `RedisCacheManager` và chặn khởi động nếu không kết nối được (không còn fallback in-memory).
 - **File export (CSV/Excel)** và **QR generation** từ backend.
 
 ### 11.3. Đánh giá chất lượng code
@@ -581,7 +584,7 @@ cd ../backend && mvn spring-boot:run
 - **Không dùng Lombok** → POJO tường minh, builder pattern thủ công (dễ đọc, dễ debug, nhưng verbose hơn).
 - **An toàn**: BCrypt, fail-fast secret, chống path traversal upload, chống giả mạo `X-Actor-Email`, idempotency chống trùng giao dịch thanh toán/blockchain, rate limit chống brute-force, escape LIKE chống search injection.
 - **Hiệu năng**: batch-load chống N+1, repository query động, index thiết kế cho truy vấn tải cao.
-- **Sạch sẽ**: exception handler toàn cục chuẩn hóa, 251 test backend + 28 test web bao phủ các service/controller then chốt.
+- **Sạch sẽ**: exception handler toàn cục chuẩn hóa, 345 test backend + 84 test web bao phủ các service/controller then chốt.
 
 ---
 

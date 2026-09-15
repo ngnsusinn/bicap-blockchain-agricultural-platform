@@ -134,7 +134,7 @@ public class ReportService {
         String title = "Báo cáo \"" + saved.getSubject() + "\" đã được xử lý";
         String content = "Quản trị viên đã phản hồi báo cáo của bạn (trạng thái: " + newStatus + "): "
                 + saved.getAdminResponse();
-        notificationService.sendNotification(saved.getReporterId(), "INFO", title, content, false);
+        notificationService.sendNotification(saved.getReporterId(), "INFO", title, content);
 
         return toResponseWithName(saved);
     }
@@ -158,7 +158,7 @@ public class ReportService {
         String content = report.getReporterRole() + " vừa gửi báo cáo: " + report.getSubject();
         for (User admin : admins) {
             notificationService.sendNotification(admin.getId(), "WARNING",
-                    "Báo cáo mới từ người dùng", content, false);
+                    "Báo cáo mới từ người dùng", content);
         }
     }
 

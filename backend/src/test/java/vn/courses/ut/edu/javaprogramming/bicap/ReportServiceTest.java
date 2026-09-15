@@ -84,7 +84,7 @@ class ReportServiceTest {
                 && r.getType().equals(Report.TYPE_COMPLAINT)
                 && r.getReporterId().equals(7L)
                 && r.getRelatedOrderId().equals(42L)));
-        verify(notifications).sendNotification(eq(1L), eq("WARNING"), anyString(), anyString(), eq(false));
+        verify(notifications).sendNotification(eq(1L), eq("WARNING"), anyString(), anyString());
     }
 
     @Test
@@ -136,7 +136,7 @@ class ReportServiceTest {
 
         assertEquals("RESOLVED", result.getStatus());
         assertEquals("Đã liên hệ xử lý.", result.getAdminResponse());
-        verify(notifications).sendNotification(eq(7L), eq("INFO"), anyString(), anyString(), eq(false));
+        verify(notifications).sendNotification(eq(7L), eq("INFO"), anyString(), anyString());
     }
 
     @Test

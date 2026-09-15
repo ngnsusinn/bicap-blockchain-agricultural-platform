@@ -1,5 +1,7 @@
 package vn.courses.ut.edu.javaprogramming.bicap.config;
 
+import jakarta.servlet.DispatcherType;
+
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.CustomUserDetailsService;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.JwtAuthenticationFilter;
 import vn.courses.ut.edu.javaprogramming.bicap.common.security.RateLimitFilter;
@@ -59,7 +61,29 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth ->
-                    auth.requestMatchers(
+                    auth
+                        // SSE (/api/notifications/stream) chạy ở chế độ async: sau khi controller
+                        // trả SseEmitter, container dispatch lại request với DispatcherType.ASYNC.
+                        // Ở lần dispatch này JwtAuthenticationFilter KHÔNG chạy
+                        // (OncePerRequestFilter.shouldNotFilterAsyncDispatch() mặc định = true)
+                        // nên SecurityContext rỗng → anyRequest().authenticated() ném
+                        // AccessDeniedException dù response đã commit, sinh log
+                        // "Unable to handle the Spring Security Exception because the response is
+                        // already committed" và stream không đóng sạch.
+                        // Request gốc đã qua xác thực + phân quyền ở lần dispatch REQUEST rồi,
+                        // nên cho phép lần dispatch ASYNC đi tiếp (client không tự tạo được ASYNC dispatch).
+                        //
+                        // ERROR: khi async request kết thúc ở trạng thái lỗi (emitter ghi vào socket
+                        // đã chết vì client reload/đóng tab), Tomcat dispatch tiếp trang lỗi /error
+                        // với DispatcherType.ERROR — cũng không có SecurityContext. Nếu để
+                        // anyRequest().authenticated() chặn thì chính lần dispatch trang lỗi lại ném
+                        // AccessDeniedException: Access Denied + "response is already committed",
+                        // lặp lại mỗi nhịp heartbeat 25s (xem SseAsyncDispatchSecurityTest).
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
+                        // Trang lỗi mặc định của Spring Boot: chỉ trả JSON lỗi chuẩn hoá
+                        // (server.error.include-message=never), không lộ chi tiết nội bộ.
+                        .requestMatchers("/error").permitAll()
+                        .requestMatchers(
                                 "/api/auth/**"
                         ).permitAll()
                         .requestMatchers("/api/public/**").permitAll()

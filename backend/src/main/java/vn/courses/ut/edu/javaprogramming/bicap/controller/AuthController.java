@@ -11,7 +11,6 @@ import vn.courses.ut.edu.javaprogramming.bicap.dto.AuthResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.LoginRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.RegisterRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.RefreshTokenRequest;
-import vn.courses.ut.edu.javaprogramming.bicap.dto.VerificationResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.service.AuthService;
 
 @RestController
@@ -55,13 +54,6 @@ public class AuthController {
     @PostMapping({"/retailer/login", "/retail/login"})
     public ResponseEntity<AuthResponse> loginRetailer(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.loginRetailer(request));
-    }
-
-    @PostMapping("/retailer/verify-email")
-    public ResponseEntity<VerificationResponse> verifyRetailerEmail(
-            @org.springframework.web.bind.annotation.RequestParam String token) {
-        authService.verifyRetailerEmail(token);
-        return ResponseEntity.ok(new VerificationResponse("Email verified successfully"));
     }
 
     @PostMapping("/retailer/refresh")
