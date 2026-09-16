@@ -1,8 +1,19 @@
 package vn.courses.ut.edu.javaprogramming.bicap.entity;
 
-import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(name = "subscriptions",
@@ -36,6 +47,10 @@ public class Subscription {
     @Column(nullable = false)
     private SubscriptionStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "request_status")
+    private SubscriptionRequestStatus requestStatus;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -52,6 +67,8 @@ public class Subscription {
         this.endDate = endDate;
         this.status = status;
         this.createdAt = createdAt;
+        this.requestStatus = status == SubscriptionStatus.ACTIVE
+            ? SubscriptionRequestStatus.APPROVED : SubscriptionRequestStatus.PENDING;
     }
 
     @PrePersist
@@ -61,6 +78,9 @@ public class Subscription {
         }
         if (this.status == null) {
             this.status = SubscriptionStatus.PENDING_PAYMENT;
+        }
+        if (this.requestStatus == null) {
+            this.requestStatus = SubscriptionRequestStatus.PENDING;
         }
     }
 
@@ -78,6 +98,8 @@ public class Subscription {
     public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
     public SubscriptionStatus getStatus() { return status; }
     public void setStatus(SubscriptionStatus status) { this.status = status; }
+    public SubscriptionRequestStatus getRequestStatus() { return requestStatus; }
+    public void setRequestStatus(SubscriptionRequestStatus requestStatus) { this.requestStatus = requestStatus; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -93,6 +115,7 @@ public class Subscription {
         private LocalDate startDate;
         private LocalDate endDate;
         private SubscriptionStatus status;
+        private SubscriptionRequestStatus requestStatus;
         private LocalDateTime createdAt;
 
         public Builder id(Long id) { this.id = id; return this; }
@@ -102,10 +125,13 @@ public class Subscription {
         public Builder startDate(LocalDate startDate) { this.startDate = startDate; return this; }
         public Builder endDate(LocalDate endDate) { this.endDate = endDate; return this; }
         public Builder status(SubscriptionStatus status) { this.status = status; return this; }
+        public Builder requestStatus(SubscriptionRequestStatus requestStatus) { this.requestStatus = requestStatus; return this; }
         public Builder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
 
         public Subscription build() {
-            return new Subscription(id, farmId, packageId, paymentCode, startDate, endDate, status, createdAt);
+            Subscription subscription = new Subscription(id, farmId, packageId, paymentCode, startDate, endDate, status, createdAt);
+            subscription.requestStatus = requestStatus;
+            return subscription;
         }
     }
 }

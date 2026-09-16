@@ -25,11 +25,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import vn.courses.ut.edu.javaprogramming.bicap.config.SepayConfig;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.PurchasePackageRequest;
 import vn.courses.ut.edu.javaprogramming.bicap.dto.PurchasePackageResponse;
+import vn.courses.ut.edu.javaprogramming.bicap.dto.SubscriptionResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Role;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.ServicePackage;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Subscription;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.SubscriptionStatus;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.SubscriptionRequestStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.UserStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.ConflictException;
@@ -192,6 +194,57 @@ class SubscriptionServiceTest {
         assertThrows(vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException.class,
                 () -> subscriptionService.activateSubscription(7L, new BigDecimal("100")));
         assertEquals(SubscriptionStatus.PENDING_PAYMENT, sub.getStatus());
+    }
+
+    @Test
+    void approveSubscription_activatesPendingRequest() {
+        User admin = User.builder().id(20L).email("admin@bicap.com").password("x")
+                .status(UserStatus.ACTIVE).roles(Set.of(Role.builder().name("ADMIN").build())).build();
+        authenticateAs(admin);
+        Subscription sub = Subscription.builder().id(7L).farmId(1L).packageId(1L)
+                .status(SubscriptionStatus.PENDING_PAYMENT).requestStatus(SubscriptionRequestStatus.PENDING).build();
+        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(sub));
+        when(servicePackageRepository.findById(1L)).thenReturn(Optional.of(servicePackage));
+        when(subscriptionRepository.save(any(Subscription.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        SubscriptionResponse response = subscriptionService.approveSubscription(7L);
+
+        assertEquals(SubscriptionStatus.ACTIVE, sub.getStatus());
+        assertEquals(SubscriptionRequestStatus.APPROVED, sub.getRequestStatus());
+        assertEquals("APPROVED", response.getRequestStatus());
+    }
+
+        @Test
+        void approveSubscription_alreadyApproved_isIdempotent() {
+                User admin = User.builder().id(20L).email("admin@bicap.com").password("x")
+                                .status(UserStatus.ACTIVE).roles(Set.of(Role.builder().name("ADMIN").build())).build();
+                authenticateAs(admin);
+                Subscription sub = Subscription.builder().id(7L).farmId(1L).packageId(1L)
+                                .status(SubscriptionStatus.ACTIVE).requestStatus(SubscriptionRequestStatus.APPROVED).build();
+                when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(sub));
+
+                SubscriptionResponse response = subscriptionService.approveSubscription(7L);
+
+                assertEquals(SubscriptionStatus.ACTIVE, sub.getStatus());
+                assertEquals("APPROVED", response.getRequestStatus());
+                verify(subscriptionRepository, never()).save(any(Subscription.class));
+                verify(servicePackageRepository, never()).findById(1L);
+        }
+
+    @Test
+    void rejectSubscription_doesNotActivatePackage() {
+        User admin = User.builder().id(20L).email("admin@bicap.com").password("x")
+                .status(UserStatus.ACTIVE).roles(Set.of(Role.builder().name("ADMIN").build())).build();
+        authenticateAs(admin);
+        Subscription sub = Subscription.builder().id(7L).farmId(1L).packageId(1L)
+                .status(SubscriptionStatus.PENDING_PAYMENT).requestStatus(SubscriptionRequestStatus.PENDING).build();
+        when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(sub));
+        when(subscriptionRepository.save(any(Subscription.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        subscriptionService.rejectSubscription(7L);
+
+        assertEquals(SubscriptionStatus.CANCELLED, sub.getStatus());
+        assertEquals(SubscriptionRequestStatus.REJECTED, sub.getRequestStatus());
     }
 
     @Test

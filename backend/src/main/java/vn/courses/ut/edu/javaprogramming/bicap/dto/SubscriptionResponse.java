@@ -9,14 +9,21 @@ public class SubscriptionResponse {
     private final LocalDate startDate;
     private final LocalDate endDate;
     private final String status;
+    private final String requestStatus;
 
     public SubscriptionResponse(Long id, Long farmId, String packageName, LocalDate startDate, LocalDate endDate, String status) {
+        this(id, farmId, packageName, startDate, endDate, status, null);
+    }
+
+    public SubscriptionResponse(Long id, Long farmId, String packageName, LocalDate startDate, LocalDate endDate,
+                                String status, String requestStatus) {
         this.id = id;
         this.farmId = farmId;
         this.packageName = packageName;
         this.startDate = startDate;
         this.endDate = endDate;
         this.status = status;
+        this.requestStatus = requestStatus;
     }
 
     public Long getId() { return id; }
@@ -25,4 +32,5 @@ public class SubscriptionResponse {
     public LocalDate getStartDate() { return startDate; }
     public LocalDate getEndDate() { return endDate; }
     public String getStatus() { return status; }
+    public String getRequestStatus() { return requestStatus; }
 }

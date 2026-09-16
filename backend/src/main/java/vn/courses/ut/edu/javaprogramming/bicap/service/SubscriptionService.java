@@ -23,6 +23,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.dto.SubscriptionResponse;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Farm;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.ServicePackage;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.Subscription;
+import vn.courses.ut.edu.javaprogramming.bicap.entity.SubscriptionRequestStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.SubscriptionStatus;
 import vn.courses.ut.edu.javaprogramming.bicap.entity.User;
 import vn.courses.ut.edu.javaprogramming.bicap.exception.BadRequestException;
@@ -91,6 +92,7 @@ public class SubscriptionService {
                 .farmId(farmId)
                 .packageId(request.getPackageId())
                 .status(SubscriptionStatus.PENDING_PAYMENT)
+                .requestStatus(SubscriptionRequestStatus.PENDING)
                 .build();
         try {
             subscription = subscriptionRepository.save(subscription);
@@ -184,6 +186,42 @@ public class SubscriptionService {
     }
 
     @Transactional(readOnly = true)
+    public List<SubscriptionResponse> getSubscriptionRequests() {
+        requireAdmin();
+        return toResponses(subscriptionRepository.findAll());
+    }
+
+    public SubscriptionResponse approveSubscription(Long subscriptionId) {
+        requireAdmin();
+        Subscription subscription = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subscription not found"));
+        if (subscription.getStatus() == SubscriptionStatus.ACTIVE
+                && subscription.getRequestStatus() == SubscriptionRequestStatus.APPROVED) {
+            return toResponse(subscription);
+        }
+        if (subscription.getRequestStatus() != SubscriptionRequestStatus.PENDING
+                || subscription.getStatus() != SubscriptionStatus.PENDING_PAYMENT) {
+            throw new BadRequestException("Subscription request is not pending");
+        }
+        ServicePackage servicePackage = servicePackageRepository.findById(subscription.getPackageId())
+                .orElseThrow(() -> new ResourceNotFoundException("Service package not found"));
+        LocalDate today = LocalDate.now();
+        subscription.setStartDate(today);
+        subscription.setEndDate(today.plusDays(servicePackage.getDurationDays()));
+        subscription.setStatus(SubscriptionStatus.ACTIVE);
+        subscription.setRequestStatus(SubscriptionRequestStatus.APPROVED);
+        return toResponse(subscriptionRepository.save(subscription));
+    }
+
+    public SubscriptionResponse rejectSubscription(Long subscriptionId) {
+        requireAdmin();
+        Subscription subscription = getPendingRequest(subscriptionId);
+        subscription.setStatus(SubscriptionStatus.CANCELLED);
+        subscription.setRequestStatus(SubscriptionRequestStatus.REJECTED);
+        return toResponse(subscriptionRepository.save(subscription));
+    }
+
+    @Transactional(readOnly = true)
     public PaymentStatusResponse checkPaymentStatus(String paymentCode) {
         Subscription subscription = subscriptionRepository.findByPaymentCode(paymentCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment code not found or invalid format"));
@@ -224,6 +262,7 @@ public class SubscriptionService {
         subscription.setStartDate(today);
         subscription.setEndDate(today.plusDays(servicePackage.getDurationDays()));
         subscription.setStatus(SubscriptionStatus.ACTIVE);
+        subscription.setRequestStatus(SubscriptionRequestStatus.APPROVED);
         subscriptionRepository.save(subscription);
     }
 
@@ -246,8 +285,23 @@ public class SubscriptionService {
                         namesById.getOrDefault(sub.getPackageId(), "Unknown"),
                         sub.getStartDate(),
                         sub.getEndDate(),
-                        sub.getStatus().name()))
+                        sub.getStatus().name(),
+                        sub.getRequestStatus() == null ? null : sub.getRequestStatus().name()))
                 .collect(Collectors.toList());
+    }
+
+    private SubscriptionResponse toResponse(Subscription subscription) {
+        return toResponses(List.of(subscription)).get(0);
+    }
+
+    private Subscription getPendingRequest(Long subscriptionId) {
+        Subscription subscription = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subscription not found"));
+        if (subscription.getRequestStatus() != SubscriptionRequestStatus.PENDING
+                || subscription.getStatus() != SubscriptionStatus.PENDING_PAYMENT) {
+            throw new BadRequestException("Subscription request is not pending");
+        }
+        return subscription;
     }
 
     private String generateUniquePaymentCode(Long subscriptionId) {
@@ -285,5 +339,9 @@ public class SubscriptionService {
 
     private static void requireFarmManager(User actor) {
         ActorAuthorizer.requireRoles(actor, FARM_MANAGER_ROLES);
+    }
+
+    private static void requireAdmin() {
+        ActorAuthorizer.requireRoles(CurrentUser.get(), Set.of("SUPER_ADMIN", "ADMIN"));
     }
 }

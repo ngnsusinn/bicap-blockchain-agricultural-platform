@@ -183,6 +183,13 @@ export default function AdminApp() {
         {/* Header bar: NotificationBell (detail-design §4.2 Header) */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
           <NotificationBell email={currentSession.email} />
+          <button
+            type="button"
+            onClick={handleLogout}
+            style={adminHeaderLogoutStyle}
+          >
+            🚪 Đăng xuất
+          </button>
         </div>
 
         {currentTab === 'overview' && (
@@ -258,3 +265,16 @@ export default function AdminApp() {
     </div>
   );
 }
+
+const adminHeaderLogoutStyle: React.CSSProperties = {
+  padding: '10px 16px',
+  border: '1px solid rgba(239, 68, 68, 0.35)',
+  borderRadius: '10px',
+  background: 'rgba(239, 68, 68, 0.12)',
+  color: '#fca5a5',
+  fontWeight: 700,
+  fontSize: '13px',
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.12)',
+};

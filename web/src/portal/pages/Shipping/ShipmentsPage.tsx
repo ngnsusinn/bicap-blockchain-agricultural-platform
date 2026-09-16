@@ -64,7 +64,7 @@ export default function ShipmentsPage({ initialOrderForCreate, onTrack }: Props)
 
   // Create form
   const [showCreate, setShowCreate] = useState(!!initialOrderForCreate);
-  const [completedOrders, setCompletedOrders] = useState<CompletedOrder[]>([]);
+  const [readyOrders, setReadyOrders] = useState<CompletedOrder[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [createForm, setCreateForm] = useState({
@@ -99,11 +99,11 @@ export default function ShipmentsPage({ initialOrderForCreate, onTrack }: Props)
   const loadCreateFormData = async () => {
     try {
       const [ordersRes, driversRes, vehiclesRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/shipping/orders/completed`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE_URL}/shipping/orders/ready-to-ship`, { headers: getAuthHeaders() }),
         fetch(`${API_BASE_URL}/shipping/drivers`, { headers: getAuthHeaders() }),
         fetch(`${API_BASE_URL}/shipping/vehicles`, { headers: getAuthHeaders() }),
       ]);
-      if (ordersRes.ok) setCompletedOrders(await ordersRes.json());
+      if (ordersRes.ok) setReadyOrders(await ordersRes.json());
       if (driversRes.ok) setDrivers(await driversRes.json());
       if (vehiclesRes.ok) setVehicles(await vehiclesRes.json());
     } catch {
@@ -232,8 +232,8 @@ export default function ShipmentsPage({ initialOrderForCreate, onTrack }: Props)
               onChange={e => setCreateForm(f => ({ ...f, orderId: e.target.value }))}
               style={inputStyle}
             >
-              <option value="">-- Chọn đơn hàng DEPOSIT_PAID --</option>
-              {completedOrders.map(o => (
+              <option value="">-- Chọn đơn hàng đã thanh toán cọc --</option>
+              {readyOrders.map(o => (
                 <option key={o.id} value={o.id}>
                   #{o.id} — {o.productName || 'Sản phẩm'}, {o.retailerName || 'Nhà bán lẻ'}
                   {o.deliveryAddr ? ` → ${o.deliveryAddr}` : ''}

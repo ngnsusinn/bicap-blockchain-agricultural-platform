@@ -566,7 +566,17 @@ export default function App() {
           {currentTab === 'guest-notifications' && <GuestNotifications />}
           {currentTab === 'profile' && <ProfilePage onUserUpdated={(updated: UserSession) => setUser(updated)} />}
           {currentTab === 'packages' && <ServicePackages />}
-          {currentTab === 'farm-info' && <FarmInfo farmId={user?.farmId} />}
+          {currentTab === 'farm-info' && (
+            <FarmInfo
+              farmId={user?.farmId}
+              onFarmRegistered={(farm) => {
+                if (!user) return;
+                const updated = { ...user, farmId: farm.id };
+                saveSession(localStorage.getItem('accessToken') || '', updated);
+                setUser(updated);
+              }}
+            />
+          )}
           {currentTab === 'seasons' && <Seasons farmId={user?.farmId} />}
           {currentTab === 'exports' && <SeasonExports farmId={user?.farmId} />}
           {currentTab === 'trading-floor' && <TradingFloor farmId={user?.farmId} />}

@@ -10,13 +10,20 @@ type Farm = {
   description?: string; productTypes?: string; status: string; updatedAt?: string;
 };
 
-export default function FarmInfo({ farmId }: { farmId?: number }) {
+interface FarmInfoProps {
+  farmId?: number;
+  onFarmRegistered?: (farm: Farm) => void;
+}
+
+export default function FarmInfo({ farmId, onFarmRegistered }: FarmInfoProps) {
   const [farm, setFarm] = useState<Farm | null>(null);
+  const [registeredFarmId, setRegisteredFarmId] = useState<number>();
   const [form, setForm] = useState({ name: '', address: '', area: '', gpsLat: '', gpsLng: '', description: '', productTypes: '' });
   const [cert, setCert] = useState({ type: 'BUSINESS_LICENSE', expiryDate: '', file: null as File | null });
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const effectiveFarmId = farmId ?? registeredFarmId;
 
   const load = async () => {
     if (!farmId) return;
@@ -33,12 +40,34 @@ export default function FarmInfo({ farmId }: { farmId?: number }) {
 
   useEffect(() => { load().catch(() => setError('Lỗi kết nối máy chủ.')); }, [farmId]);
 
+  const register = async (e: React.FormEvent) => {
+    e.preventDefault(); setError(''); setNotice(''); setBusy(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/farms/register`, {
+        method: 'POST', headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: form.name, address: form.address, area: Number(form.area),
+          gpsLat: form.gpsLat ? Number(form.gpsLat) : null,
+          gpsLng: form.gpsLng ? Number(form.gpsLng) : null,
+          description: form.description, productTypes: form.productTypes,
+        }),
+      });
+      if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.message || 'Đăng ký nông trại thất bại.'); }
+      const created: Farm = await res.json();
+      setFarm(created);
+      setRegisteredFarmId(created.id);
+      setNotice('Đã gửi hồ sơ đăng ký. Vui lòng chờ admin phê duyệt trước khi thực hiện các tác vụ tiếp theo.');
+      onFarmRegistered?.(created);
+    } catch (err) { setError(err instanceof Error ? err.message : 'Đăng ký nông trại thất bại.'); }
+    finally { setBusy(false); }
+  };
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault(); setError(''); setNotice('');
-    if (!farmId) return;
+    if (!effectiveFarmId) return;
     setBusy(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/farms/${farmId}`, {
+      const res = await fetch(`${API_BASE_URL}/farms/${effectiveFarmId}`, {
         method: 'PUT', headers: getAuthHeaders(),
         body: JSON.stringify({
           name: form.name, address: form.address, area: Number(form.area),
@@ -56,7 +85,7 @@ export default function FarmInfo({ farmId }: { farmId?: number }) {
 
   const uploadCert = async (e: React.FormEvent) => {
     e.preventDefault(); setError(''); setNotice('');
-    if (!farmId || !cert.file) { setError('Chọn tệp giấy phép/chứng nhận để tải lên.'); return; }
+    if (!effectiveFarmId || !cert.file) { setError('Chọn tệp giấy phép/chứng nhận để tải lên.'); return; }
     setBusy(true);
     try {
       const fd = new FormData();
@@ -64,7 +93,7 @@ export default function FarmInfo({ farmId }: { farmId?: number }) {
       if (cert.type) fd.append('type', cert.type);
       if (cert.expiryDate) fd.append('expiryDate', cert.expiryDate);
       const token = localStorage.getItem('accessToken');
-      const res = await fetch(`${API_BASE_URL}/farms/${farmId}/certifications`, {
+      const res = await fetch(`${API_BASE_URL}/farms/${effectiveFarmId}/certifications`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: fd,
@@ -76,18 +105,32 @@ export default function FarmInfo({ farmId }: { farmId?: number }) {
     finally { setBusy(false); }
   };
 
-  if (!farmId) {
-    return <div><h1 className="dashboard-title">Thông tin nông trại</h1><div style={alertStyle}>Chưa xác định được nông trại của tài khoản.</div></div>;
-  }
-
   return (
     <div>
       <h1 className="dashboard-title">Thông tin nông trại</h1>
-      <p className="dashboard-subtitle">Cập nhật hồ sơ nông trại, vùng canh tác và giấy phép kinh doanh.</p>
+      <p className="dashboard-subtitle">
+        {effectiveFarmId ? 'Cập nhật hồ sơ nông trại, vùng canh tác và giấy phép kinh doanh.' : 'Đăng ký hồ sơ nông trại để admin xem xét và phê duyệt.'}
+      </p>
       {error && <div style={alertStyle}>{error}</div>}
       {notice && <div style={successStyle}>{notice}</div>}
 
-      <div style={gridStyle}>
+      {!effectiveFarmId ? (
+        <form className="glass-panel" style={panelStyle} onSubmit={register}>
+          <h2 style={titleStyle}>Đăng ký nông trại</h2>
+          <p style={{ color: '#94a3b8', fontSize: 13 }}>Hồ sơ sẽ được chuyển đến admin ở trạng thái chờ duyệt.</p>
+          <label style={labelStyle}>Tên nông trại</label>
+          <input required maxLength={255} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={inputStyle} />
+          <label style={labelStyle}>Địa chỉ</label>
+          <input required maxLength={500} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} style={inputStyle} />
+          <label style={labelStyle}>Diện tích (m²)</label>
+          <input required min="0.01" step="0.01" type="number" value={form.area} onChange={e => setForm({ ...form, area: e.target.value })} style={inputStyle} />
+          <label style={labelStyle}>Loại nông sản</label>
+          <input maxLength={500} value={form.productTypes} onChange={e => setForm({ ...form, productTypes: e.target.value })} style={inputStyle} />
+          <label style={labelStyle}>Mô tả</label>
+          <textarea rows={3} maxLength={2000} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} style={inputStyle} />
+          <button disabled={busy} style={buttonStyle}>{busy ? 'Đang gửi…' : 'Gửi đăng ký'}</button>
+        </form>
+      ) : <div style={gridStyle}>
         <form className="glass-panel" style={panelStyle} onSubmit={save}>
           <h2 style={titleStyle}>Hồ sơ nông trại</h2>
           {farm && <div style={{ marginBottom: 8 }}><span style={badgeStyle(farm.status)}>{farm.status}</span></div>}
@@ -130,7 +173,7 @@ export default function FarmInfo({ farmId }: { farmId?: number }) {
           <input type="file" accept="image/*,application/pdf" onChange={e => setCert({ ...cert, file: e.target.files?.[0] || null })} style={{ ...inputStyle, padding: 8 }} />
           <button disabled={busy} style={buttonStyle}>{busy ? 'Đang tải…' : 'Tải lên tài liệu'}</button>
         </form>
-      </div>
+      </div>}
     </div>
   );
 }
