@@ -45,6 +45,21 @@ public class SubscriptionController {
         return ResponseEntity.ok(subscriptionService.getSubscriptionsByFarm(farmId));
     }
 
+    @GetMapping("/admin/requests")
+    public ResponseEntity<List<SubscriptionResponse>> getSubscriptionRequests() {
+        return ResponseEntity.ok(subscriptionService.getSubscriptionRequests());
+    }
+
+    @PutMapping("/admin/requests/{id}/approve")
+    public ResponseEntity<SubscriptionResponse> approveSubscription(@PathVariable Long id) {
+        return ResponseEntity.ok(subscriptionService.approveSubscription(id));
+    }
+
+    @PutMapping("/admin/requests/{id}/reject")
+    public ResponseEntity<SubscriptionResponse> rejectSubscription(@PathVariable Long id) {
+        return ResponseEntity.ok(subscriptionService.rejectSubscription(id));
+    }
+
     @GetMapping("/payment-status/{paymentCode}")
     public ResponseEntity<PaymentStatusResponse> checkPaymentStatus(@PathVariable String paymentCode) {
         return ResponseEntity.ok(subscriptionService.checkPaymentStatus(paymentCode));

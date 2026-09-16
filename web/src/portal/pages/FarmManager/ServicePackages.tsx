@@ -19,6 +19,7 @@ interface Subscription {
   startDate: string;
   endDate: string;
   status: string;
+  requestStatus?: string | null;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -26,6 +27,9 @@ const STATUS_LABEL: Record<string, string> = {
   PENDING_PAYMENT: '⏳ Chờ thanh toán',
   EXPIRED:         '⌛ Đã hết hạn',
   CANCELLED:       '✕ Đã huỷ',
+  REJECTED:        '✕ Bị từ chối',
+  APPROVED:        '✅ Đã được duyệt',
+  PENDING:         '⏳ Chờ Admin duyệt',
 };
 
 const STATUS_COLOR: Record<string, { fg: string; bg: string; border: string }> = {
@@ -84,7 +88,7 @@ const ServicePackages: React.FC = () => {
   useEffect(() => { fetchData(); resolveFarmId(); }, [fetchData, resolveFarmId]);
 
   const activeSub   = subscriptions.find(s => s.status === 'ACTIVE');
-  const pendingSub  = subscriptions.find(s => s.status === 'PENDING_PAYMENT');
+  const pendingSub  = subscriptions.find(s => s.requestStatus === 'PENDING' || s.status === 'PENDING_PAYMENT');
 
   const handleSubscribe = async (pkg: Package) => {
     if (!isLoggedIn()) { flash('error', 'Vui lòng đăng nhập để mua gói dịch vụ.'); return; }
@@ -204,10 +208,10 @@ const ServicePackages: React.FC = () => {
             <div style={{ fontSize:18, fontWeight:700, color:'#fff', marginBottom:4 }}>
               {activeSub ? `📦 Gói hiện tại: ${activeSub.packageName}` : `⏳ Đang chờ thanh toán: ${pendingSub!.packageName}`}
             </div>
-            <div style={{ fontSize:13, color:'#94a3b8' }}>
+              <div style={{ fontSize:13, color:'#94a3b8' }}>
               {activeSub
                 ? `Hiệu lực đến ${new Date(activeSub.endDate).toLocaleDateString('vi-VN')}, ${daysLeft(activeSub.endDate)}`
-                : 'Vui lòng hoàn tất thanh toán hoặc huỷ để chọn gói khác'}
+                : 'Đã gửi yêu cầu. Vui lòng chuyển khoản theo thông tin và chờ Admin xác nhận'}
             </div>
           </div>
           <div style={{ display:'flex', gap:10, alignItems:'center' }}>
@@ -333,9 +337,9 @@ const ServicePackages: React.FC = () => {
                   return (
                     <tr key={sub.id} style={{ borderBottom:'1px solid #0f172a' }}>
                       <td style={{ padding:'12px 14px', color:'#fff', fontWeight:600 }}>{sub.packageName}</td>
-                      <td style={{ padding:'12px 14px' }}>
-                        <span style={{ padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:700, color:c.fg, background:c.bg, border:`1px solid ${c.border}` }}>
-                          {STATUS_LABEL[sub.status] || sub.status}
+                          <td style={{ padding:'12px 14px' }}>
+                            <span style={{ padding:'4px 10px', borderRadius:99, fontSize:11, fontWeight:700, color:c.fg, background:c.bg, border:`1px solid ${c.border}` }}>
+                              {STATUS_LABEL[sub.requestStatus || sub.status] || STATUS_LABEL[sub.status] || sub.status}
                         </span>
                       </td>
                       <td style={{ padding:'12px 14px', color:'#94a3b8' }}>

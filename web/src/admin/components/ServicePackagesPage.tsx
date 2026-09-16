@@ -16,6 +16,16 @@ interface ServicePackage {
   status: string;
 }
 
+interface SubscriptionRequest {
+  id: number;
+  farmId: number;
+  packageName: string;
+  startDate: string | null;
+  endDate: string | null;
+  status: string;
+  requestStatus: string | null;
+}
+
 interface FormState {
   name: string;
   description: string;
@@ -45,6 +55,7 @@ export const ServicePackagesPage: React.FC<Props> = ({ currentSession, onToast }
   const [busy, setBusy]           = useState(false);
   const [deleteId, setDeleteId]   = useState<number | null>(null);
   const [featuresError, setFeaturesError] = useState('');
+  const [requests, setRequests] = useState<SubscriptionRequest[]>([]);
 
   const apiBase = API_BASE_URL;
 
@@ -62,6 +73,11 @@ export const ServicePackagesPage: React.FC<Props> = ({ currentSession, onToast }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setPackages(Array.isArray(data) ? data : []);
+      const requestRes = await fetch(`${apiBase}/subscriptions/admin/requests`, { headers });
+      if (requestRes.ok) {
+        const requestData = await requestRes.json();
+        setRequests(Array.isArray(requestData) ? requestData : []);
+      }
     } catch (e: any) {
       onToast(e.message || 'Không tải được danh sách gói dịch vụ.', 'error');
     } finally {
@@ -163,6 +179,20 @@ export const ServicePackagesPage: React.FC<Props> = ({ currentSession, onToast }
 
   const canEdit = ['SUPER_ADMIN', 'ADMIN'].includes(currentSession.role);
 
+  const reviewRequest = async (id: number, action: 'approve' | 'reject') => {
+    try {
+      const res = await fetch(`${apiBase}/subscriptions/admin/requests/${id}/${action}`, {
+        method: 'PUT', headers,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+      onToast(action === 'approve' ? 'Đã duyệt đăng ký gói.' : 'Đã từ chối đăng ký gói.', 'success');
+      await load();
+    } catch (e: any) {
+      onToast(e.message || 'Không thể xử lý đăng ký gói.', 'error');
+    }
+  };
+
   return (
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:16, marginBottom:24 }}>
@@ -186,6 +216,41 @@ export const ServicePackagesPage: React.FC<Props> = ({ currentSession, onToast }
           Chưa có gói dịch vụ nào.
         </div>
       )}
+
+      <div className="glass-panel" style={{ padding:24, marginBottom:24 }}>
+        <h2 style={{ margin:'0 0 16px', color:'#fff', fontSize:18 }}>Yêu cầu đăng ký gói</h2>
+        {requests.length === 0 ? (
+          <div style={{ color:'#64748b' }}>Chưa có yêu cầu đăng ký.</div>
+        ) : (
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
+              <thead><tr style={{ borderBottom:'1px solid #1e293b' }}>
+                {['Mã yêu cầu','Farm','Gói dịch vụ','Trạng thái','Thao tác'].map(h => (
+                  <th key={h} style={{ padding:'10px 12px', textAlign:'left', color:'#64748b' }}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>{requests.map(request => (
+                <tr key={request.id} style={{ borderBottom:'1px solid #0f172a' }}>
+                  <td style={{ padding:'12px', color:'#fff', fontWeight:600 }}>#{request.id}</td>
+                  <td style={{ padding:'12px', color:'#cbd5e1' }}>#{request.farmId}</td>
+                  <td style={{ padding:'12px', color:'#cbd5e1' }}>{request.packageName}</td>
+                  <td style={{ padding:'12px' }}>
+                    <span style={{ color: request.requestStatus === 'PENDING' ? '#fcd34d' : request.requestStatus === 'APPROVED' ? '#6ee7b7' : '#fca5a5' }}>
+                      {request.requestStatus || request.status}
+                    </span>
+                  </td>
+                  <td style={{ padding:'12px' }}>
+                    {request.requestStatus === 'PENDING' && <div style={{ display:'flex', gap:8 }}>
+                      <button onClick={() => reviewRequest(request.id, 'approve')} className="btn btn-primary">Duyệt</button>
+                      <button onClick={() => reviewRequest(request.id, 'reject')} style={{ padding:'8px 12px', border:'1px solid rgba(239,68,68,.3)', borderRadius:8, background:'rgba(239,68,68,.08)', color:'#f87171', cursor:'pointer' }}>Từ chối</button>
+                    </div>}
+                  </td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Package cards */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))', gap:20 }}>
