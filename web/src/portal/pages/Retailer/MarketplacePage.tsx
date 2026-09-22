@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { API_BASE_URL, getAuthHeaders } from '../../utils/auth';
+import { translateProcessType } from '../../utils/processTypes';
 
 type Product = {
   id: number; name: string; description: string; images: string[]; price: number; quantity: number;
@@ -135,7 +136,7 @@ export default function MarketplacePage() {
             <p>{selected.seasonName} , {selected.variety} , Thu hoạch {selected.harvestDate || '—'}</p>
             {selected.processes?.map((x, i) => (
               <div key={i} style={timeline}>
-                <b>{x.executionDate} , {x.processType}</b>
+                <b>{x.executionDate} , {translateProcessType(x.processType)}</b>
                 <div>{x.materials || x.notes || 'Không có ghi chú'}</div>
               </div>
             ))}

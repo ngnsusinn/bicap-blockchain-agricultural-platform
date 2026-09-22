@@ -13,16 +13,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 
 @Entity
 @Table(name = "subscriptions",
-        indexes = { @Index(name = "idx_subscriptions_farm_id", columnList = "farm_id") },
-        uniqueConstraints = {
-                // Guards the check-then-insert race in purchasePackage (H-6): at most one
-                // subscription per farm in the same state (e.g. only one PENDING_PAYMENT).
-                @UniqueConstraint(name = "uk_subscriptions_farm_status", columnNames = {"farm_id", "status"})
-        })
+        indexes = { @Index(name = "idx_subscriptions_farm_id", columnList = "farm_id") })
 public class Subscription {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

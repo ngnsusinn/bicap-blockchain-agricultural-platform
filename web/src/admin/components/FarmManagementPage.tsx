@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { UserSession, FarmRegistration, FarmCertification } from '../types';
-import { API_ORIGIN, authHeaders, formatDate } from '../utils/api';
+import { API_ORIGIN, authHeaders, formatDate, resolveFileUrl } from '../utils/api';
 import { STATUS_META, StatusBadge } from './StatusBadge';
 
 interface FarmManagementPageProps {
@@ -380,7 +380,7 @@ export const FarmManagementPage: React.FC<FarmManagementPageProps> = ({ currentS
                         </div>
                       </div>
                       <a
-                        href={cert.fileUrl}
+                        href={resolveFileUrl(cert.fileUrl)}
                         target="_blank"
                         rel="noreferrer"
                         style={{

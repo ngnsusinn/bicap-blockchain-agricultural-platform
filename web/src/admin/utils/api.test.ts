@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { API_ORIGIN, authHeaders, formatDate } from '../utils/api';
+import { API_ORIGIN, authHeaders, formatDate, resolveFileUrl } from '../utils/api';
 import { normalizeApiOrigin } from '../../shared/session';
 
 /** BICAP-86 — admin portal shared API helpers. */
@@ -46,5 +46,20 @@ describe('formatDate', () => {
 
   it('renders a valid ISO date in Vietnamese locale', () => {
     expect(formatDate('2026-08-30T10:00:00Z')).toContain('2026');
+  });
+});
+
+describe('resolveFileUrl', () => {
+  it('prepends API_ORIGIN to relative paths', () => {
+    expect(resolveFileUrl('/uploads/retailers/24/licenses/abc.jpg')).toBe(`${API_ORIGIN}/uploads/retailers/24/licenses/abc.jpg`);
+  });
+
+  it('returns absolute URLs unchanged', () => {
+    const url = 'https://cdn.example.com/file.pdf';
+    expect(resolveFileUrl(url)).toBe(url);
+  });
+
+  it('handles empty string', () => {
+    expect(resolveFileUrl('')).toBe('');
   });
 });

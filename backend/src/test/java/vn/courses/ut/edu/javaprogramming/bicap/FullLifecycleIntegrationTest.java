@@ -213,6 +213,10 @@ class FullLifecycleIntegrationTest {
                 "licensePlate", "51H-" + s, "type", "Tai 500kg", "capacity", 500.0), shipToken);
         long vehicleId = json(vehicle).path("id").asLong();
         long driverUserId = userRepository.findByEmail("driver2@bicap.com").orElseThrow().getId();
+        vn.courses.ut.edu.javaprogramming.bicap.entity.Driver driver =
+                driverRepository.findByUserId(driverUserId).orElseThrow();
+        driver.setStatus(vn.courses.ut.edu.javaprogramming.bicap.entity.Driver.STATUS_IDLE);
+        driverRepository.save(driver);
         long driverId = driverRepository.findByUserId(driverUserId).orElseThrow().getId();
 
         MvcResult shipment = postJson("/api/shipping/shipments", java.util.Map.of(

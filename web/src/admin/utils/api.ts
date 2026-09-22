@@ -15,6 +15,15 @@ export function authHeaders(email: string): Record<string, string> {
   return headers;
 }
 
+/** Resolves a (possibly relative) file URL to an absolute one.
+ * Backend returns paths like `/uploads/...`; prepend API_ORIGIN so the
+ * browser actually reaches the file server instead of the SPA origin. */
+export function resolveFileUrl(fileUrl: string): string {
+  if (!fileUrl) return '';
+  if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) return fileUrl;
+  return `${API_ORIGIN}${fileUrl}`;
+}
+
 /** Formats an ISO timestamp as a Vietnamese date, or "—" when absent/invalid. */
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';

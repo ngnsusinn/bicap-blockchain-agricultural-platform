@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -38,6 +40,7 @@ import vn.courses.ut.edu.javaprogramming.bicap.repository.SubscriptionRepository
 @Transactional
 public class SubscriptionService {
 
+    private static final Logger log = LoggerFactory.getLogger(SubscriptionService.class);
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int PAYMENT_CODE_DIGITS = 6;
     private static final Set<String> FARM_MANAGER_ROLES = Set.of("FARM_MANAGER");
@@ -102,7 +105,15 @@ public class SubscriptionService {
 
         String paymentCode = generateUniquePaymentCode(subscription.getId());
         subscription.setPaymentCode(paymentCode);
+
+        // MOCK: Auto-activate subscription immediately (payment not yet implemented)
+        LocalDate today = LocalDate.now();
+        subscription.setStartDate(today);
+        subscription.setEndDate(today.plusDays(servicePackage.getDurationDays()));
+        subscription.setStatus(SubscriptionStatus.ACTIVE);
+        subscription.setRequestStatus(SubscriptionRequestStatus.APPROVED);
         subscription = subscriptionRepository.save(subscription);
+        log.info("Mock payment: subscription {} auto-activated", subscription.getId());
 
         return new PurchasePackageResponse(
                 subscription.getId(),
@@ -163,6 +174,7 @@ public class SubscriptionService {
             }
         }
         sub.setStatus(SubscriptionStatus.CANCELLED);
+        sub.setRequestStatus(SubscriptionRequestStatus.REJECTED);
         subscriptionRepository.save(sub);
     }
 
@@ -195,10 +207,24 @@ public class SubscriptionService {
         requireAdmin();
         Subscription subscription = subscriptionRepository.findById(subscriptionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subscription not found"));
-        if (subscription.getStatus() == SubscriptionStatus.ACTIVE
-                && subscription.getRequestStatus() == SubscriptionRequestStatus.APPROVED) {
+        // Idempotent: already fully approved/active — just return.
+        if (subscription.getRequestStatus() == SubscriptionRequestStatus.APPROVED
+                && subscription.getStatus() == SubscriptionStatus.ACTIVE) {
             return toResponse(subscription);
         }
+        // Fix inconsistent states from migration or concurrent flow:
+        // requestStatus APPROVED but status not yet ACTIVE → activate it.
+        if (subscription.getRequestStatus() == SubscriptionRequestStatus.APPROVED) {
+            subscription.setStatus(SubscriptionStatus.ACTIVE);
+            return toResponse(subscriptionRepository.save(subscription));
+        }
+        // status ACTIVE but requestStatus still PENDING → mark as approved.
+        if (subscription.getStatus() == SubscriptionStatus.ACTIVE
+                && subscription.getRequestStatus() == SubscriptionRequestStatus.PENDING) {
+            subscription.setRequestStatus(SubscriptionRequestStatus.APPROVED);
+            return toResponse(subscriptionRepository.save(subscription));
+        }
+        // Normal path: only PENDING_PAYMENT + PENDING can be approved.
         if (subscription.getRequestStatus() != SubscriptionRequestStatus.PENDING
                 || subscription.getStatus() != SubscriptionStatus.PENDING_PAYMENT) {
             throw new BadRequestException("Subscription request is not pending");

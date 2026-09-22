@@ -149,13 +149,15 @@ class SubscriptionServiceTest {
         @Test
         void cancelSubscription_activeSubscription_allowsBuyingAnotherPackage() {
                 Subscription sub = Subscription.builder().id(7L).farmId(1L).packageId(1L)
-                                .status(SubscriptionStatus.ACTIVE).build();
+                                .status(SubscriptionStatus.ACTIVE).requestStatus(SubscriptionRequestStatus.PENDING).build();
                 when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(sub));
                 when(farmRepository.findById(1L)).thenReturn(Optional.of(farm));
+                when(subscriptionRepository.save(any(Subscription.class))).thenAnswer(inv -> inv.getArgument(0));
 
                 subscriptionService.cancelSubscription(7L);
 
                 assertEquals(SubscriptionStatus.CANCELLED, sub.getStatus());
+                assertEquals(SubscriptionRequestStatus.REJECTED, sub.getRequestStatus());
                 verify(subscriptionRepository).save(sub);
         }
 
@@ -229,6 +231,41 @@ class SubscriptionServiceTest {
                 assertEquals("APPROVED", response.getRequestStatus());
                 verify(subscriptionRepository, never()).save(any(Subscription.class));
                 verify(servicePackageRepository, never()).findById(1L);
+        }
+
+        @Test
+        void approveSubscription_inactiveStateWithApprovedRequestStatus_fixesStatus() {
+                // BUG fix: subscription in inconsistent state ACTIVE + PENDING
+                User admin = User.builder().id(20L).email("admin@bicap.com").password("x")
+                                .status(UserStatus.ACTIVE).roles(Set.of(Role.builder().name("ADMIN").build())).build();
+                authenticateAs(admin);
+                Subscription sub = Subscription.builder().id(7L).farmId(1L).packageId(1L)
+                                .status(SubscriptionStatus.ACTIVE).requestStatus(SubscriptionRequestStatus.PENDING).build();
+                when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(sub));
+                when(subscriptionRepository.save(any(Subscription.class))).thenAnswer(inv -> inv.getArgument(0));
+
+                SubscriptionResponse response = subscriptionService.approveSubscription(7L);
+
+                assertEquals(SubscriptionStatus.ACTIVE, sub.getStatus());
+                assertEquals(SubscriptionRequestStatus.APPROVED, sub.getRequestStatus());
+                assertEquals("APPROVED", response.getRequestStatus());
+        }
+
+        @Test
+        void approveSubscription_pendingPaymentWithApprovedRequestStatus_fixesStatus() {
+                User admin = User.builder().id(20L).email("admin@bicap.com").password("x")
+                                .status(UserStatus.ACTIVE).roles(Set.of(Role.builder().name("ADMIN").build())).build();
+                authenticateAs(admin);
+                Subscription sub = Subscription.builder().id(7L).farmId(1L).packageId(1L)
+                                .status(SubscriptionStatus.PENDING_PAYMENT).requestStatus(SubscriptionRequestStatus.APPROVED).build();
+                when(subscriptionRepository.findById(7L)).thenReturn(Optional.of(sub));
+                when(subscriptionRepository.save(any(Subscription.class))).thenAnswer(inv -> inv.getArgument(0));
+
+                SubscriptionResponse response = subscriptionService.approveSubscription(7L);
+
+                assertEquals(SubscriptionStatus.ACTIVE, sub.getStatus());
+                assertEquals(SubscriptionRequestStatus.APPROVED, sub.getRequestStatus());
+                assertEquals("APPROVED", response.getRequestStatus());
         }
 
     @Test

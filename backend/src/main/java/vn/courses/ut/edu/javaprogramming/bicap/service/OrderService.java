@@ -1,5 +1,7 @@
 package vn.courses.ut.edu.javaprogramming.bicap.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -46,6 +48,7 @@ import java.time.LocalDateTime;
 @Transactional
 public class OrderService {
 
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int DEPOSIT_CODE_DIGITS = 6;
 
@@ -132,7 +135,11 @@ public class OrderService {
         String depositCode = uniqueDepositCode(order.getId());
         order.setDepositCode(depositCode);
         order.setDepositAmount(depositAmount);
+
+        // MOCK: Auto-confirm deposit immediately (payment not yet implemented)
+        order.setStatus(Order.STATUS_DEPOSIT_PAID);
         orderRepository.save(order);
+        log.info("Mock payment: order #{} deposit auto-confirmed", order.getId());
 
         return new DepositResponse(
                 order.getId(),

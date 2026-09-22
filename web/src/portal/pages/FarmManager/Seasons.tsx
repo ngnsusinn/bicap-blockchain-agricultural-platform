@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { API_BASE_URL, getAuthHeaders } from '../../utils/auth';
+import { translateProcessType, translateSeasonStatus } from '../../utils/processTypes';
 import {
   gridStyle, panelStyle, titleStyle, labelStyle, inputStyle, buttonStyle,
   secondaryButtonStyle, alertStyle, successStyle, cardStyle, hashStyle, badgeStyle,
@@ -85,7 +86,7 @@ export default function Seasons({ farmId }: { farmId?: number }) {
       method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify(body),
     });
     if (!res.ok) { const b = await res.json().catch(() => ({})); setError(b.message || 'Cập nhật trạng thái thất bại.'); return; }
-    setNotice(`Đã cập nhật trạng thái mùa vụ → ${status}.`);
+    setNotice(`Đã cập nhật trạng thái mùa vụ → ${translateSeasonStatus(status)}.`);
     await loadDetail(selected.id); await load();
   };
 
@@ -138,14 +139,14 @@ export default function Seasons({ farmId }: { farmId?: number }) {
             <h2 style={titleStyle}>Danh sách mùa vụ</h2>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ ...inputStyle, width: 'auto' }}>
               <option value="">Tất cả trạng thái</option>
-              {STATUS_FLOW.map(s => <option key={s} value={s}>{s}</option>)}
+              {STATUS_FLOW.map(s => <option key={s} value={s}>{translateSeasonStatus(s)}</option>)}
             </select>
           </div>
           {!seasons.length && <p style={{ color: '#94a3b8' }}>Chưa có mùa vụ nào.</p>}
           {seasons.map(s => (
             <article key={s.id} style={{ ...cardStyle, cursor: 'pointer', borderColor: selected?.id === s.id ? '#10b981' : '#334155' }} onClick={() => setSelected(s as SeasonDetail)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                <strong>{s.name}</strong><span style={badgeStyle(s.status)}>{s.status}</span>
+                <strong>{s.name}</strong><span style={badgeStyle(s.status)}>{translateSeasonStatus(s.status)}</span>
               </div>
               <p style={{ margin: '6px 0' }}>{s.productType}, {s.variety}, {s.area} m²</p>
               <p style={{ color: '#94a3b8', fontSize: 12 }}>{s.startDate}{s.endDate ? ` → ${s.endDate}` : ''}</p>
@@ -160,7 +161,7 @@ export default function Seasons({ farmId }: { farmId?: number }) {
           <h2 style={titleStyle}>Chi tiết: {selected.name}</h2>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
             {STATUS_FLOW.filter(s => s !== selected.status).map(s => (
-              <button key={s} onClick={() => changeStatus(s)} style={secondaryButtonStyle}>Chuyển sang {s}</button>
+              <button key={s} onClick={() => changeStatus(s)} style={secondaryButtonStyle}>Chuyển sang {translateSeasonStatus(s)}</button>
             ))}
           </div>
 
@@ -169,7 +170,7 @@ export default function Seasons({ farmId }: { farmId?: number }) {
           {selected.processes?.map(p => (
             <article key={p.id} style={cardStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                <strong>{p.processType}</strong><span style={{ color: '#94a3b8', fontSize: 12 }}>{p.executionDate}</span>
+                <strong>{translateProcessType(p.processType)}</strong><span style={{ color: '#94a3b8', fontSize: 12 }}>{p.executionDate}</span>
               </div>
               {p.materials && <p style={{ fontSize: 13 }}>Vật tư: {p.materials}</p>}
               {p.notes && <p style={{ fontSize: 13, color: '#cbd5e1' }}>{p.notes}</p>}
@@ -183,7 +184,7 @@ export default function Seasons({ farmId }: { farmId?: number }) {
               <div>
                 <label style={labelStyle}>Loại quy trình</label>
                 <select value={procForm.processType} onChange={e => setProcForm({ ...procForm, processType: e.target.value })} style={inputStyle}>
-                  {PROCESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  {PROCESS_TYPES.map(t => <option key={t} value={t}>{translateProcessType(t)}</option>)}
                 </select>
               </div>
               <div>

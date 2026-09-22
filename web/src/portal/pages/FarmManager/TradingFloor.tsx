@@ -141,7 +141,7 @@ export default function TradingFloor({ farmId }: { farmId?: number }) {
           </div>
           <div>
             <label style={labelStyle}>Đơn giá dự kiến (VND)</label>
-            <input required min="1" step="1000" type="number" value={form.price}
+            <input required min="0" step="1000" type="number" value={form.price}
               onChange={e => setForm({ ...form, price: e.target.value })} style={inputStyle} placeholder="VD: 15000" />
           </div>
         </div>

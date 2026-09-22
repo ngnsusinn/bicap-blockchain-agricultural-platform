@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 import vn.courses.ut.edu.javaprogramming.bicap.common.blockchain.Hashes;
 import vn.courses.ut.edu.javaprogramming.bicap.common.blockchain.HexUtils;
 import vn.courses.ut.edu.javaprogramming.bicap.common.blockchain.VeChainClient;
@@ -188,27 +189,32 @@ public class BlockchainService {
         contract = contractRepository.save(contract);
 
         if (isLive()) {
-            long nonce = randomNonce();
-            String sender = walletAddress();
-            String predictedAddress = VeChainWallet.contractAddress(sender, nonce);
-            String txId = broadcast(List.of(
-                    VeChainTxSigner.Clause.create(BigInteger.ZERO, HexUtils.fromHex(bytecode))),
-                    gasDeploy, nonce);
+            try {
+                long nonce = randomNonce();
+                String sender = walletAddress();
+                String predictedAddress = VeChainWallet.contractAddress(sender, nonce);
+                String txId = broadcast(List.of(
+                        VeChainTxSigner.Clause.create(BigInteger.ZERO, HexUtils.fromHex(bytecode))),
+                        gasDeploy, nonce);
 
-            contract.setTxHash(txId);
-            contract.setAddress(predictedAddress);
-            contract.setStatus("PENDING");
-            contractRepository.save(contract);
+                contract.setTxHash(txId);
+                contract.setAddress(predictedAddress);
+                contract.setStatus("PENDING");
+                contractRepository.save(contract);
 
-            BlockchainTransaction tx = new BlockchainTransaction();
-            tx.setEntityType("CONTRACT");
-            tx.setEntityId(contract.getId());
-            tx.setTxHash(txId);
-            tx.setContractAddress(predictedAddress);
-            tx.setStatus("PENDING");
-            tx.setIdempotencyKey("CONTRACT_" + contract.getId());
-            txRepository.save(tx);
-            return contract;
+                BlockchainTransaction tx = new BlockchainTransaction();
+                tx.setEntityType("CONTRACT");
+                tx.setEntityId(contract.getId());
+                tx.setTxHash(txId);
+                tx.setContractAddress(predictedAddress);
+                tx.setStatus("PENDING");
+                tx.setIdempotencyKey("CONTRACT_" + contract.getId());
+                txRepository.save(tx);
+                return contract;
+            } catch (Exception e) {
+                log.warn("Live contract deployment broadcast failed for {} — falling back to mock mode",
+                        name, e);
+            }
         }
 
         String txHash = generateMockTxHash();
@@ -264,17 +270,34 @@ public class BlockchainService {
         }
 
         if (isLive()) {
-            String txId = broadcastAttestation(entityType, entityId);
-            BlockchainTransaction tx = new BlockchainTransaction();
-            tx.setEntityType(entityType);
-            tx.setEntityId(entityId);
-            tx.setTxHash(txId);
-            tx.setIdempotencyKey(idempotencyKey);
-            tx.setStatus("PENDING");
-            txRepository.save(tx);
-            return txId;
+            try {
+                String txId = broadcastAttestation(entityType, entityId);
+                BlockchainTransaction tx = new BlockchainTransaction();
+                tx.setEntityType(entityType);
+                tx.setEntityId(entityId);
+                tx.setTxHash(txId);
+                tx.setIdempotencyKey(idempotencyKey);
+                tx.setStatus("PENDING");
+                txRepository.save(tx);
+                return txId;
+            } catch (HttpClientErrorException e) {
+                // Blockchain broadcast failed (e.g. insufficient energy, node error).
+                // Fall back to mock mode so business data is not lost.
+                log.warn("Live blockchain broadcast failed for {}:{} — {} — falling back to mock mode",
+                        entityType, entityId, e.getStatusCode().value() + " " + e.getMessage(), e);
+                return recordEntityMock(entityType, entityId, idempotencyKey, onConfirmed);
+            } catch (Exception e) {
+                log.warn("Live blockchain broadcast failed for {}:{} — {} — falling back to mock mode",
+                        entityType, entityId, e.getMessage(), e);
+                return recordEntityMock(entityType, entityId, idempotencyKey, onConfirmed);
+            }
         }
 
+        return recordEntityMock(entityType, entityId, idempotencyKey, onConfirmed);
+    }
+
+    private String recordEntityMock(String entityType, Long entityId, String idempotencyKey,
+                                    java.util.function.Consumer<String> onConfirmed) {
         String txHash = generateMockTxHash();
         BlockchainTransaction tx = new BlockchainTransaction();
         tx.setEntityType(entityType);

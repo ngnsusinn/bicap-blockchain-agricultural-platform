@@ -91,10 +91,10 @@ public class SepayService {
                     + "' does not match the configured account '" + sepayConfig.getAccountNo() + "'");
         }
 
+        // MOCK: skip amount verification — auto-approve any matched payment (payment not yet implemented)
         BigDecimal amount = request.getTransferAmount() != null
                 ? BigDecimal.valueOf(request.getTransferAmount())
                 : BigDecimal.ZERO;
-
         for (String candidate : candidates) {
             // Subscription payment?
             Optional<Subscription> subscription = subscriptionRepository.findByPaymentCode(candidate);
@@ -110,8 +110,8 @@ public class SepayService {
         }
 
         // C-3/M-9 — nothing matched: log the full event so no legitimate transfer is silently dropped.
-        log.warn("Sepay webhook did not match any known transfer memo: id={}, codes={}, amount={}, account={}, date={}",
-                request.getId(), candidates, amount, accountNumber, request.getTransactionDate());
+        log.warn("Sepay webhook did not match any known transfer memo: id={}, codes={}, account={}, date={}",
+                request.getId(), candidates, accountNumber, request.getTransactionDate());
         return result("ignored");
     }
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { API_BASE_URL, getAuthHeaders } from '../../utils/auth';
+import { translateProcessType } from '../../utils/processTypes';
 
 type TraceResult = {
   name: string; farmName: string; farmAddress: string; seasonName?: string; harvestDate?: string;
@@ -123,7 +124,7 @@ export default function QrScannerPage() {
           <h3 style={{ marginTop: 18, marginBottom: 10 }}>Quy trình canh tác</h3>
           {result.processes?.length ? result.processes.map((p, i) => (
             <div key={i} style={timeline}>
-              <b>{p.executionDate} , {p.processType}</b>
+              <b>{p.executionDate} , {translateProcessType(p.processType)}</b>
               <div>{p.materials || p.notes || 'Không có ghi chú'}</div>
               <small style={hash}>{p.transactionHash}</small>
             </div>

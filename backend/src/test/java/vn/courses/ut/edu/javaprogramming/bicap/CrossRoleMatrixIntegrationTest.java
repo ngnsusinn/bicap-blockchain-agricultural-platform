@@ -771,8 +771,8 @@ class CrossRoleMatrixIntegrationTest {
         expectDenied(postJson("/api/shipping/shipments", body, "FARM_A"), "farm creates shipment");
         expectDenied(postJson("/api/shipping/shipments", body, "RETAIL_A"), "retailer creates shipment");
         expectDenied(postJson("/api/shipping/shipments", body, "DRIVER_B"), "driver creates shipment");
-        // orderDepositX is ACCEPTED (not DEPOSIT_PAID) → business error, not an auth bypass
-        expectStatus(400, postJson("/api/shipping/shipments", body, "SHIPPING"), "shipment for unpaid order");
+        // orderDepositX is DEPOSIT_PAID (mock payment auto-confirms) → shipment creation succeeds
+        expectStatus(201, postJson("/api/shipping/shipments", body, "SHIPPING"), "shipment for paid order");
     }
 
     // ══════════════════════════════════════════════════════════════════════════
